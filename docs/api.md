@@ -141,7 +141,7 @@ Item schema (`data[]`; "Home" = also present in `/post/all` items):
 
 Params: `search` (required, URL-encoded UTF-8; the website's own form uses `s`, which the API ignores and answers with the 400 in section 4) and `page` (presumed to work as for other lists (?)).
 
-Success body was not saved. Expect the paged-list envelope with the item schema of 5.2 (?). Verify field set before relying on it.
+**Verified 2026-10-11 (S: `post_search_friends.json`):** the paged-list envelope (`success, per_page 12, page, total_page, data[]`) with exactly the 24-field list-item schema of 5.2, including `type`. Persian queries work (URL-encoded UTF-8; `بازیگر` → 2 pages). Matches titles in both scripts.
 
 ### 5.4 `GET /post/{id}` (detail) (S: movie 353371, series 624236)
 
