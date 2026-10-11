@@ -247,7 +247,11 @@ fun PlayerScreen(
         // v1.1-2: during a quality/audio switch the last frame stays on screen with a small label
         // instead of a bare spinner.
         if (playing && switchingQuality && !hasError) {
-            QualitySwitchIndicator(Modifier.align(Alignment.Center), label = stringResource(R.string.player_switching_quality))
+            // Centred in the visible video: the settings panel covers the end (left) side while it is open.
+            QualitySwitchIndicator(
+                Modifier.align(Alignment.Center).padding(end = if (chrome.panelOpen) PANEL_WIDTH else 0.dp),
+                label = stringResource(R.string.player_switching_quality),
+            )
         } else if (playing && status.isBuffering && !hasError) {
             BufferingSpinner(Modifier.align(Alignment.Center))
         }
