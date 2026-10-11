@@ -57,8 +57,10 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - [x] 2026-10-11 · M1.8 / M4.1 Baseline-profile generator + Macrobenchmark modules (startup, home scroll, open details); TV GMD unsupported in AGP 9.4.1 → generate on the TV_API34 emulator (PA)
 - [x] 2026-10-11 · Deep link `bolbol://play/…` verified on the emulator (M)
 - [x] 2026-10-11 · Found: the movie video CDN (dl20.acenteri.ir, dl2.ecenteri.ir) was unreachable for a while from this machine; the app shows a Persian error with retry / lower quality. Series CDN fine (M)
-- **🔄 Running now (1 agent):**
-  - [ ] 🔄 M3.2 + 3.3 + 3.8 Login (you type it on the TV) + «لیست من» (= site favourites) + **progress sync with the site's watch-list** (DE+UI, Sonnet)
+- [x] 2026-10-11 · M3.2 + 3.3 + 3.8 Login (username/password → Bearer token), «لیست من» (local + site favourites sync), progress push on player exit / pull on app start; 118 tests (DE+UI); wired by M: «لیست من» top-bar tab, details «+ لیست من» button. Verified on the emulator: login screen, add to My List → appears in «لیست من · ۱ عنوان»
+- [x] 2026-10-11 · M1.8b Baseline Profile generated on TV_API34: 24,938 rules + 21,849 startup rules, shipped in the APK (M). 📺 gain to be measured on the TV
+- [ ] **Waiting on you (U):** log in once on the virtual TV (you type your username/password yourself) so login, favourites sync and progress sync can be verified with the real server
+- **🔄 Running now: none (all agents finished)**
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
@@ -70,7 +72,7 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - [ ] 0.6 📺 Measure the official app as the baseline → `perf/reports/official-baseline.md` (PA)
 
 ### M1: Watchable MVP
-- [ ] 🔄 1.8b Generate the Baseline Profile on TV_API34 and ship it (M); 📺 measure the gain on the TV
+- [ ] 1.8c 📺 Measure the Baseline Profile gain on the TV (PA)
 - [ ] 1.9 Review gate: code review + QA pass (emulator) + 📺 perf report `perf/reports/M1.md` (M, QA, PA)
 
 ### M2: Series experience + search

@@ -4,6 +4,9 @@ import android.app.Application
 import android.content.ComponentCallbacks2
 import app.bolbol.tv.core.data.DataGraph
 import app.bolbol.tv.core.player.PlayerFactory
+import app.bolbol.tv.core.model.TitleSummary
+import app.bolbol.tv.core.model.WatchKey
+import app.bolbol.tv.feature.details.MyListActions
 import app.bolbol.tv.feature.settings.AppSettings
 import app.bolbol.tv.feature.tvhome.WatchNextPublisher
 import coil3.ImageLoader
@@ -18,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toOkioPath
@@ -44,6 +48,29 @@ class BolbolApp : Application(), SingletonImageLoader.Factory {
         runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?"
     }
 
+    /** «لیست من» button on details → local list (+ best-effort sync with the site's favourites when logged in). */
+    val myListActions: MyListActions by lazy {
+        object : MyListActions {
+            override fun isInMyList(postId: Long): Flow<Boolean> = data.account.isInMyList(postId)
+            override suspend fun setInMyList(title: TitleSummary, inList: Boolean) {
+                data.account.setInMyList(title, inList)
+                appScope.launch { data.account.syncMyList() }
+            }
+        }
+    }
+
+    /**
+     * After the player closes: send the saved position to the site's watch-list (logged-in only; no-op otherwise),
+     * so the phone app / website can continue from the same point. Runs in the background, never blocks Back.
+     */
+    fun pushProgressAfterPlayback(postId: Long, season: Int, episode: Int) {
+        appScope.launch {
+            // Give the player's final save (on dispose) a moment to land in Room.
+            kotlinx.coroutines.delay(1_500)
+            data.watch.progress(WatchKey(postId, season, episode))?.let { data.pushProgress(it) }
+        }
+    }
+
     private var backgroundStarted = false
 
     /**
@@ -55,6 +82,11 @@ class BolbolApp : Application(), SingletonImageLoader.Factory {
         if (backgroundStarted) return
         backgroundStarted = true
         val publisher = WatchNextPublisher(this)
+        // Account sync (no-ops when logged out): pull the site's progress + favourites once per app start.
+        appScope.launch {
+            runCatching { data.pullProgress() }
+            runCatching { data.account.syncMyList() }
+        }
         appScope.launch {
             data.watch.continueWatching().debounce(2_000).collect { publisher.publish(it) }
         }

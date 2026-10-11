@@ -34,5 +34,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object SearchRoute : NavKey
 
+@Serializable data object AccountRoute : NavKey
+
 /** Not-yet-built sections (M2/M3) show a placeholder. */
 @Serializable data class ComingSoonRoute(val title: String) : NavKey

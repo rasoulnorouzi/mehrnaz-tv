@@ -23,6 +23,8 @@ import app.bolbol.tv.core.model.WatchKey
 import app.bolbol.tv.core.lanremote.PhoneRemotePanel
 import app.bolbol.tv.feature.search.SearchScreen
 import app.bolbol.tv.feature.search.SearchViewModel
+import app.bolbol.tv.feature.account.AccountScreen
+import app.bolbol.tv.feature.account.AccountViewModel
 import app.bolbol.tv.feature.settings.SettingsScreen
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -81,6 +83,7 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                             HomeDestination.MOVIES -> open(BrowseRoute("فیلم‌ها", Category.MOVIES.name))
                             HomeDestination.SERIES -> open(BrowseRoute("سریال‌ها", Category.SERIES.name))
                             HomeDestination.SEARCH -> open(SearchRoute)
+                            HomeDestination.MY_LIST -> open(AccountRoute)
                             HomeDestination.SETTINGS -> open(SettingsRoute)
                         }
                     },
@@ -89,7 +92,9 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
             entry<DetailsRoute> { route ->
                 DetailsScreen(
                     viewModel = viewModel(
-                        factory = DetailsViewModel.factory(route.titleId, data.catalog, data.watch, data.prefs),
+                        factory = DetailsViewModel.factory(
+                            route.titleId, data.catalog, data.watch, data.prefs, myList = app.myListActions,
+                        ),
                     ),
                     onPlay = { key, start -> open(PlayerRoute(key.postId, key.season, key.episode, start)) },
                     onOpenTitle = { open(DetailsRoute(it.id)) },
@@ -109,10 +114,12 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
             }
             entry<PlayerRoute> { route ->
                 PlayerEntry(
-                    app, route, onExit = back,
+                    app, route,
+                    onExit = { app.pushProgressAfterPlayback(route.postId, route.season, route.episode); back() },
                     // Auto-next: replace (not push) the player entry so exactly one ExoPlayer exists
                     // and Back returns to details, not to the previous episode.
                     onPlayNext = { next ->
+                        app.pushProgressAfterPlayback(route.postId, route.season, route.episode)
                         backStack[backStack.lastIndex] = PlayerRoute(next.postId, next.season, next.episode, 0)
                     },
                 )
@@ -128,6 +135,12 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                     onOpenTitle = { open(DetailsRoute(it.id)) },
                     externalInput = phoneText,
                     phoneRemoteContent = { PhoneRemotePanel(onText = { phoneText.tryEmit(it) }) },
+                )
+            }
+            entry<AccountRoute> {
+                AccountScreen(
+                    viewModel = viewModel(factory = AccountViewModel.factory(data.account, data.accountVipDaysLeft)),
+                    onOpenTitle = { open(DetailsRoute(it.id)) },
                 )
             }
             entry<SettingsRoute> {

@@ -85,6 +85,7 @@ private val TabDestinations: List<HomeDestination?> = listOf(
     null,
     HomeDestination.MOVIES,
     HomeDestination.SERIES,
+    HomeDestination.MY_LIST,
     HomeDestination.SETTINGS,
 )
 
