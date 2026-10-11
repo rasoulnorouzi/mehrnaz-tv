@@ -73,6 +73,9 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                         val k = item.progress.key
                         open(PlayerRoute(k.postId, k.season, k.episode, item.progress.positionMs))
                     },
+                    onViewAll = { q, title ->
+                        open(BrowseRoute(title, q.category.name, q.country, q.genre, q.imdbTop250))
+                    },
                     onNavigate = { dest ->
                         when (dest) {
                             HomeDestination.MOVIES -> open(BrowseRoute("فیلم‌ها", Category.MOVIES.name))

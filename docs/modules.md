@@ -22,7 +22,9 @@ uses the same short build file, and versions come from `gradle/libs.versions.tom
 | `:feature:tvhome` | `app.bolbol.tv.feature.tvhome` | Publishes Continue Watching / next episode to the Android TV home (Watch Next) |
 | `:core:lanremote` | `app.bolbol.tv.core.lanremote` | Phone/QR remote: tiny LAN HTTP server + QR code composable |
 
-Planned: `:feature:account`, `:baselineprofile`, `:benchmark`.
+| `:feature:account` | `app.bolbol.tv.feature.account` | Login + «لیست من» |
+| `:baselineprofile` | (test module) | Baseline/Startup Profile generator (run on TV_API34) |
+| `:benchmark` | (test module) | Macrobenchmarks (run on the real TV) |
 
 ## Recipe: Android library module with Compose
 1. Add `include(":feature:xyz")` to `settings.gradle.kts`.

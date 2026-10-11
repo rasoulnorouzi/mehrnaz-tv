@@ -52,11 +52,13 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - [x] 2026-10-11 · **M1.11 End-to-end on the virtual TV ✅:** real home rows → details → play 720p with Persian subtitles → exit → «ادامه از ۱:۰۷» on details + «ادامه تماشا» row on Home (M). Screenshots: shots/2026-10-11/e2e-*.png
 - [x] 2026-10-11 · M2.4 + 3.4 + 3.5b Search merged + wired with the phone/QR remote: Persian/English keyboard, half-space, voice (fa-IR/en-US), recents, paging; 79 tests. Verified on the emulator: typing «باز» with the D-pad returns live results (UI + M)
 - [x] 2026-10-11 · Official TV app analysed (user permission): exact login (username/password → token), `Authorization: Bearer`, favourites = My List, watch-list = server progress in seconds; 2 more mirrors (playgen.ir, arzanycenter.ir) → docs/auth.md §0 (M)
-- **🔄 Running now (4 agents):**
+- [x] 2026-10-11 · M1.10b + M2.2 Own subtitle engine (VTT parser, sync offset, Persian bidi/punctuation repair), in-player subtitle menu, auto-next episode; 91 tests (PE). Verified on the emulator: correct Persian punctuation + ZWNJ, menu works; fix by M: subtitles centred beside the open panel
+- [x] 2026-10-11 · M1.12 + M2.6 QA fixes (details title ✅ verified, «مشاهده همه» cards wired, min progress fill) + Continue Watching menu (watched / remove) + episode watched toggle; 85 tests (UI)
+- [x] 2026-10-11 · M1.8 / M4.1 Baseline-profile generator + Macrobenchmark modules (startup, home scroll, open details); TV GMD unsupported in AGP 9.4.1 → generate on the TV_API34 emulator (PA)
+- [x] 2026-10-11 · Deep link `bolbol://play/…` verified on the emulator (M)
+- [x] 2026-10-11 · Found: the movie video CDN (dl20.acenteri.ir, dl2.ecenteri.ir) was unreachable for a while from this machine; the app shows a Persian error with retry / lower quality. Series CDN fine (M)
+- **🔄 Running now (1 agent):**
   - [ ] 🔄 M3.2 + 3.3 + 3.8 Login (you type it on the TV) + «لیست من» (= site favourites) + **progress sync with the site's watch-list** (DE+UI, Sonnet)
-  - [ ] 🔄 M1.12 + 2.6 QA fixes (details title, "view all", progress bar) + watched / remove menus + My List button (UI, Sonnet)
-  - [ ] 🔄 M1.8 Baseline Profile + Macrobenchmark modules (PA, Sonnet)
-  - [ ] 🔄 M1.10b Own subtitle engine + in-player subtitle menu + M2.2 auto-next episode (PE, Opus)
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
@@ -68,15 +70,11 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - [ ] 0.6 📺 Measure the official app as the baseline → `perf/reports/official-baseline.md` (PA)
 
 ### M1: Watchable MVP
-- [ ] 1.10 **Subtitles as a first-class feature** (user requirement, spec `docs/subtitles.md`):
-  - [ ] 1.10b Own subtitle engine: VTT parser, timing offset, cue sync, Persian bidi, `SubtitleText` (PE, Opus)
-  - [ ] 1.10d In-player subtitle menu (on/off, size, ±0.5 s sync) + Settings → زیرنویس page with live preview (UI, Sonnet)
-- [ ] 1.8 Baseline Profile + release build (M); 📺 measure the gain on the TV
+- [ ] 🔄 1.8b Generate the Baseline Profile on TV_API34 and ship it (M); 📺 measure the gain on the TV
 - [ ] 1.9 Review gate: code review + QA pass (emulator) + 📺 perf report `perf/reports/M1.md` (M, QA, PA)
 
 ### M2: Series experience + search
 - [ ] 2.1 Series details: season tabs, episode list with progress, jump to next unwatched (UI + DE)
-- [ ] 2.2 Auto-next episode with countdown (PE)
 - [ ] 2.3 Remember dub/sub, quality, subtitle size (DE)
 - [ ] 2.4b (optional) Instant local typeahead from the site's `search-data.json` index (DE)
 
