@@ -48,6 +48,12 @@ class DataGraph(
     /** Replaces the API mirror list at runtime (site roots such as "https://euploadi.com/"). */
     fun setMirrors(mirrors: List<String>) = network.setMirrors(mirrors)
 
+    /** Restores the built-in API mirror and image CDN lists (Settings → اتصال → بازنشانی سرورها). */
+    fun resetServers() {
+        network.setMirrors(NetworkModule.DEFAULT_MIRRORS)
+        network.setImageHosts(NetworkModule.DEFAULT_IMAGE_HOSTS)
+    }
+
     /** Replaces the image CDN list at runtime; its first entry is written into every image URL the repositories return. */
     fun setImageHosts(imageHosts: List<String>) = network.setImageHosts(imageHosts)
 }

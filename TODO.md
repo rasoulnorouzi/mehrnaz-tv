@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-11 (M1 about 70 % done)
+Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -44,14 +44,15 @@ Last updated: 2026-10-11 (M1 about 70 % done)
 - [x] 2026-10-11 · Build queue `tools/gw.sh` + skeletons for search/browse/settings/tvhome/lanremote + shared `SubtitleText` renderer (M)
 - [x] 2026-10-11 · M2.5 Browse / category grids with paging + quick filters merged; 35 tests (UI)
 - [x] 2026-10-11 · M4.5 App icon (adaptive), TV banner «بلبل تی‌وی» (Vazirmatn, rendered via Chromium/HarfBuzz), launch screen; launch logo removed after first frame to avoid overdraw (UI + M)
-- **🔄 Running in parallel now (9 agents):**
-  - [ ] 🔄 M1.5 + 1.6 Home + Details screens (UI, Sonnet)
+- [x] 2026-10-11 · M1.5 + 1.6 Home + Details (movies + series, two-pane episodes) merged; 57 tests (UI)
+- [x] 2026-10-11 · M1.10d Settings screen (subtitle live preview, playback defaults, servers, developer, about) merged; 38 tests (UI)
+- [x] 2026-10-11 · M3.6 Watch Next publisher + deep links merged, wired in the app (starts after first frame); 40 tests (DE + M)
+- [x] 2026-10-11 · M3.5 Phone/QR remote module merged; 75 tests (DE)
+- [x] 2026-10-11 · M3.1 Auth investigation: username/email + password (no OTP); docs/auth.md (R)
+- [x] 2026-10-11 · **M1.11 End-to-end on the virtual TV ✅:** real home rows → details → play 720p with Persian subtitles → exit → «ادامه از ۱:۰۷» on details + «ادامه تماشا» row on Home (M). Screenshots: shots/2026-10-11/e2e-*.png
+- **🔄 Still running:**
   - [ ] 🔄 M1.10b Own subtitle engine + in-player subtitle menu + M2.2 auto-next episode (PE, Opus)
   - [ ] 🔄 M2.4 + M3.4 Search: Persian/English keyboard + voice (UI, Sonnet)
-  - [ ] 🔄 M1.10d Settings screen with subtitle live preview (UI, Sonnet)
-  - [ ] 🔄 M3.5 Phone/QR remote (DE, Sonnet)
-  - [ ] 🔄 M3.6 Android TV home "Watch Next" row (DE, Sonnet)
-  - [ ] 🔄 M3.1 Login/account API investigation (R, Sonnet)
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
@@ -63,7 +64,7 @@ Last updated: 2026-10-11 (M1 about 70 % done)
 - [ ] 0.6 📺 Measure the official app as the baseline → `perf/reports/official-baseline.md` (PA)
 
 ### M1: Watchable MVP
-- [ ] 1.11 Integrate home + details into the app; end-to-end test on the virtual TV: browse → details → play → resume → Continue Watching (M)
+- [ ] 1.12 QA fix list from the e2e run: details title clipped at the top; Home rows need a "view all" action; check focus after Back from the player (UI)
 - [ ] 1.10 **Subtitles as a first-class feature** (user requirement, spec `docs/subtitles.md`):
   - [ ] 1.10b Own subtitle engine: VTT parser, timing offset, cue sync, Persian bidi, `SubtitleText` (PE, Opus)
   - [ ] 1.10d In-player subtitle menu (on/off, size, ±0.5 s sync) + Settings → زیرنویس page with live preview (UI, Sonnet)
@@ -78,12 +79,11 @@ Last updated: 2026-10-11 (M1 about 70 % done)
 - [ ] 2.6 Mark watched/unwatched, remove from Continue Watching (DE + UI)
 
 ### M3: Integrations
-- [ ] 3.1 Work out the login/auth flow from the website JS (APK only with your permission) (R → M)
 - [ ] 3.2 Login screen + pairing code; secure token storage (DE + UI)
 - [ ] 3.3 Watch-list & favourites sync (DE)
 - [ ] 3.4 Voice search with the remote's mic (UI)
-- [ ] 3.5 Phone/QR remote for typing (DE + UI)
-- [ ] 3.6 📺 "Continue Watching" row on the Android TV home screen (DE)
+- [ ] 3.5b Put the phone/QR remote into the search screen (M)
+- [ ] 3.6b Check the Watch Next row on the emulator's home screen; 📺 PatchWall behaviour on the TV (M)
 - [ ] 3.7 (if feasible) Receive the website's "play on TV" (R + DE)
 - [ ] 3.8 (if feasible) Sync progress with the website's continue-watching (R → DE)
 

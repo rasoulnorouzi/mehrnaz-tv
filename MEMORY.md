@@ -43,6 +43,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
   an agent team. No corrections so far.
 
 ## Progress log
+- 2026-10-11: MILESTONE: end-to-end on the emulator. Home (real data) → details → 720p playback with Persian subs → resume «ادامه از ۱:۰۷» + Continue Watching row. CDN throughput from the dev machine is about 45 Mbit/s with 0.4 s to first byte; emulator TTFF of 15.5 s is the software decoder, not the network.
 - 2026-10-11: Lesson: `gradlew --stop` kills ALL daemons machine-wide (it broke the manager's build). Banned; use tools/gw.sh (flock slots + --no-daemon) and the daemon idle timeout.
 - 2026-10-11: Learned: the API's image URLs on euploadi.com/uuploadi.ir 404; images live on the CDN (majnoonbazar.ir, seo2024.ir). Fixed in core:network with host rewrite + failover.
 - 2026-10-11: Learned: in RTL LazyRows, BringIntoViewSpec gets physical left-based offsets (positive = content moves left). The UI agent's StartPivot formula is correct; short rows clamp at the end (looks "stuck" in a 9-item gallery).

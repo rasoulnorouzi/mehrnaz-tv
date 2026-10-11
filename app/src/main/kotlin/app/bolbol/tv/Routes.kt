@@ -21,5 +21,16 @@ import kotlinx.serialization.Serializable
     companion object { const val ASK = -1L }
 }
 
+/** Category / "view all" grid. [category] is a [app.bolbol.tv.core.model.Category] name. */
+@Serializable data class BrowseRoute(
+    val title: String,
+    val category: String,
+    val country: Int? = null,
+    val genre: Int? = null,
+    val imdbTop250: Boolean = false,
+) : NavKey
+
+@Serializable data object SettingsRoute : NavKey
+
 /** Not-yet-built sections (M2/M3) show a placeholder. */
 @Serializable data class ComingSoonRoute(val title: String) : NavKey

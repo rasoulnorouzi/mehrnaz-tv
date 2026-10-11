@@ -3,27 +3,52 @@ package app.bolbol.tv
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import app.bolbol.tv.core.designsystem.BolbolText
-import app.bolbol.tv.core.designsystem.TvButton
+import app.bolbol.tv.core.model.Category
+import app.bolbol.tv.core.model.ListQuery
+import app.bolbol.tv.core.model.WatchKey
+import app.bolbol.tv.feature.settings.SettingsScreen
+import app.bolbol.tv.feature.settings.SettingsViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import app.bolbol.tv.feature.browse.BrowseScreen
+import app.bolbol.tv.feature.browse.BrowseViewModel
+import app.bolbol.tv.feature.details.DetailsScreen
+import app.bolbol.tv.feature.details.DetailsViewModel
+import app.bolbol.tv.feature.home.HomeDestination
+import app.bolbol.tv.feature.home.HomeScreen
+import app.bolbol.tv.feature.home.HomeViewModel
 
+/**
+ * The only place that knows the back stack (docs/decisions.md §Architecture).
+ * Each entry gets its own ViewModelStore, so e.g. two stacked details screens keep separate state.
+ */
 @Composable
-fun MainNavigation(app: BolbolApp) {
+fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>) {
     val backStack = rememberNavBackStack(HomeRoute)
     val back: () -> Unit = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) }
+    val open: (NavKey) -> Unit = { backStack.add(it) }
+    val data = app.data
+
+    // Watch Next card pressed on the TV home screen → play it directly (resume prompt decides the position).
+    val deepLink by pendingDeepLink.collectAsState()
+    LaunchedEffect(deepLink) {
+        val key = deepLink ?: return@LaunchedEffect
+        pendingDeepLink.value = null
+        open(PlayerRoute(key.postId, key.season, key.episode))
+    }
 
     NavDisplay(
         backStack = backStack,
@@ -34,32 +59,63 @@ fun MainNavigation(app: BolbolApp) {
         ),
         entryProvider = entryProvider {
             entry<HomeRoute> {
-                // TEMP (M1 integration): replaced by HomeScreen when :feature:home lands.
-                TempHome(onPlay = { backStack.add(PlayerRoute(353371)) })
+                HomeScreen(
+                    viewModel = viewModel(factory = HomeViewModel.factory(data.catalog, data.watch)),
+                    onOpenTitle = { open(DetailsRoute(it.id)) },
+                    onResume = { item ->
+                        val k = item.progress.key
+                        open(PlayerRoute(k.postId, k.season, k.episode, item.progress.positionMs))
+                    },
+                    onNavigate = { dest ->
+                        when (dest) {
+                            HomeDestination.MOVIES -> open(BrowseRoute("فیلم‌ها", Category.MOVIES.name))
+                            HomeDestination.SERIES -> open(BrowseRoute("سریال‌ها", Category.SERIES.name))
+                            HomeDestination.SEARCH -> open(ComingSoonRoute("جستجو"))
+                            HomeDestination.SETTINGS -> open(SettingsRoute)
+                        }
+                    },
+                )
             }
             entry<DetailsRoute> { route ->
-                ComingSoon("جزئیات ${route.titleId}")
+                DetailsScreen(
+                    viewModel = viewModel(
+                        factory = DetailsViewModel.factory(route.titleId, data.catalog, data.watch, data.prefs),
+                    ),
+                    onPlay = { key, start -> open(PlayerRoute(key.postId, key.season, key.episode, start)) },
+                    onOpenTitle = { open(DetailsRoute(it.id)) },
+                )
+            }
+            entry<BrowseRoute> { route ->
+                val query = ListQuery(
+                    category = Category.valueOf(route.category),
+                    country = route.country,
+                    genre = route.genre,
+                    imdbTop250 = route.imdbTop250,
+                )
+                BrowseScreen(
+                    viewModel = viewModel(factory = BrowseViewModel.factory(query, route.title, data.catalog)),
+                    onOpenTitle = { open(DetailsRoute(it.id)) },
+                )
             }
             entry<PlayerRoute> { route ->
                 PlayerEntry(app, route, onExit = back)
             }
+            entry<SettingsRoute> {
+                SettingsScreen(
+                    viewModel = viewModel(
+                        factory = SettingsViewModel.factory(
+                            prefs = data.prefs,
+                            appSettings = app.appSettings,
+                            currentMirror = { data.currentMirror },
+                            resetMirrors = { data.resetServers() },
+                            versionName = app.versionName,
+                        ),
+                    ),
+                )
+            }
             entry<ComingSoonRoute> { route -> ComingSoon(route.title) }
         },
     )
-}
-
-@Composable
-private fun TempHome(onPlay: () -> Unit) {
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
-    Column(
-        Modifier.fillMaxSize().padding(48.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        BolbolText("بلبل تی‌وی (ادغام آزمایشی)")
-        TvButton(text = "پخش آزمایشی: اسلحه برهنه", onClick = onPlay, modifier = Modifier.focusRequester(focus))
-    }
 }
 
 @Composable

@@ -1,6 +1,7 @@
 package app.bolbol.tv
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
@@ -58,7 +59,8 @@ fun PlayerEntry(app: BolbolApp, route: PlayerRoute, onExit: () -> Unit) {
                     prefs = app.data.prefs,
                 ),
             )
-            PlayerScreen(viewModel = vm, onExit = onExit, subtitleTypeface = typeface)
+            val showPerf by app.appSettings.showPerformance.collectAsState()
+            PlayerScreen(viewModel = vm, onExit = onExit, subtitleTypeface = typeface, showDiagnostics = showPerf)
         }
     }
 }
