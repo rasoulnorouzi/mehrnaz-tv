@@ -66,7 +66,9 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
   - [ ] 🔄 QA: full device pass of the release build on TV_API34 (search, UI, pages, bookmarking/My List, player, settings, back behaviour) → `qa/2026-10-11-full-pass.md` (QA, Sonnet)
   - [ ] 🔄 User request: **«پروفایل» tab** (login / profile info / VIP / logout with confirmation) + **"Made with ❤ for Mehi by Rasoul"** on Home and About (UI, Sonnet)
 - [x] 2026-10-11 · User request: subtitle sync open-ended, ±120 s, 0.5 s + 5 s steps, hold-to-repeat, «همگام‌سازی: +۱۲٫۵ ثانیه» (PE)
-  - [ ] 🔄 User request: **rebrand to «مهرناز» (Mehrnaz)**: name, new sun + play logo, banner, icon, launch screen, applicationId `app.mehrnaz.tv`, deep link `mehrnaz://` (UI, Sonnet)
+- [x] 2026-10-11 · User request: **rebrand to «مهرناز» (Mehrnaz)**: sun + play logo, banner, adaptive icon, launch screen, applicationId `app.mehrnaz.tv`, deep link `mehrnaz://`; no user-visible «بلبل» left (UI + M)
+- [x] 2026-10-11 · User request: **«پروفایل» tab** (login, full profile, VIP, «همگام‌سازی دوباره» with real result, logout with confirmation) + **"Made with ❤ for Mehi by Rasoul"** on Home + About (UI)
+  - [ ] 🔄 User request: **dubbing + quality must work everywhere.** Found that details can have empty links and dubbed series use separate (shorter) dub blocks; fix: streams from `post/player-links` + dub-aware series mapping (DE, Sonnet)
 - [ ] Next: fix wave from the QA report (agents per module) → re-test
 - [ ] **Release v1.0.0** (user request): dedicated signing key (kept off GitHub), APK checks (minSdk 29, leanback, no native libs, signature), fresh-install test on the Android 10 virtual TV, GitHub release with the APK, send the APK + Mi TV install steps to the user (M)
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
