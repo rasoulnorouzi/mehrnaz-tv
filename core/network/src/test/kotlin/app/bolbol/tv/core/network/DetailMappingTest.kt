@@ -29,7 +29,7 @@ class DetailMappingTest {
         assertTrue(d.summary.hasDub)
         assertTrue(d.summary.hasSubtitle)
         assertEquals(
-            "https://euploadi.com/wp-content/uploads/2026/02/0-76008300-1772116872.webp",
+            "https://majnoonbazar.ir/wp-content/uploads/2026/02/0-76008300-1772116872.webp",
             d.summary.posterUrl,
         )
         assertTrue(d.summary.backdropUrl!!.endsWith("0-84730100-1772116872.webp"))
