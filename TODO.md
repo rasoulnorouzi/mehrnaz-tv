@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-11 (**v1.0.0 released**; remaining items need the real TV)
+Last updated: 2026-10-11 (**v1.0.0 released and installed on the real TV by the user**; v1.1 planned)
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -72,10 +72,31 @@ Last updated: 2026-10-11 (**v1.0.0 released**; remaining items need the real TV)
 - [x] 2026-10-11 · TV is **Android 11** (user). Created `MiTV_API30` emulator; fresh install of the signed release APK ✅, appears in the TV app list as «مهرناز» with banner ✅ (M)
 - [x] 2026-10-11 · Release pipeline: permanent key (~/.bolboltv, off-repo), `tools/release.sh` (zipalign + v1/v2/v3), APK checks ✅ (M)
 - [x] 2026-10-11 · Fix wave merged: QA-01 My List focus, QA-02 player Back (first Back closes panel ✅ verified), QA-03 synced progress «ادامه از …» (data + home + details), QA-04 hero fallback, QA-05 view-all focus, QA-06 top scrim, QA-07 bidi (UI/DE/PE + M)
+- [x] 2026-10-11 · **User installed v1.0.0 on the real Mi TV (Android 11) and reports "everything's working pretty well"** (U)
 - [x] 2026-10-11 · **v1.0.0 RELEASED**: final signed APK (5.2 MB, app.mehrnaz.tv), fresh install + home + playback verified on the Android 11 emulator, GitHub release https://github.com/rasoulnorouzi/bolboljan-androidtv/releases/tag/v1.0.0, APK sent to the user (M)
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
+
+### v1.1: user feedback after installing on the real Mi TV (2026-10-11), planned, not started
+- [ ] v1.1-1 **Player: «قسمت قبل» / «قسمت بعد» buttons** (previous / next episode) in the player controls for series
+  (hidden for movies; disabled at the first/last episode; also on the remote's MEDIA_NEXT / MEDIA_PREVIOUS keys;
+  the current episode's progress is saved before switching; same single-player replace as auto-next) (PE + UI)
+- [ ] v1.1-2 **Quality switch lag:** switching to a HIGHER quality sometimes stalls for a long time; going lower and
+  back up fixes it. Plan (measure first, then fix):
+  1. Reproduce on the TV with «نمایش اطلاعات عملکرد» on; record `BolbolPerf stream_switch=…ms`, decoder, buffer and
+     bandwidth for 480→720→1080 and 1080→480→1080 (📺, PA).
+  2. Likely causes to check: new CDN host per quality (cold DNS/TLS; 1080 and 720 sit on different hosts), MP4 `moov`
+     atom at the END of the file (extra range request before playback), EXACT seek decoding from the previous keyframe,
+     hardware decoder re-initialisation on a resolution change (MT9611), too-small start buffer for a high bitrate.
+  3. Candidate fixes: pre-warm the other qualities' hosts when the menu opens (HEAD/connection pre-connect);
+     `SeekParameters.CLOSEST_SYNC` for the switch; keep showing the last frame with a small «در حال تغییر کیفیت…» label
+     instead of a black stall; a timeout fallback (no first frame within ~8 s → retry once, then offer the lower quality);
+     cache the MP4 header boxes (small Media3 `SimpleCache` for the first/last MB); tune LoadControl for 1080p (PE).
+  4. Accept when the 720→1080 switch shows a picture within 3 s on the TV over home Wi-Fi.
+- [ ] v1.1-3 **Subtitle colours: 3 more** (now: سفید، زرد). Add, e.g.: «فیروزه‌ای» cyan `#7FDBFF`, «سبز روشن» light green
+  `#A6F28F`, «صورتی» soft pink `#FFB3D1` (final choice after a preview on the TV). In the Settings live preview and
+  the player menu; stored in SubtitleStyle (**needs a DB migration**: v1 is released, rule 11) (UI + DE)
 
 ### M0: Foundations
 - [ ] 0.4 📺 Connect to the TV over Wi-Fi ADB + install scrcpy; fill in "Verified on device" in `docs/device.md` (U + M)

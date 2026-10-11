@@ -86,6 +86,13 @@ Room cache (stale-while-revalidate for home rows, so the home screen paints inst
 | 4.5 | App icon/banner (320×180 TV banner), splash, final visual polish pass | UI | screenshots |
 | 4.6 | Final comparison report: our app vs the official app | PA → M | published to the user |
 
+## v1.1: from the user's first days on the real TV (planned 2026-10-11)
+| # | Task | Agent | Acceptance |
+|---|---|---|---|
+| v1.1-1 | Player «قسمت قبل» / «قسمت بعد» buttons (+ MEDIA_PREVIOUS/NEXT keys) for series | PE + UI | switching saves progress, works at season boundaries, hidden for movies |
+| v1.1-2 | Fix the stall when switching to a higher quality (measure on the TV first; see TODO for causes and candidate fixes) | PA → PE | 720→1080 shows a picture within 3 s on the TV |
+| v1.1-3 | 3 more subtitle colours (cyan, light green, pink, final after preview) | UI + DE | preview + player; DB migration v1→v2 tested |
+
 ## Out of scope (for now)
 Profiles, downloads/offline playback (16 GB storage), trailer autoplay, seek-preview thumbnails
 (the server provides no sprites; generating them on a 2 GB TV is too costly), Chromecast, Play Store.

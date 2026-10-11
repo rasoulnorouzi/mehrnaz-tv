@@ -69,3 +69,7 @@ search per tick, it is cheaper than the platform pipeline.
   correctly. Risk: a false positive could flip a correct line. Revisit with more files if a user reports odd punctuation.
 - Credit cues dropped: «بلبل جان», "bolboljan", and the handle `@bollbolljan`.
 - With the player's settings panel open, subtitles are re-centred in the still-visible video area (manager fix).
+
+## Planned (v1.1-3, user request 2026-10-11)
+Three more text colours besides سفید/زرد, e.g. «فیروزه‌ای» `#7FDBFF`, «سبز روشن» `#A6F28F`, «صورتی» `#FFB3D1` (final after a
+preview on the TV). `SubtitleColor` gets new values; the stored style needs a Room migration (v1 is released).
