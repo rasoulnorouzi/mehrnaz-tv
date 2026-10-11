@@ -47,7 +47,11 @@ The main session (Opus) is the **project manager**. It delegates to the agents i
 10. **Track + report.** Every task or change: move it in `TODO.md` (To do → In progress → Done, dated),
     then send the user a report in the `TODO.md` format. No silent changes. Agents report to the
     manager; the manager reports to the user.
-11. **Git.** Small commits per task with conventional messages (`feat(player): …`). Commit only when
+11. **Database after v1.0.0 (released):** never edit the Room schema in place again. Every schema change bumps the
+    DB version, adds a tested `Migration`, and exports the new schema JSON, so the user's history and My List survive updates.
+12. **Signing:** release APKs are built with `tools/release.sh` (permanent key in `~/.bolboltv/`, never in the repo).
+    Updates signed with any other key cannot install over the user's app.
+13. **Git.** Small commits per task with conventional messages (`feat(player): …`). Commit only when
     the user has authorised it for the session. Never push anywhere (no remote).
 
 ## Agent rules (token economy)
