@@ -14,7 +14,7 @@ data class SubtitleStyle(
         val SIZE_STEPS = listOf(0.8f, 1.0f, 1.25f, 1.5f)
         /** Timing offset limits and step for the per-title sync adjustment. */
         const val OFFSET_STEP_MS = 500
-        const val OFFSET_MAX_MS = 10_000
+        const val OFFSET_MAX_MS = 120_000
     }
 }
 

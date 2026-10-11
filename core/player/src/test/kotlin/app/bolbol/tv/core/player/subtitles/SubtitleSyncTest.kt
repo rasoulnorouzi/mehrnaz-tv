@@ -113,16 +113,55 @@ class SubtitleSyncTest {
         assertTrue(sync.lines.value.isEmpty())
     }
 
-    @Test fun offsetNormalization() {
+    @Test fun offsetNormalizationAndClampAt120Seconds() {
         assertEquals(0, SubtitleOffset.normalize(0))
         assertEquals(1_500, SubtitleOffset.normalize(1_500))
         assertEquals(1_500, SubtitleOffset.normalize(1_400))
         assertEquals(-500, SubtitleOffset.normalize(-260))
-        assertEquals(10_000, SubtitleOffset.normalize(12_345))
-        assertEquals(-10_000, SubtitleOffset.normalize(-99_999))
-        assertEquals(500, SubtitleOffset.nudge(0, +1))
-        assertEquals(-500, SubtitleOffset.nudge(0, -1))
-        assertEquals(10_000, SubtitleOffset.nudge(10_000, +1))
-        assertEquals(-10_000, SubtitleOffset.nudge(-10_000, -1))
+        assertEquals(50_000, SubtitleOffset.normalize(50_000)) // the user's example: ±50 s
+        assertEquals(-50_000, SubtitleOffset.normalize(-50_000))
+        assertEquals(12_500, SubtitleOffset.normalize(12_345))
+        assertEquals(120_000, SubtitleOffset.normalize(120_000))
+        assertEquals(120_000, SubtitleOffset.normalize(120_250))
+        assertEquals(-120_000, SubtitleOffset.normalize(-999_999))
+        assertEquals(120_000, SubtitleOffset.normalize(Int.MAX_VALUE))
+        assertEquals(-120_000, SubtitleOffset.normalize(Int.MIN_VALUE))
+    }
+
+    @Test fun smallAndLargeSteps() {
+        assertEquals(500, SubtitleOffset.shift(0, SubtitleOffset.SMALL_STEP_MS))
+        assertEquals(-500, SubtitleOffset.shift(0, -SubtitleOffset.SMALL_STEP_MS))
+        assertEquals(5_000, SubtitleOffset.shift(0, SubtitleOffset.LARGE_STEP_MS))
+        assertEquals(-5_000, SubtitleOffset.shift(0, -SubtitleOffset.LARGE_STEP_MS))
+        assertEquals(7_500, SubtitleOffset.shift(2_500, 5_000))
+        assertEquals(-2_500, SubtitleOffset.shift(2_500, -5_000))
+        // Ten 5 s presses from zero reach +50 s; the limits hold.
+        val reached: Int = (1..10).fold(0) { acc, _ -> SubtitleOffset.shift(acc, 5_000) }
+        assertEquals(50_000, reached)
+        assertEquals(120_000, SubtitleOffset.shift(118_000, 5_000))
+        assertEquals(120_000, SubtitleOffset.shift(120_000, 500))
+        assertEquals(-120_000, SubtitleOffset.shift(-117_500, -5_000))
+        assertEquals(119_500, SubtitleOffset.shift(120_000, -500))
+    }
+
+    @Test fun holdToRepeatTiming() {
+        assertEquals(0L, HoldRepeat.delayBefore(0)) // the press steps at once
+        assertEquals(400L, HoldRepeat.delayBefore(1)) // first repeat
+        assertEquals(120L, HoldRepeat.delayBefore(2))
+        assertEquals(120L, HoldRepeat.delayBefore(50))
+        assertEquals(1, HoldRepeat.stepsAfter(0))
+        assertEquals(1, HoldRepeat.stepsAfter(399))
+        assertEquals(2, HoldRepeat.stepsAfter(400))
+        assertEquals(2, HoldRepeat.stepsAfter(519))
+        assertEquals(3, HoldRepeat.stepsAfter(520))
+        // +50 s with the 5 s button: 10 steps, held ~1.4 s.
+        assertEquals(10, HoldRepeat.stepsAfter(400L + 8 * 120))
+        // delayBefore and stepsAfter agree.
+        var elapsed = 0L
+        for (i in 0 until 30) {
+            elapsed += HoldRepeat.delayBefore(i)
+            assertEquals(i + 1, HoldRepeat.stepsAfter(elapsed))
+        }
+        assertEquals(HoldRepeat.MAX_STEPS, HoldRepeat.stepsAfter(10 * 60_000L))
     }
 }

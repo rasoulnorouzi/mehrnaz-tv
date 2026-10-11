@@ -118,20 +118,25 @@ class SubtitlePrefsTest {
     }
 
     @Test
-    fun offsetIsClampedToPlusMinusTenSeconds() = runTest {
+    fun offsetIsClampedToPlusMinus120Seconds() = runTest {
         val repo = prefs()
-        repo.saveSubtitleOffsetMs(7, 10_000)
+        assertEquals(120_000, SubtitleStyle.OFFSET_MAX_MS)
+        repo.saveSubtitleOffsetMs(7, 50_000) // well inside the range now (user request: up to ±50 s and more)
+        assertEquals(50_000, repo.subtitleOffsetMs(7))
+        repo.saveSubtitleOffsetMs(7, -50_000)
+        assertEquals(-50_000, repo.subtitleOffsetMs(7))
+        repo.saveSubtitleOffsetMs(7, 120_000)
         assertEquals(SubtitleStyle.OFFSET_MAX_MS, repo.subtitleOffsetMs(7))
-        repo.saveSubtitleOffsetMs(7, 10_250)
-        assertEquals(10_000, repo.subtitleOffsetMs(7))
-        repo.saveSubtitleOffsetMs(7, 99_999)
-        assertEquals(10_000, repo.subtitleOffsetMs(7))
-        repo.saveSubtitleOffsetMs(7, -99_999)
+        repo.saveSubtitleOffsetMs(7, 120_250)
+        assertEquals(120_000, repo.subtitleOffsetMs(7))
+        repo.saveSubtitleOffsetMs(7, 999_999)
+        assertEquals(120_000, repo.subtitleOffsetMs(7))
+        repo.saveSubtitleOffsetMs(7, -999_999)
         assertEquals(-SubtitleStyle.OFFSET_MAX_MS, repo.subtitleOffsetMs(7))
         repo.saveSubtitleOffsetMs(7, Int.MAX_VALUE)
-        assertEquals(10_000, repo.subtitleOffsetMs(7))
+        assertEquals(120_000, repo.subtitleOffsetMs(7))
         repo.saveSubtitleOffsetMs(7, Int.MIN_VALUE)
-        assertEquals(-10_000, repo.subtitleOffsetMs(7))
+        assertEquals(-120_000, repo.subtitleOffsetMs(7))
     }
 
     @Test
@@ -168,8 +173,8 @@ class SubtitlePrefsTest {
 
     @Test
     fun normalizerHandlesTheExtremesWithoutOverflow() {
-        assertEquals(10_000, normalizeSubtitleOffsetMs(Int.MAX_VALUE))
-        assertEquals(-10_000, normalizeSubtitleOffsetMs(Int.MIN_VALUE))
+        assertEquals(120_000, normalizeSubtitleOffsetMs(Int.MAX_VALUE))
+        assertEquals(-120_000, normalizeSubtitleOffsetMs(Int.MIN_VALUE))
         assertEquals(0, normalizeSubtitleOffsetMs(0))
     }
 }

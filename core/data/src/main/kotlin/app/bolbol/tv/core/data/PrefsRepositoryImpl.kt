@@ -51,7 +51,7 @@ internal class PrefsRepositoryImpl(
         normalizeSubtitleOffsetMs(dao.subtitleOffsetMs(postId) ?: 0)
     }
 
-    /** Rounded to 0.5 s steps and clamped to +-10 s; 0 removes the stored row. */
+    /** Rounded to 0.5 s steps and clamped to +-SubtitleStyle.OFFSET_MAX_MS (120 s); 0 removes the stored row. */
     override suspend fun saveSubtitleOffsetMs(postId: Long, offsetMs: Int) = withContext(io) {
         val normalized = normalizeSubtitleOffsetMs(offsetMs)
         if (normalized == 0) {

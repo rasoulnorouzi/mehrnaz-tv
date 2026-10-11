@@ -21,16 +21,17 @@ internal fun formatPlaybackTime(ms: Long, withHours: Boolean = ms >= 3_600_000L)
 private fun Long.twoDigits(): String = if (this < 10) "0$this" else toString()
 
 /**
- * Subtitle sync offset in seconds, Persian digits and decimal separator: 1500 → "+۱٫۵",
- * -500 → "-۰٫۵", 2000 → "+۲", 0 → "۰". A signed value is wrapped in an LTR isolate
- * (U+2066 … U+2069) so the sign stays on the number's left inside the RTL sentence.
+ * Subtitle sync offset in seconds with sign and one decimal, Persian digits and decimal separator:
+ * 12500 → "+۱۲٫۵", -500 → "-۰٫۵", 2000 → "+۲٫۰", -120000 → "-۱۲۰٫۰", 0 → "۰٫۰" (no sign). A signed
+ * value is wrapped in an LTR isolate (U+2066 … U+2069) so the sign stays on the number's left
+ * inside the RTL sentence («همگام‌سازی: +۱۲٫۵ ثانیه»).
  */
 internal fun formatSubtitleOffset(offsetMs: Int): String {
-    if (offsetMs == 0) return "۰"
-    val abs = kotlin.math.abs(offsetMs)
+    val abs = kotlin.math.abs(offsetMs.toLong())
     val whole = abs / 1000
     val tenths = (abs % 1000) / 100
-    val number = (if (tenths == 0) "$whole" else "$whole$PERSIAN_DECIMAL$tenths").toPersianDigits()
+    val number = "$whole$PERSIAN_DECIMAL$tenths".toPersianDigits()
+    if (offsetMs == 0) return number
     val sign = if (offsetMs > 0) "+" else "-"
     return "$LTR_ISOLATE$sign$number$POP_ISOLATE"
 }
