@@ -80,6 +80,8 @@ sealed interface DetailsUiState {
         val selectedSeason: Int,
         /** Episodes of [selectedSeason]. */
         val episodes: List<EpisodeItem>,
+        /** Whether the title is in "لیست من"; null = unknown or no My List wired in (the button is hidden). */
+        val inMyList: Boolean? = null,
     ) : DetailsUiState {
         val isSeries: Boolean get() = details.type == TitleType.SERIES
     }
@@ -167,6 +169,16 @@ internal fun streamChoices(streams: List<StreamOption>, prefs: PlaybackPrefs?): 
     )
 }
 
+/**
+ * Cards are never shorter than this share of the progress bar: 1 minute of a 45 minute episode is
+ * 2 %, a couple of pixels, which reads as "not started".
+ */
+internal const val MIN_VISIBLE_PROGRESS = 0.03f
+
+/** The fraction to draw: 0 stays 0 (not started), anything above it is at least [MIN_VISIBLE_PROGRESS]. */
+internal fun visibleProgress(fraction: Float): Float =
+    if (fraction.isNaN() || fraction <= 0f) 0f else fraction.coerceIn(MIN_VISIBLE_PROGRESS, 1f)
+
 private val GenericEpisodeTitle = Regex("""^\s*(episode|ep\.?|قسمت)\s*[\d۰-۹]*\s*$""", RegexOption.IGNORE_CASE)
 
 /** The title worth showing next to "قسمت ۳": null for the server's generic "Episode 3" placeholder. */
@@ -199,6 +211,7 @@ internal fun buildDetailsContent(
     progress: List<PlaybackProgress>,
     prefs: PlaybackPrefs?,
     userSeason: Int?,
+    inMyList: Boolean? = null,
 ): DetailsUiState.Content {
     val id = details.summary.id
     val cast = details.actors.distinctBy { it.id }
@@ -214,6 +227,7 @@ internal fun buildDetailsContent(
             seasons = emptyList(),
             selectedSeason = 0,
             episodes = emptyList(),
+            inMyList = inMyList,
         )
     }
 
@@ -241,6 +255,7 @@ internal fun buildDetailsContent(
         seasons = seasonNumbers,
         selectedSeason = selected,
         episodes = episodes,
+        inMyList = inMyList,
     )
 }
 

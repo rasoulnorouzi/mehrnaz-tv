@@ -143,4 +143,20 @@ class DetailsContentTest {
         val c = buildDetailsContent(s, emptyList(), null, null).choices
         assertEquals(listOf(AudioType.DUBBED, AudioType.SUBTITLED), c.audioOptions)
     }
+
+    // ---- My List flag + progress sliver ----
+
+    @Test fun theMyListFlagIsCarriedIntoMovieAndSeriesContent() {
+        assertNull(buildDetailsContent(movie(1), emptyList(), null, null).inMyList)
+        assertEquals(true, buildDetailsContent(movie(1), emptyList(), null, null, inMyList = true).inMyList)
+        assertEquals(false, buildDetailsContent(series(1, season(1, 2)), emptyList(), null, null, inMyList = false).inMyList)
+    }
+
+    @Test fun startedEpisodesAlwaysShowAVisibleSliver() {
+        assertEquals(0f, visibleProgress(0f), 0f)
+        assertEquals(0f, visibleProgress(Float.NaN), 0f)
+        assertEquals(MIN_VISIBLE_PROGRESS, visibleProgress(0.004f), 0f)
+        assertEquals(0.4f, visibleProgress(0.4f), 0f)
+        assertEquals(1f, visibleProgress(2f), 0f)
+    }
 }

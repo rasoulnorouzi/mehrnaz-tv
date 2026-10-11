@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import app.bolbol.tv.core.model.CatalogRepository
+import app.bolbol.tv.core.model.ContinueWatchingItem
 import app.bolbol.tv.core.model.WatchRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,12 +25,14 @@ import kotlinx.coroutines.launch
  *   immutable [HomeUiState]. It leaves `Loading` only when both have emitted, so the first rows
  *   never appear without the Continue Watching row and then shift down.
  * - The feed is loaded once per ViewModel; [retry] reloads it after a failure.
+ * - [markWatched] and [removeFromContinueWatching] are the Continue Watching card's menu actions;
+ *   the list is a live query, so the card disappears from [uiState] by itself.
  * - [lastFocus] survives navigation (the ViewModel does, the composition does not) so Back from
  *   details restores focus to the same card.
  */
 class HomeViewModel(
     private val catalog: CatalogRepository,
-    watch: WatchRepository,
+    private val watch: WatchRepository,
 ) : ViewModel() {
 
     private val feed = MutableStateFlow<FeedState>(FeedState.Loading)
@@ -55,6 +59,27 @@ class HomeViewModel(
 
     fun retry() {
         loadFeed()
+    }
+
+    /** "علامت‌گذاری به‌عنوان دیده‌شده": finishes the entry's latest episode (or the movie). */
+    fun markWatched(item: ContinueWatchingItem) {
+        viewModelScope.launch { quietly { watch.markWatched(item.progress.key, true) } }
+    }
+
+    /** "حذف از ادامه تماشا": hides the whole title from the row (episode watched flags are kept). */
+    fun removeFromContinueWatching(item: ContinueWatchingItem) {
+        viewModelScope.launch { quietly { watch.hideFromContinueWatching(item.title.id) } }
+    }
+
+    /** A failed local write leaves the card where it is; there is nothing useful to tell the user. */
+    private inline fun quietly(block: () -> Unit) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // ignored on purpose
+        }
     }
 
     private fun loadFeed() {

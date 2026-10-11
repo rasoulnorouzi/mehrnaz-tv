@@ -2,11 +2,16 @@ package app.bolbol.tv.feature.details
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,15 +26,18 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -37,6 +45,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -79,6 +88,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import kotlinx.coroutines.launch
 
 /** The info / episodes block fills this much of the screen; the rest peeks the next row as a scroll cue. */
 private const val HEADER_FRACTION = 0.86f
@@ -88,6 +98,9 @@ private const val HEADER_FRACTION = 0.86f
  * series also season tabs and the episode list; below the fold the cast and "مشابه" rows.
  *
  * [onPlay] gets the exact start position (0 = from the beginning); the player does not ask again.
+ *
+ * Extra actions: the "+ لیست من" button next to the play buttons (when the ViewModel has My List
+ * actions) and, on an episode row, long-press OK / MENU toggles watched.
  */
 @Composable
 fun DetailsScreen(
@@ -109,6 +122,8 @@ fun DetailsScreen(
                 onSeasonSelected = { viewModel.onSeasonSelected(it) },
                 onAudioSelected = { viewModel.onAudioSelected(it) },
                 onQualitySelected = { viewModel.onQualitySelected(it) },
+                onToggleMyList = { viewModel.onToggleMyList() },
+                onSetWatched = { key, watched -> viewModel.onSetWatched(key, watched) },
                 onPlay = onPlay,
                 onOpenTitle = onOpenTitle,
             )
@@ -134,51 +149,92 @@ private class EpisodeFocusTarget {
     var attached = false
 }
 
+/**
+ * The page's vertical scroll is moved only by [DetailsContent]'s own focus handling, never by focus
+ * bring-into-view: the info block must stay exactly where it was laid out (title fully visible)
+ * when a header button takes focus. Every scrollable below the header that needs the normal
+ * behaviour (the episode list, the season tabs) gets the default spec back.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+private object NoAutoScrollSpec : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = 0f
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DetailsContent(
     state: DetailsUiState.Content,
     onSeasonSelected: (Int) -> Unit,
     onAudioSelected: (AudioType) -> Unit,
     onQualitySelected: (Int) -> Unit,
+    onToggleMyList: () -> Unit,
+    onSetWatched: (WatchKey, Boolean) -> Unit,
     onPlay: (WatchKey, Long) -> Unit,
     onOpenTitle: (TitleSummary) -> Unit,
 ) {
-    LazyColumn(Modifier.fillMaxSize()) {
-        item(key = "header", contentType = "header") {
-            DetailsHeader(
-                state = state,
-                onSeasonSelected = onSeasonSelected,
-                onAudioSelected = onAudioSelected,
-                onQualitySelected = onQualitySelected,
-                onPlay = onPlay,
-                modifier = Modifier.fillParentMaxHeight(HEADER_FRACTION).fillMaxWidth(),
-            )
-        }
-        if (state.cast.isNotEmpty()) {
-            item(key = "cast", contentType = "cast") { CastRow(state.cast) }
-        }
-        if (state.related.isNotEmpty()) {
-            item(key = "related", contentType = "related") {
-                ContentRow(
-                    title = stringResource(R.string.details_related),
-                    items = state.related,
-                    key = { it.id },
-                    contentType = { "poster" },
-                ) { title ->
-                    PosterCard(item = title, onClick = { onOpenTitle(title) })
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val defaultSpec = LocalBringIntoViewSpec.current
+    // Focus entering a section scrolls that section to the top (the header: back to offset 0).
+    val scrollTo = remember(listState, scope) {
+        { index: Int -> scope.launch { listState.animateScrollToItem(index) } }
+    }
+    val hasCast = state.cast.isNotEmpty()
+    val castIndex = 1
+    val relatedIndex = if (hasCast) 2 else 1
+
+    CompositionLocalProvider(LocalBringIntoViewSpec provides NoAutoScrollSpec) {
+        LazyColumn(Modifier.fillMaxSize(), state = listState) {
+            item(key = "header", contentType = "header") {
+                DetailsHeader(
+                    state = state,
+                    defaultSpec = defaultSpec,
+                    onSeasonSelected = onSeasonSelected,
+                    onAudioSelected = onAudioSelected,
+                    onQualitySelected = onQualitySelected,
+                    onToggleMyList = onToggleMyList,
+                    onSetWatched = onSetWatched,
+                    onPlay = onPlay,
+                    modifier = Modifier
+                        .fillParentMaxHeight(HEADER_FRACTION)
+                        .fillMaxWidth()
+                        .onFocusChanged { if (it.hasFocus) scrollTo(0) },
+                )
+            }
+            if (hasCast) {
+                item(key = "cast", contentType = "cast") {
+                    Box(Modifier.onFocusChanged { if (it.hasFocus) scrollTo(castIndex) }) { CastRow(state.cast) }
                 }
             }
+            if (state.related.isNotEmpty()) {
+                item(key = "related", contentType = "related") {
+                    Box(Modifier.onFocusChanged { if (it.hasFocus) scrollTo(relatedIndex) }) {
+                        ContentRow(
+                            title = stringResource(R.string.details_related),
+                            items = state.related,
+                            key = { it.id },
+                            contentType = { "poster" },
+                        ) { title ->
+                            PosterCard(item = title, onClick = { onOpenTitle(title) })
+                        }
+                    }
+                }
+            }
+            item(key = "end", contentType = "end") { Spacer(Modifier.height(BolbolSpacing.SafeVertical)) }
         }
-        item(key = "end", contentType = "end") { Spacer(Modifier.height(BolbolSpacing.SafeVertical)) }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DetailsHeader(
     state: DetailsUiState.Content,
+    defaultSpec: BringIntoViewSpec,
     onSeasonSelected: (Int) -> Unit,
     onAudioSelected: (AudioType) -> Unit,
     onQualitySelected: (Int) -> Unit,
+    onToggleMyList: () -> Unit,
+    onSetWatched: (WatchKey, Boolean) -> Unit,
     onPlay: (WatchKey, Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -196,6 +252,7 @@ private fun DetailsHeader(
                 episodeTarget = episodeTarget,
                 onAudioSelected = onAudioSelected,
                 onQualitySelected = onQualitySelected,
+                onToggleMyList = onToggleMyList,
                 onPlay = onPlay,
                 modifier = Modifier.weight(if (state.isSeries) 0.46f else 0.64f).fillMaxHeight(),
             )
@@ -203,7 +260,9 @@ private fun DetailsHeader(
                 EpisodePane(
                     state = state,
                     episodeTarget = episodeTarget,
+                    defaultSpec = defaultSpec,
                     onSeasonSelected = onSeasonSelected,
+                    onSetWatched = onSetWatched,
                     onPlay = onPlay,
                     modifier = Modifier.weight(0.54f).fillMaxHeight(),
                 )
@@ -222,6 +281,7 @@ private fun InfoPane(
     episodeTarget: EpisodeFocusTarget,
     onAudioSelected: (AudioType) -> Unit,
     onQualitySelected: (Int) -> Unit,
+    onToggleMyList: () -> Unit,
     onPlay: (WatchKey, Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -232,40 +292,49 @@ private fun InfoPane(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom),
     ) {
-        BolbolText(
-            text = summary.faTitle.ifBlank { summary.title },
-            style = MaterialTheme.typography.headlineLarge,
-            color = BolbolColors.TextPrimary,
-            maxLines = 2,
-        )
-        if (summary.faTitle.isNotBlank() && summary.title.isNotBlank()) {
-            BolbolText(
-                text = summary.title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = BolbolColors.TextSecondary,
-                maxLines = 1,
-            )
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        // The buttons and chips below are measured first; the texts get what is left. The block
+        // is top-aligned inside its own box, so if the space ever runs short the plot (the last
+        // line, which shrinks first) is cut at the bottom, never the title at the top edge.
+        Column(
+            modifier = Modifier.weight(1f, fill = false),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            MetaLine(
-                parts = metaParts(details),
-                modifier = Modifier.weight(1f, fill = false),
+            BolbolText(
+                text = summary.faTitle.ifBlank { summary.title },
+                style = MaterialTheme.typography.headlineLarge,
+                color = BolbolColors.TextPrimary,
                 maxLines = 2,
             )
-            AudioBadge(dubbed = summary.hasDub, subtitled = summary.hasSubtitle)
+            if (summary.faTitle.isNotBlank() && summary.title.isNotBlank()) {
+                BolbolText(
+                    text = summary.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = BolbolColors.TextSecondary,
+                    maxLines = 1,
+                )
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MetaLine(
+                    parts = metaParts(details),
+                    modifier = Modifier.weight(1f, fill = false),
+                    maxLines = 2,
+                )
+                AudioBadge(dubbed = summary.hasDub, subtitled = summary.hasSubtitle)
+            }
+            if (details.plot.isNotBlank()) {
+                BolbolText(
+                    text = details.plot,
+                    modifier = Modifier.weight(1f, fill = false),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = BolbolColors.TextPrimary,
+                    maxLines = 3,
+                )
+            }
         }
-        if (details.plot.isNotBlank()) {
-            BolbolText(
-                text = details.plot,
-                style = MaterialTheme.typography.bodyMedium,
-                color = BolbolColors.TextPrimary,
-                maxLines = 3,
-            )
-        }
-        PlayButtons(state = state, episodeTarget = episodeTarget, onPlay = onPlay)
+        PlayButtons(state = state, episodeTarget = episodeTarget, onToggleMyList = onToggleMyList, onPlay = onPlay)
         ChoicePickers(state.choices, onAudioSelected, onQualitySelected)
     }
 }
@@ -296,13 +365,16 @@ private fun ageLabel(raw: String?): String {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PlayButtons(
     state: DetailsUiState.Content,
     episodeTarget: EpisodeFocusTarget,
+    onToggleMyList: () -> Unit,
     onPlay: (WatchKey, Long) -> Unit,
 ) {
     val primary = state.primary
+    val inMyList = state.inMyList
     if (primary == null) {
         BolbolText(
             text = stringResource(R.string.details_unavailable),
@@ -310,15 +382,15 @@ private fun PlayButtons(
             color = BolbolColors.TextSecondary,
             maxLines = 2,
         )
-        return
+        if (inMyList == null) return
     }
 
-    val primaryFocus = remember { FocusRequester() }
-    // Initial focus is the main button. The effect lives next to the button so the requester is attached.
-    LaunchedEffect(Unit) { primaryFocus.requestFocus() }
+    val firstFocus = remember { FocusRequester() }
+    // Initial focus is the first button (the main one). The effect lives next to the buttons so the requester is attached.
+    LaunchedEffect(Unit) { firstFocus.requestFocus() }
 
     // Towards the episode list (D-pad left in RTL): from the LAST button of the row, so the
-    // "from the start" button stays reachable. Series only; movies have no list.
+    // other buttons stay reachable. Series only; movies have no list.
     val towardsEpisodes = if (state.isSeries) {
         Modifier.focusProperties {
             end = if (episodeTarget.attached) episodeTarget.requester else FocusRequester.Default
@@ -326,22 +398,35 @@ private fun PlayButtons(
     } else {
         Modifier
     }
+    val showRestart = primary != null && primary.resume
 
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        TvButton(
-            text = primaryLabel(primary, state.isSeries),
-            onClick = { onPlay(primary.key, primary.startPositionMs) },
-            modifier = Modifier
-                .focusRequester(primaryFocus)
-                .then(if (primary.resume) Modifier else towardsEpisodes),
-            icon = BolbolIcons.Play,
-        )
-        if (primary.resume) {
+    // A series that can resume has three buttons, which do not fit the narrow info pane on one line.
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (primary != null) {
+            TvButton(
+                text = primaryLabel(primary, state.isSeries),
+                onClick = { onPlay(primary.key, primary.startPositionMs) },
+                modifier = Modifier
+                    .focusRequester(firstFocus)
+                    .then(if (showRestart || inMyList != null) Modifier else towardsEpisodes),
+                icon = BolbolIcons.Play,
+            )
+        }
+        if (showRestart) {
             TvButton(
                 text = stringResource(R.string.details_restart),
                 onClick = { onPlay(primary.key, 0L) },
-                modifier = towardsEpisodes,
+                modifier = if (inMyList != null) Modifier else towardsEpisodes,
                 icon = BolbolIcons.Replay,
+                style = TvButtonStyle.Secondary,
+            )
+        }
+        if (inMyList != null) {
+            TvButton(
+                text = stringResource(if (inMyList) R.string.details_in_my_list else R.string.details_my_list),
+                onClick = onToggleMyList,
+                modifier = (if (primary == null) Modifier.focusRequester(firstFocus) else Modifier).then(towardsEpisodes),
+                icon = if (inMyList) BolbolIcons.Check else BolbolIcons.Add,
                 style = TvButtonStyle.Secondary,
             )
         }
@@ -416,11 +501,14 @@ private fun PickerRow(label: String, chips: @Composable () -> Unit) {
 private val EpisodeRowHeight = 60.dp
 private val EpisodeShape = RoundedCornerShape(BolbolSpacing.CardRadius)
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EpisodePane(
     state: DetailsUiState.Content,
     episodeTarget: EpisodeFocusTarget,
+    defaultSpec: BringIntoViewSpec,
     onSeasonSelected: (Int) -> Unit,
+    onSetWatched: (WatchKey, Boolean) -> Unit,
     onPlay: (WatchKey, Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -435,29 +523,33 @@ private fun EpisodePane(
         LazyListState(firstVisibleItemIndex = (targetIndex - 1).coerceAtLeast(0))
     }
 
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (state.seasons.size > 1) {
-            SeasonChips(state.seasons, state.selectedSeason, onSeasonSelected)
-        }
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(items = state.episodes, key = { it.number }, contentType = { "episode" }) { episode ->
-                val isTarget = episode.key == targetKey
-                if (isTarget) {
-                    DisposableEffect(Unit) {
-                        episodeTarget.attached = true
-                        onDispose { episodeTarget.attached = false }
+    // The page itself does not auto-scroll on focus (see NoAutoScrollSpec), but these two scrollables must.
+    CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (state.seasons.size > 1) {
+                SeasonChips(state.seasons, state.selectedSeason, onSeasonSelected)
+            }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(items = state.episodes, key = { it.number }, contentType = { "episode" }) { episode ->
+                    val isTarget = episode.key == targetKey
+                    if (isTarget) {
+                        DisposableEffect(Unit) {
+                            episodeTarget.attached = true
+                            onDispose { episodeTarget.attached = false }
+                        }
                     }
+                    EpisodeRow(
+                        item = episode,
+                        onClick = { onPlay(episode.key, episode.startPositionMs) },
+                        onToggleWatched = { onSetWatched(episode.key, !episode.completed) },
+                        modifier = if (isTarget) Modifier.focusRequester(episodeTarget.requester) else Modifier,
+                    )
                 }
-                EpisodeRow(
-                    item = episode,
-                    onClick = { onPlay(episode.key, episode.startPositionMs) },
-                    modifier = if (isTarget) Modifier.focusRequester(episodeTarget.requester) else Modifier,
-                )
             }
         }
     }
@@ -494,14 +586,23 @@ private fun SeasonChips(seasons: List<Int>, selected: Int, onSelect: (Int) -> Un
 /**
  * One episode: "قسمت ۳" (+ the title when the server has a real one), time left and a progress
  * bar when started, a check when finished. Solid surface, focus = lighter fill + white border.
+ * Long-pressing OK (or MENU) calls [onToggleWatched]: the check appears or disappears.
  */
 @Composable
-private fun EpisodeRow(item: EpisodeItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun EpisodeRow(
+    item: EpisodeItem,
+    onClick: () -> Unit,
+    onToggleWatched: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val subtitle = remember(item.title) { episodeSubtitle(item.title) }
     Surface(
         onClick = onClick,
         enabled = item.playable,
-        modifier = modifier.fillMaxWidth().height(EpisodeRowHeight),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(EpisodeRowHeight)
+            .longPressOrMenu { onToggleWatched() },
         shape = ClickableSurfaceDefaults.shape(EpisodeShape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = BolbolColors.Surface,
@@ -551,14 +652,14 @@ private fun EpisodeRow(item: EpisodeItem, onClick: () -> Unit, modifier: Modifie
                 if (item.completed) {
                     Icon(
                         imageVector = BolbolIcons.Check,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.details_episode_watched),
                         modifier = Modifier.size(22.dp),
                         tint = BolbolColors.Accent,
                     )
                 }
             }
             if (item.fraction > 0f) {
-                ProgressLine(item.fraction, Modifier.align(Alignment.BottomStart))
+                ProgressLine(visibleProgress(item.fraction), Modifier.align(Alignment.BottomStart))
             }
         }
     }

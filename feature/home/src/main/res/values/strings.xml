@@ -11,6 +11,13 @@
 
     <string name="home_continue_watching">ادامه تماشا</string>
     <string name="home_imdb">IMDb %1$s</string>
+    <string name="home_view_all">مشاهده همه</string>
+
+    <!-- Continue Watching card menu (long-press OK or MENU) -->
+    <string name="home_menu_resume">ادامه پخش</string>
+    <string name="home_menu_mark_watched">علامت‌گذاری به‌عنوان دیده‌شده</string>
+    <string name="home_menu_remove">حذف از ادامه تماشا</string>
+    <string name="home_menu_cancel">انصراف</string>
 
     <string name="home_error_offline">اتصال به اینترنت برقرار نیست</string>
     <string name="home_error_server_down">سرور در دسترس نیست. کمی بعد دوباره امتحان کنید</string>

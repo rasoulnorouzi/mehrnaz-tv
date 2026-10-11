@@ -3,6 +3,7 @@ package app.bolbol.tv.feature.details
 import app.bolbol.tv.core.model.AudioType
 import app.bolbol.tv.core.model.CatalogException
 import app.bolbol.tv.core.model.PlaybackPrefs
+import app.bolbol.tv.core.model.TitleType
 import app.bolbol.tv.core.model.WatchKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,6 +15,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -146,5 +148,124 @@ class DetailsViewModelTest {
         val vm = DetailsViewModel(1, FakeCatalog(movie(1, streams)), FakeWatch(), prefs)
         collect(vm)
         assertTrue(vm.uiState.value is DetailsUiState.Content)
+    }
+
+    // ---- My List ----
+
+    @Test fun withoutMyListActionsTheButtonStateIsUnknownAndTogglingDoesNothing() = runTest {
+        val vm = DetailsViewModel(1, FakeCatalog(movie(1, streams)), FakeWatch(), FakePrefs())
+        collect(vm)
+
+        assertNull(vm.content().inMyList)
+        vm.onToggleMyList() // must not throw
+    }
+
+    @Test fun inMyListFollowsTheListLive() = runTest {
+        val myList = FakeMyList(setOf(1L))
+        val vm = DetailsViewModel(1, FakeCatalog(movie(1, streams)), FakeWatch(), FakePrefs(), myList)
+        collect(vm)
+        assertEquals(true, vm.content().inMyList)
+
+        myList.listed.value = emptySet()
+
+        assertEquals(false, vm.content().inMyList)
+    }
+
+    @Test fun toggleAddsThenRemovesTheTitle() = runTest {
+        val myList = FakeMyList()
+        val vm = DetailsViewModel(7, FakeCatalog(movie(7, streams)), FakeWatch(), FakePrefs(), myList)
+        collect(vm)
+        assertEquals(false, vm.content().inMyList)
+
+        vm.onToggleMyList()
+
+        assertEquals(true, vm.content().inMyList)
+        assertEquals(7L, myList.writes.single().first.id)
+        assertEquals(true, myList.writes.single().second)
+
+        vm.onToggleMyList()
+
+        assertEquals(false, vm.content().inMyList)
+        assertEquals(listOf(true, false), myList.writes.map { it.second })
+    }
+
+    @Test fun theStoredSnapshotKnowsTheTitleType() = runTest {
+        val myList = FakeMyList()
+        val vm = DetailsViewModel(7, FakeCatalog(series(7, season(1, 2))), FakeWatch(), FakePrefs(), myList)
+        collect(vm)
+
+        vm.onToggleMyList()
+
+        assertEquals(TitleType.SERIES, myList.writes.single().first.type)
+    }
+
+    @Test fun aFailedWriteLeavesTheButtonAsItWas() = runTest {
+        val myList = FakeMyList().apply { failWrites = true }
+        val vm = DetailsViewModel(1, FakeCatalog(movie(1, streams)), FakeWatch(), FakePrefs(), myList)
+        collect(vm)
+
+        vm.onToggleMyList()
+
+        assertEquals(false, vm.content().inMyList)
+    }
+
+    @Test fun aBrokenListHidesTheButtonButNotTheTitle() = runTest {
+        val broken = object : MyListActions {
+            override fun isInMyList(postId: Long) = kotlinx.coroutines.flow.flow<Boolean> { throw IllegalStateException("db") }
+            override suspend fun setInMyList(title: app.bolbol.tv.core.model.TitleSummary, inList: Boolean) = Unit
+        }
+        val vm = DetailsViewModel(1, FakeCatalog(movie(1, streams)), FakeWatch(), FakePrefs(), broken)
+        collect(vm)
+
+        assertNull(vm.content().inMyList)
+    }
+
+    @Test fun aListThatNeverAnswersDoesNotHoldTheScreenBack() = runTest {
+        val silent = object : MyListActions {
+            override fun isInMyList(postId: Long) = kotlinx.coroutines.flow.flow<Boolean> { kotlinx.coroutines.awaitCancellation() }
+            override suspend fun setInMyList(title: app.bolbol.tv.core.model.TitleSummary, inList: Boolean) = Unit
+        }
+        val vm = DetailsViewModel(1, FakeCatalog(movie(1, streams)), FakeWatch(), FakePrefs(), silent)
+        collect(vm)
+
+        assertTrue(vm.uiState.value is DetailsUiState.Content)
+        assertNull(vm.content().inMyList)
+    }
+
+    // ---- watched toggle on an episode ----
+
+    @Test fun markingAnEpisodeWatchedAndUnwatchedGoesToTheWatchRepository() = runTest {
+        val watch = FakeWatch()
+        val vm = DetailsViewModel(1, FakeCatalog(series(1, season(1, 3))), watch, FakePrefs())
+        collect(vm)
+
+        vm.onSetWatched(WatchKey(1, 1, 2), true)
+        vm.onSetWatched(WatchKey(1, 1, 2), false)
+
+        assertEquals(listOf(WatchKey(1, 1, 2) to true, WatchKey(1, 1, 2) to false), watch.markedWatched)
+    }
+
+    @Test fun aFailedWatchedWriteIsSwallowed() = runTest {
+        val watch = FakeWatch().apply { failWrites = true }
+        val vm = DetailsViewModel(1, FakeCatalog(series(1, season(1, 3))), watch, FakePrefs())
+        collect(vm)
+
+        vm.onSetWatched(WatchKey(1, 1, 2), true)
+
+        assertTrue(watch.markedWatched.isEmpty())
+        assertTrue(vm.uiState.value is DetailsUiState.Content)
+    }
+
+    @Test fun anEpisodeMarkedWatchedShowsAsCompletedAndMovesTheContinuePoint() = runTest {
+        val watch = FakeWatch()
+        val vm = DetailsViewModel(1, FakeCatalog(series(1, season(1, 3))), watch, FakePrefs())
+        collect(vm)
+        assertEquals(PlayAction(WatchKey(1, 1, 1), 0), vm.content().primary)
+
+        // What the real repository does for markWatched(key, true): a completed progress row.
+        watch.progress.value = listOf(progress(1, 1, 1, positionMs = 2_990_000, completed = true))
+
+        assertEquals(true, vm.content().episodes.first().completed)
+        assertEquals(PlayAction(WatchKey(1, 1, 2), 0), vm.content().primary)
     }
 }
