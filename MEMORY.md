@@ -5,7 +5,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 
 ## ▶ Current status
 - **v1.0.0 released 2026-10-11** (GitHub release on the private repo; APK `dist/mehrnaz-tv-v1.0.0.apk` sent to the user).
-- **Next:** v1.1 (planned in TODO: prev/next episode buttons, quality-switch stall, 3 subtitle colours), only when the user asks to start → 📺 items (perf measurements vs the official app,
+- **Next:** v1.1 (planned in TODO: prev/next episode buttons, quality-switch stall, 3 subtitle colours, in-player episodes panel, CW «go to title page»), only when the user asks to start → 📺 items (perf measurements vs the official app,
   Watch Next on PatchWall). Any update: bump versionCode/versionName, DB migrations (no in-place schema edits), `tools/release.sh`.
 - **Keep in mind:** the signing key is in `~/.bolboltv/` (back it up); losing it means the user must uninstall to update.
 
@@ -33,6 +33,8 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-11: Plan-only additions to v1.1 (do not implement until asked): an **in-player episodes/seasons button** for series
+  (pick another episode while watching) and a **«رفتن به صفحهٔ فیلم/سریال»** option in the Continue Watching long-press menu.
 - 2026-10-11: **The user installed v1.0.0 on the real Mi TV by themselves; "everything's working pretty well."** Next wishes
   (do not implement until asked, they're in TODO v1.1): previous/next episode buttons in the player; a long stall when
   switching to a higher quality (lower then back up fixes it); 3 more subtitle colours. The user said "don't do anything now,

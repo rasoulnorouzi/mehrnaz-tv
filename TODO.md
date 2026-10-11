@@ -98,6 +98,16 @@ Last updated: 2026-10-11 (**v1.0.0 released and installed on the real TV by the 
   `#A6F28F`, «صورتی» soft pink `#FFB3D1` (final choice after a preview on the TV). In the Settings live preview and
   the player menu; stored in SubtitleStyle (**needs a DB migration**: v1 is released, rule 11) (UI + DE)
 
+- [ ] v1.1-4 **In-player «قسمت‌ها» (episodes) button** for series (user request 2026-10-11): a button in the player controls
+  (and a remote shortcut, e.g. DPAD_DOWN twice from the controls) opens a side panel **while the video keeps playing**:
+  season chips on top («فصل ۱ · فصل ۲ …») and the episode list of the chosen season with progress bars, ✓ watched and a
+  «دوبله» badge where a dubbed version exists; the current episode is highlighted and focused. Choosing an episode saves the
+  current progress and switches in place (same single-player replace as auto-next); Back closes the panel. Shares the
+  season/episode data already loaded for the player (no extra request when cached) (PE + UI)
+- [ ] v1.1-5 **Continue Watching long-press menu: «رفتن به صفحهٔ فیلم» / «رفتن به صفحهٔ سریال»** (user request 2026-10-11):
+  a new first-level option in the existing popup (long-press OK / MENU on a «ادامه تماشا» card) that opens the title's
+  details page; for a series the details page opens with that episode's season selected and the episode focused (UI)
+
 ### M0: Foundations
 - [ ] 0.4 📺 Connect to the TV over Wi-Fi ADB + install scrcpy; fill in "Verified on device" in `docs/device.md` (U + M)
 - [ ] 0.5b 📺 Repeat the hello-world check on the real TV

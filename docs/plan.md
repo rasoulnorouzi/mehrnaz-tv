@@ -92,6 +92,8 @@ Room cache (stale-while-revalidate for home rows, so the home screen paints inst
 | v1.1-1 | Player «قسمت قبل» / «قسمت بعد» buttons (+ MEDIA_PREVIOUS/NEXT keys) for series | PE + UI | switching saves progress, works at season boundaries, hidden for movies |
 | v1.1-2 | Fix the stall when switching to a higher quality (measure on the TV first; see TODO for causes and candidate fixes) | PA → PE | 720→1080 shows a picture within 3 s on the TV |
 | v1.1-3 | 3 more subtitle colours (cyan, light green, pink, final after preview) | UI + DE | preview + player; DB migration v1→v2 tested |
+| v1.1-4 | In-player «قسمت‌ها» button: side panel with seasons + episodes (progress, ✓, dub badge) while playing; pick → switch in place | PE + UI | switch saves progress; current episode focused; Back closes panel |
+| v1.1-5 | Continue Watching long-press menu: «رفتن به صفحهٔ فیلم/سریال» → details (series: that season + episode focused) | UI | option present for movies and series; focus lands on the episode |
 
 ## Out of scope (for now)
 Profiles, downloads/offline playback (16 GB storage), trailer autoplay, seek-preview thumbnails
