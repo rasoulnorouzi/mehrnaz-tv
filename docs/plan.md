@@ -1,0 +1,96 @@
+# Plan: Bolbol TV
+
+**Goal:** the fastest, most TV-native way to watch the Bolboljan catalogue on the user's Xiaomi Mi TV
+P1 43", with Continue Watching, resume and auto-next built in. The app must beat the official app on
+startup time, scroll smoothness, and time-to-first-frame (see `perf-budget.md`).
+
+Agent legend: **M** = manager (Opus, main session) · **PE** = player-engineer (Opus) ·
+**UI** = tv-ui-engineer (Sonnet) · **DE** = data-engineer (Sonnet) · **QA** = qa-device (Sonnet) ·
+**PA** = perf-analyst (Sonnet) · **R** = researcher (Sonnet) · **C** = chores (Haiku)
+
+## Architecture
+```
+app/                  Application, MainActivity (single activity), nav graph, Hilt wiring
+core/model            domain models: TitleSummary, Title, Season, Episode, StreamOption, Progress
+core/network          Retrofit + OkHttp + kotlinx.serialization, MirrorInterceptor (failover), DTOs → domain
+core/database         Room: progress, history, prefs, home-row cache, my-list
+core/designsystem     theme tokens, Vazirmatn, RTL, PosterCard, focus modifiers, shimmer
+core/player           ExoPlayer factory, LoadControl, subtitle style, ProgressTracker, PlaybackStats
+feature/home          top bar, hero (static backdrop), rows, Continue Watching
+feature/details       movie/series details, seasons tabs + episode list with progress
+feature/playback      player screen + overlay, quality/audio/subtitle picker, auto-next
+feature/search        TV keyboard, voice search, phone/QR remote (tiny LAN HTTP server)
+feature/account       login (password + login-code), watch-list/favourites sync
+feature/tvhome        Watch Next publishing (androidx.tvprovider)
+baselineprofile/      Baseline + Startup profile generator (runs on an API 33+ TV emulator)
+benchmark/            Macrobenchmark: startup, home scroll, open details, time-to-first-frame
+tools/tv.sh           adb wrapper: connect/install/shot/key/perf/trace/logs
+```
+Patterns: single-activity app with Compose Navigation; MVVM with immutable `UiState`;
+`StateFlow` collected with `collectAsStateWithLifecycle`; repository layer with an in-memory +
+Room cache (stale-while-revalidate for home rows, so the home screen paints instantly from cache).
+
+## M0: Foundations (target: "hello TV" + full tooling loop)
+| # | Task | Agent | Acceptance |
+|---|---|---|---|
+| 0.1 | Install JDK 21, Android cmdline-tools, platform-tools, build-tools, API 36 + **Android TV API 34 system image**, emulator, scrcpy | M (+ user's sudo) | `adb version`, `sdkmanager --list_installed` OK |
+| 0.2 | `git init`, `.gitignore`, Gradle version catalog, multi-module skeleton, Kotlin 2.x, AGP 8.x, R8, minSdk 29 / targetSdk 36 | M | `./gradlew assembleDebug` green |
+| 0.3 | `tools/tv.sh` (connect, install, shot, key, text, logs, perf, trace) | C (+ M review) | each subcommand works on the emulator |
+| 0.4 | Enable developer options + ADB debugging on the TV; `adb connect IP:5555` | user + M | `adb devices` lists the TV |
+| 0.5 | Hello-world Compose for TV app installed on the TV; screenshot taken | QA | screenshot in `shots/` shows RTL Persian text |
+| 0.6 | Measure the **official app** baseline (startup, memory, frame stats) for comparison | PA | `perf/reports/official-baseline.md` |
+
+## M1: Watchable MVP
+| # | Task | Agent | Acceptance |
+|---|---|---|---|
+| 1.1 | `core/model` + `core/network`: DTOs, lenient JSON, map-or-array serializers, mirror failover, OkHttp disk cache | DE | unit tests parse every `research/webapp/api/*.json`; failover test |
+| 1.2 | `core/database`: Room entities (progress, history, prefs, row cache), DAOs, migrations | DE | DAO tests |
+| 1.3 | `core/designsystem`: tokens, typography (Vazirmatn subset), PosterCard, focus scale via `graphicsLayer`, RTL | UI | screenshot of a component gallery screen |
+| 1.4 | `core/player`: ExoPlayer singleton factory, tuned `DefaultLoadControl`, SurfaceView, side-loaded VTT, Persian caption style, `ProgressTracker` (save every 10 s + pause/stop), PlaybackStats → debug overlay | **PE** | plays the sample movie on the TV; TTFF logged; resume after app kill works |
+| 1.5 | `feature/home`: top bar, static hero, lazy rows from `post/all`, Continue Watching row from Room, cached first paint | UI | budget: cold start ≤ 1.5 s to first rows from cache; no dropped frames on D-pad scroll (gfxinfo) |
+| 1.6 | `feature/details` (movie): backdrop, metadata, **Resume/Play** focused by default, audio (dub/sub) + quality choice | UI | screenshots; Resume label shows the saved time |
+| 1.7 | `feature/playback`: overlay (auto-hide), D-pad seek ±10 s with acceleration, scrubbing mode, resume prompt | PE + UI | seek latency within budget; screenshots of the overlay |
+| 1.8 | Baseline Profile + Startup Profile generated on the TV emulator; release build | M | Macrobenchmark shows the improvement vs no profile on the real TV |
+| 1.9 | Review gate: code review + device QA pass + perf report | M, QA, PA | `perf/reports/M1.md` within budget |
+
+## M2: Series experience + search
+| # | Task | Agent | Acceptance |
+|---|---|---|---|
+| 2.1 | Series details: season tabs + episode list with progress bars/watched ticks; opens at the next unwatched episode | UI + DE | screenshots; logic unit-tested |
+| 2.2 | Auto-next: countdown card near the end, "next episode" button, honours remembered audio/quality | PE | plays S01E01 → E02 hands-free |
+| 2.3 | Remembered preferences per title + global (dub/sub, quality, subtitle size) | DE | prefs persist across restarts |
+| 2.4 | Search: Persian/English on-screen keyboard, debounced query, results grid, recent searches. Evaluate the site's static `search-data.json` index (size/freshness) for instant local typeahead; fall back to `/post/search` | UI + DE | search "friends" works with the remote only; results < 300 ms |
+| 2.5 | Category pages (movies/series/cartoons/docs, "view all" from rows) with paging | UI + DE | infinite scroll with no jank |
+| 2.6 | Mark watched/unwatched, remove from Continue Watching | DE + UI | long-press menu works |
+
+## M3: Integrations
+| # | Task | Agent | Acceptance |
+|---|---|---|---|
+| 3.1 | Reverse-engineer auth: website sign-in JS for `/login`, `/login-code`, `X-Token`. Decompile the official TV APK only with the user's permission | R → M | `docs/api.md` auth section complete |
+| 3.2 | `feature/account`: login screen (user types credentials on the TV) + login-code pairing; token in encrypted storage | DE + UI | user logs in successfully on the TV |
+| 3.3 | Watch-list & favourites sync (two-way, offline-tolerant) | DE | items added on the website appear on the TV |
+| 3.4 | Voice search via `RecognizerIntent` (fa-IR first, en fallback) + mic button | UI | spoken query fills the search |
+| 3.5 | Phone/QR remote: NanoHTTPD on the LAN only while search is open, random token in the QR | DE + UI | typing on the phone appears on the TV |
+| 3.6 | Watch Next row via `androidx.tvprovider` (Continue Watching + next episode) | DE | visible on the stock Android TV home; PatchWall behaviour documented |
+| 3.7 | (if feasible) receive the website's "play on TV" (`/post/tv`) | R + DE | depends on 3.1 findings |
+| 3.8 | (if feasible) sync progress with the website's logged-in "continue watching" (`majnoonbazar.ir/tracker.php`, see `api.md` caveat). Room stays the source of truth | R → DE | something watched on the TV shows on the website, and vice versa |
+
+## M4: Performance hardening and polish
+| # | Task | Agent | Acceptance |
+|---|---|---|---|
+| 4.1 | Full Macrobenchmark suite on the TV; Perfetto traces of the 3 slowest flows | PA | `perf/reports/M4.md` |
+| 4.2 | Fix the top regressions found (recomposition, image sizes, main-thread I/O) | PE / UI | every budget met |
+| 4.3 | Memory: `dumpsys meminfo` under a 30-minute session, LeakCanary in debug, trim on `onTrimMemory` | PA + PE | PSS within budget, no leaks |
+| 4.4 | Error states: offline, mirror down, 404 stream, expired token. Friendly Persian messages + retry | UI | screenshots of each state |
+| 4.5 | App icon/banner (320×180 TV banner), splash, final visual polish pass | UI | screenshots |
+| 4.6 | Final comparison report: our app vs the official app | PA → M | published to the user |
+
+## Out of scope (for now)
+Profiles, downloads/offline playback (16 GB storage), trailer autoplay, seek-preview thumbnails
+(the server provides no sprites; generating them on a 2 GB TV is too costly), Chromecast, Play Store.
+
+## How a typical task flows
+1. M picks the next task from this file and writes a brief (goal, modules, docs, acceptance, verify).
+2. The agent implements it in its own worktree/module and runs unit tests.
+3. QA installs it on the TV, drives the flow with `tools/tv.sh key …`, and screenshots it. PA measures if the task is perf-relevant.
+4. M reviews the diff and screenshots, merges, and updates `MEMORY.md` (progress + any user feedback).

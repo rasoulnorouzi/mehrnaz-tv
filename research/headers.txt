@@ -1,0 +1,17 @@
+HTTP/2 200 
+date: Sun, 11 Oct 2026 12:02:31 GMT
+content-type: text/html; charset=UTF-8
+vary: Accept-Encoding
+set-cookie: PHPSESSID=9a3b0bde6b43962cafda03f1630b8528; path=/; secure
+expires: Thu, 19 Nov 1981 08:52:00 GMT
+cache-control: no-store, no-cache, must-revalidate
+pragma: no-cache
+x-frame-options: DENY
+content-security-policy: frame-ancestors 'none';
+x-xss-protection: 1; mode=block
+server: ArvanCloud
+server-timing: total;dur=390
+x-cache: BYPASS
+x-request-id: 4341ece146e409a5f1f8a9ba3a6a2f8b
+x-sid: 5700
+

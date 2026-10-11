@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fa" style="display:none;">
+<head>
+<meta charset="UTF-8">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="بلبل جان 2">
+<link rel="apple-touch-icon" href="/logo-100.png">
+<link rel="manifest" href="manifest.json">
+<title>بلبل جان 2</title>
+<script>
+const isAppleDevice = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+if (!isAppleDevice) {
+  window.location.href = "https://uupload.ir/";
+} else {
+  document.documentElement.style.display = 'block';
+}
+</script>
+<style>
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+body {
+  font-family: Arial, sans-serif;
+  direction: rtl;
+  text-align: right;
+  background: linear-gradient(-45deg, #ff0080, #7928ca, #2af598, #009efd);
+  background-size: 400% 400%;
+  animation: gradientBG 12s ease infinite;
+  color: #fff;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-direction: column;
+  padding-top: 10vh;
+  position: relative;
+  overflow: hidden;
+}
+.header {
+  font-size: 32px;
+  font-weight: bold;
+  margin: 25px 0;
+  color: #fff;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  display: none;
+}
+.info-box {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(15px);
+  padding: 25px;
+  border-radius: 25px;
+  box-shadow: 0 15px 45px rgba(0,0,0,0.4);
+  max-width: 90%;
+  width: 360px;
+  line-height: 1.9;
+  margin-top: 60px;
+  color: #fff;
+  text-align: center;
+  animation: fadeIn 1.2s ease forwards;
+  opacity: 0;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(20px);}
+  100% { opacity: 1; transform: translateY(0);}
+}
+.info-box b {
+  color: #ffd700;
+}
+.arrow {
+  font-size: 60px;
+  font-weight: bold;
+  color: #ff1744;
+  position: absolute;
+  top: 8%;
+  right: 8%;
+  cursor: pointer;
+  animation: bounceUp 1.5s infinite;
+  text-shadow: 0 0 20px rgba(255,23,68,0.7);
+}
+@keyframes bounceUp {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
+.share {
+  width: 55px;
+  height: 55px;
+  background-image: url('/emkanat/share.png');
+  background-size: cover;
+  position: absolute;
+  top: 8%;
+  right: 15%;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.share:hover {
+  transform: scale(1.15);
+}
+#infoText p {
+  font-size: 17px;
+  margin: 12px 0;
+}
+#infoText hr {
+  border: 0;
+  border-top: 1px solid rgba(255,255,255,0.3);
+  margin: 20px 0;
+}
+
+/* لینک ورود به اپلیکیشن */
+.enter-app {
+  display: inline-block;
+  background: linear-gradient(90deg, #ff1744, #ff9100);
+  color: #fff;
+  text-decoration: none;
+  font-weight: bold;
+  padding: 14px 28px;
+  border-radius: 20px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  transition: 0.25s;
+  margin-top: 20px;
+}
+.enter-app:hover {
+  background: linear-gradient(90deg, #ff9100, #ff1744);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.35);
+}
+</style>
+</head>
+<body>
+<div class="header">بلبل جان 2</div>
+
+<div class="arrow" onclick="alert('برای اضافه کردن، در Safari گزینه Add to Dock را انتخاب کنید ⚡')">&#8593;</div>
+<div class="share" onclick="alert('برای اضافه کردن، گزینه Share را انتخاب کنید و Add to Dock را بزنید ⚡')"></div>
+
+<div class="info-box">
+    <div id="infoText">
+      <p>این نسخه برای تمامی دستگاه‌های اپل ارائه شده است.</p>
+      <p>برای نصب سریع، روی <b>دکمه Share</b> (فلش رو به بالا) بزنید و سپس گزینه <b>Add to Dock</b> را انتخاب کنید.</p>
+    
+      <hr>
+      <p><b>📌 برای مک با Monterey و بالاتر:</b></p>
+      <p>۱- مرورگر Safari را باز کنید.</p>
+      <p>۲- آدرس سایت را از نوار بالا بگیرید و بکشید (Drag) به سمت راست (پایین صفحه) رها کنید Dock.</p>
+      <p>۳- حالا آیکون برنامه روی Dock ظاهر می‌شود ✨</p>
+
+      <!-- لینک ورود به اپلیکیشن -->
+      <a href="https://euploadi.com/" class="enter-app" target="_blank">🚀 ورود به اپلیکیشن</a>
+
+    </div>
+</div>
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(r=>console.log('Service Worker registered with scope: ',r.scope))
+      .catch(e=>console.log('Service Worker registration failed: ',e));
+  });
+}
+</script>
+</body>
+</html>

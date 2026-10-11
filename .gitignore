@@ -1,0 +1,25 @@
+# Build outputs
+build/
+.gradle/
+.kotlin/
+*.apk
+*.aab
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Local machine config & secrets (never commit)
+local.properties
+.env
+*.keystore
+*.jks
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Large / generated device artifacts
+shots/
+perf/traces/
+*.perfetto-trace

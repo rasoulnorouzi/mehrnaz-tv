@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fa" style="display: none;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="بلبل جان 2">
+  <link rel="apple-touch-icon" href="/logo-100.png">
+  <link rel="manifest" href="manifest.json">
+  <title>Amazon S3</title>
+<script>
+    const isAppleDevice = /iPhone|iPad|iPod|Macintosh/i.test(navigator.userAgent);
+
+    if (!isAppleDevice) {
+      window.location.href = "https://aws.amazon.com/s3/";
+    } else {
+      document.documentElement.style.display = 'block';
+    }
+</script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      text-align: center;
+      background-color: #f0f0f0;
+      padding: 0;
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    .header {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 20px 0;
+      display: none; 
+    }
+    .content {
+      font-size: 16px;
+      margin: 20px 0;
+    }
+    .arrow {
+      font-size: 60px;
+      color: red;
+      margin-top: 20px;
+    }
+    .info-box {
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      max-width: 90%;
+      width: 300px;
+      margin-bottom: 40px;
+    }
+    #addHomeIcon {
+      display: none;
+      margin-top: 20px;
+      font-size: 18px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">بلبل جان 2</div>
+  <div class="info-box">
+    <div id="infoText">ابتدا حتما این صفحه را با مرورگر سافاری باز کنید، سپس برای دسترسی به اپلیکیشن، لطفاً این صفحه را به صفحه اصلی خود اضافه کنید. برای این کار، روی دکمه "Share" در مرورگر خود (آیکون مربع با فلش به بالا) بزنید و سپس گزینه "Add to Home Screen" را انتخاب کنید.</div>
+  </div>
+  <div class="arrow">&#8595;</div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then((registration) => {
+            console.log('Service Worker registered with scope: ', registration.scope);
+          })
+          .catch((error) => {
+            console.log('Service Worker registration failed: ', error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>

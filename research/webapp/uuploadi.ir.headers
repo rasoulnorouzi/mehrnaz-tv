@@ -1,0 +1,18 @@
+HTTP/2 200 
+date: Sun, 11 Oct 2026 12:03:11 GMT
+content-type: text/html; charset=UTF-8
+vary: Accept-Encoding
+set-cookie: PHPSESSID=068f5554a3611586fcc27c117db3b2da; path=/; secure
+expires: Thu, 19 Nov 1981 08:52:00 GMT
+cache-control: no-store, no-cache, must-revalidate
+pragma: no-cache
+link: <https://uuploadi.ir/wp-json/>; rel="https://api.w.org/"
+x-frame-options: DENY
+content-security-policy: frame-ancestors 'none';
+x-xss-protection: 1; mode=block
+server: ArvanCloud
+server-timing: total;dur=415
+x-cache: BYPASS
+x-request-id: 7210ac0c16c3545eeaea11bded30f214
+x-sid: 5700
+
