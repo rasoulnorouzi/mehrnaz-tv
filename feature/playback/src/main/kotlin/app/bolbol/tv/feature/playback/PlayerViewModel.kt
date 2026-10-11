@@ -195,6 +195,9 @@ class PlayerViewModel(
         request.streams.find(current.audio, quality)?.let { controller.switchStream(it) }
     }
 
+    /** «سرعت پخش» chip (v1.2-1). Returns the applied speed (for the toast); kept for the whole app session. */
+    fun setSpeed(speed: Float): Float = controller.setSpeed(speed)
+
     // ---- subtitles (docs/subtitles.md §Settings: the player's quick menu) ------------------
 
     fun setSubtitlesEnabled(enabled: Boolean) =

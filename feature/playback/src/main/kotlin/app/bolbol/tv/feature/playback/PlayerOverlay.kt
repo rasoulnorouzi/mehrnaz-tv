@@ -56,6 +56,7 @@ import app.bolbol.tv.core.model.AudioType
 import app.bolbol.tv.core.model.PlaybackRequest
 import app.bolbol.tv.core.model.StreamOption
 import app.bolbol.tv.core.player.PlaybackPosition
+import app.bolbol.tv.core.player.PlaybackSpeeds
 import app.bolbol.tv.core.player.PlayerStatus
 import kotlinx.coroutines.flow.StateFlow
 
@@ -78,6 +79,7 @@ internal fun PlayerOverlay(
     status: PlayerStatus,
     position: StateFlow<PlaybackPosition>,
     chrome: PlayerChrome,
+    speed: Float,
     onTogglePlay: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -159,7 +161,7 @@ internal fun PlayerOverlay(
                 }
                 Spacer(Modifier.weight(1f))
                 status.stream?.let {
-                    Text(streamLabel(it), style = MaterialTheme.typography.labelMedium, color = BolbolColors.TextSecondary)
+                    Text(streamLabel(it, speed), style = MaterialTheme.typography.labelMedium, color = BolbolColors.TextSecondary)
                 }
             }
         }
@@ -167,8 +169,9 @@ internal fun PlayerOverlay(
 }
 
 @Composable
-internal fun streamLabel(stream: StreamOption): String =
-    "${stream.quality.toPersianDigits()} · ${audioLabel(stream.audio)}"
+internal fun streamLabel(stream: StreamOption, speed: Float = PlaybackSpeeds.NORMAL): String =
+    "${stream.quality.toPersianDigits()} · ${audioLabel(stream.audio)}" +
+        if (PlaybackSpeeds.isNormal(speed)) "" else " · ${formatSpeedMultiplier(speed)}"
 
 @Composable
 internal fun audioLabel(audio: AudioType): String = stringResource(

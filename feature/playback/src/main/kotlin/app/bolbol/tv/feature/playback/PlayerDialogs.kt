@@ -54,6 +54,7 @@ import app.bolbol.tv.core.model.AudioType
 import app.bolbol.tv.core.model.StreamOption
 import app.bolbol.tv.core.model.SubtitleStyle
 import app.bolbol.tv.core.player.PlaybackError
+import app.bolbol.tv.core.player.PlaybackSpeeds
 import app.bolbol.tv.core.player.audioTypes
 import app.bolbol.tv.core.player.qualitiesFor
 import app.bolbol.tv.core.player.subtitles.HoldRepeat
@@ -173,7 +174,8 @@ private fun PlaybackError.messageRes(): Int = when (kind) {
 }
 
 /**
- * "تنظیمات پخش" side panel at the end edge: audio (دوبله / زیرنویس), quality (۱۰۸۰ / ۷۲۰ / ۴۸۰) and,
+ * "تنظیمات پخش" side panel at the end edge: audio (دوبله / زیرنویس), quality (۱۰۸۰ / ۷۲۰ / ۴۸۰), playback speed
+ * (۰٫۵× ... ۲×, «عادی» = 1×; see [SpeedSection]) and,
  * for subtitled streams, the subtitle quick menu (docs/subtitles.md): on/off, size (4 steps) and sync
  * (±0.5 s steps with hold-to-repeat, «تنظیم مجدد», the current offset up to ±120 s). Changes apply live;
  * colour, box, position and weight live on the Settings page. Focus starts on the current audio.
@@ -183,10 +185,12 @@ private fun PlaybackError.messageRes(): Int = when (kind) {
 internal fun StreamPickerPanel(
     streams: List<StreamOption>,
     current: StreamOption?,
+    speed: Float,
     subtitleStyle: SubtitleStyle,
     subtitleOffsetMs: Int,
     onAudio: (AudioType) -> Unit,
     onQuality: (Int) -> Unit,
+    onSpeed: (Float) -> Unit,
     onSubtitlesEnabled: (Boolean) -> Unit,
     onSubtitleSize: (Float) -> Unit,
     onSubtitleShift: (deltaMs: Int) -> Unit,
@@ -228,6 +232,7 @@ internal fun StreamPickerPanel(
                     }
                 }
             }
+            SpeedSection(speed, onSpeed)
             if (current?.subtitleUrl != null) {
                 SubtitleSection(subtitleStyle, subtitleOffsetMs, onSubtitlesEnabled, onSubtitleSize, onSubtitleShift, onSubtitleReset)
             }
@@ -235,6 +240,36 @@ internal fun StreamPickerPanel(
     }
     LaunchedEffect(Unit) { firstFocus.tryRequestFocus() }
 }
+
+/**
+ * «سرعت پخش» (v1.2-1): six equal-width chips in two rows of three, slowest first (so «۰٫۵×» is at the
+ * start/right in RTL): ۰٫۵× · ۰٫۷۵× · عادی / ۱٫۲۵× · ۱٫۵× · ۲×. Equal widths keep UP/DOWN straight between the
+ * rows and LEFT/RIGHT inside them, and the panel never scrolls sideways.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SpeedSection(speed: Float, onSpeed: (Float) -> Unit) {
+    Spacer(Modifier.height(20.dp))
+    Text(stringResource(R.string.player_speed), style = MaterialTheme.typography.labelMedium, color = BolbolColors.TextSecondary)
+    Spacer(Modifier.height(8.dp))
+    FlowRow(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        maxItemsInEachRow = SPEED_CHIPS_PER_ROW,
+    ) {
+        for (choice in PlaybackSpeeds.CHOICES) {
+            OptionButton(
+                label = if (PlaybackSpeeds.isNormal(choice)) stringResource(R.string.player_speed_normal) else formatSpeedMultiplier(choice),
+                selected = abs(choice - speed) < 0.001f,
+                onClick = { onSpeed(choice) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+private const val SPEED_CHIPS_PER_ROW = 3
 
 @Composable
 private fun SubtitleSection(

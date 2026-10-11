@@ -36,6 +36,17 @@ class TimeFormatTest {
         assertEquals("$lri+۱۲۰٫۰$pdi", formatSubtitleOffset(120_000))
     }
 
+    @Test fun speedMultiplierWithPersianDigits() {
+        val lri = '\u2066'
+        val pdi = '\u2069'
+        assertEquals("${lri}۰٫۵×$pdi", formatSpeedMultiplier(0.5f))
+        assertEquals("${lri}۰٫۷۵×$pdi", formatSpeedMultiplier(0.75f))
+        assertEquals("${lri}۱×$pdi", formatSpeedMultiplier(1f))
+        assertEquals("${lri}۱٫۲۵×$pdi", formatSpeedMultiplier(1.25f))
+        assertEquals("${lri}۱٫۵×$pdi", formatSpeedMultiplier(1.5f))
+        assertEquals("${lri}۲×$pdi", formatSpeedMultiplier(2f))
+    }
+
     @Test fun fourSubtitleSizesInOrder() {
         assertEquals(listOf(0.8f, 1.0f, 1.25f, 1.5f), SubtitleSizes.map { it.second })
         assertEquals(R.string.player_subtitle_xlarge, SubtitleSizes.last().first)
