@@ -218,7 +218,7 @@ cmd_build() {
   check_variant "$variant"
   [[ -x "$ROOT/gradlew" ]] || die "gradlew not found at $ROOT/gradlew"
   cap="${variant^}"
-  "$ROOT/gradlew" -p "$ROOT" ":app:assemble${cap}"
+  "$ROOT/tools/gw.sh" ":app:assemble${cap}"
 }
 
 cmd_install() {
