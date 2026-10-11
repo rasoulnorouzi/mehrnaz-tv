@@ -46,6 +46,21 @@ class SettingsOptionsTest {
     }
 
     @Test
+    fun everyColourChipSetsItsColourInEnumOrder() {
+        val colourSpec = SubtitleOptionSpecs[2]
+        assertEquals(SubtitleColor.entries.size, colourSpec.options.size)
+        assertEquals(
+            listOf(SubtitleColor.WHITE, SubtitleColor.YELLOW, SubtitleColor.CYAN, SubtitleColor.GREEN, SubtitleColor.PINK),
+            SubtitleColor.entries,
+        )
+        SubtitleColor.entries.forEachIndexed { i, color ->
+            val after = base.reduce(colourSpec.change(i))
+            assertEquals(base.copy(color = color), after)
+            assertEquals(i, colourSpec.selectedIndex(after))
+        }
+    }
+
+    @Test
     fun aChangeTouchesOnlyItsOwnField() {
         val custom = SubtitleStyle(
             enabled = false, sizeScale = 1.5f, color = SubtitleColor.YELLOW,
@@ -72,7 +87,7 @@ class SettingsOptionsTest {
         )
         assertEquals(listOf("روشن", "خاموش"), SubtitleOptionSpecs[0].options)
         assertEquals(listOf("کوچک", "معمولی", "بزرگ", "خیلی بزرگ"), SubtitleOptionSpecs[1].options)
-        assertEquals(listOf("سفید", "زرد"), SubtitleOptionSpecs[2].options)
+        assertEquals(listOf("سفید", "زرد", "فیروزه‌ای", "سبز روشن", "صورتی"), SubtitleOptionSpecs[2].options)
         assertEquals(listOf("حاشیه", "کادر نیمه‌شفاف"), SubtitleOptionSpecs[3].options)
         assertEquals(listOf("معمولی", "ضخیم"), SubtitleOptionSpecs[4].options)
         assertEquals(listOf("پایین", "کمی بالاتر", "بالاتر"), SubtitleOptionSpecs[5].options)

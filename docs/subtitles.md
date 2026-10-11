@@ -34,7 +34,7 @@ search per tick, it is cheaper than the platform pipeline.
 |---|---|---|
 | Subtitles | روشن / خاموش | روشن (for subtitled streams) |
 | Size | کوچک 0.8 · معمولی 1.0 · بزرگ 1.25 · خیلی بزرگ 1.5 (× base 30 sp) | معمولی |
-| Text colour | سفید · زرد | سفید |
+| Text colour | سفید · زرد · فیروزه‌ای `#7FDBFF` · سبز روشن `#A6F28F` · صورتی `#FFB3D1` | سفید |
 | Background | حاشیه (black outline, no box) · کادر نیمه‌شفاف (60 % black box) | حاشیه |
 | Weight | معمولی (Vazirmatn Medium) · ضخیم (Bold) | ضخیم |
 | Position | پایین · کمی بالاتر · بالاتر (8 % / 14 % / 20 % from the bottom) | پایین |
@@ -70,6 +70,9 @@ search per tick, it is cheaper than the platform pipeline.
 - Credit cues dropped: «بلبل جان», "bolboljan", and the handle `@bollbolljan`.
 - With the player's settings panel open, subtitles are re-centred in the still-visible video area (manager fix).
 
-## Planned (v1.1-3, user request 2026-10-11)
-Three more text colours besides سفید/زرد, e.g. «فیروزه‌ای» `#7FDBFF`, «سبز روشن» `#A6F28F`, «صورتی» `#FFB3D1` (final after a
-preview on the TV). `SubtitleColor` gets new values; the stored style needs a Room migration (v1 is released).
+## As built (v1.1-3, 2026-10-11)
+`SubtitleColor` is `WHITE, YELLOW, CYAN, GREEN, PINK` (new values appended; the Settings chips follow the enum order). The colour is
+stored in Room **by enum name** (`SubtitleStyleEntity.color`, unknown names fall back to white), so no schema change or migration
+was needed: DB version 1 and `schemas/1.json` are untouched. `SubtitleText` maps all five with an exhaustive `when` (tokens
+`BolbolColors.SubtitleCyan/Green/Pink`); outline and box work as before. Settings → زیرنویس → رنگ shows five chips (no swatches,
+the live preview shows the colour). The final hex values are still open to adjustment after a look on the TV.
