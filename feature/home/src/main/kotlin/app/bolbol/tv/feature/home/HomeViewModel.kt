@@ -1,0 +1,81 @@
+package app.bolbol.tv.feature.home
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import app.bolbol.tv.core.model.CatalogRepository
+import app.bolbol.tv.core.model.WatchRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+/**
+ * State holder of the home screen.
+ *
+ * - [uiState] combines the (cache-first) catalogue feed with the Continue Watching list into one
+ *   immutable [HomeUiState]. It leaves `Loading` only when both have emitted, so the first rows
+ *   never appear without the Continue Watching row and then shift down.
+ * - The feed is loaded once per ViewModel; [retry] reloads it after a failure.
+ * - [lastFocus] survives navigation (the ViewModel does, the composition does not) so Back from
+ *   details restores focus to the same card.
+ */
+class HomeViewModel(
+    private val catalog: CatalogRepository,
+    watch: WatchRepository,
+) : ViewModel() {
+
+    private val feed = MutableStateFlow<FeedState>(FeedState.Loading)
+    private var feedJob: Job? = null
+    private var focused: FocusTarget? = null
+
+    val uiState: StateFlow<HomeUiState> = combine(
+        feed,
+        // A broken local list must not take the whole screen down.
+        watch.continueWatching().catch { emit(emptyList()) },
+    ) { feedState, continueWatching -> buildHomeUiState(feedState, continueWatching) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), HomeUiState.Loading)
+
+    /** The card that last had focus, or null before the user has focused one. Not observable on purpose. */
+    val lastFocus: FocusTarget? get() = focused
+
+    init {
+        loadFeed()
+    }
+
+    fun onCardFocused(rowId: String, titleId: Long) {
+        focused = FocusTarget(rowId, titleId)
+    }
+
+    fun retry() {
+        loadFeed()
+    }
+
+    private fun loadFeed() {
+        feedJob?.cancel()
+        // Keep showing rows we already have; only a failed screen goes back to the placeholder.
+        if (feed.value !is FeedState.Loaded) feed.value = FeedState.Loading
+        feedJob = viewModelScope.launch {
+            catalog.homeFeed()
+                .catch { e ->
+                    // The repository only throws when there is no cache either. If rows are already
+                    // on screen, a failed refresh stays silent.
+                    if (feed.value !is FeedState.Loaded) feed.value = FeedState.Failed(e.toHomeError())
+                }
+                .collect { homeFeed -> feed.value = FeedState.Loaded(homeFeed.sections) }
+        }
+    }
+
+    companion object {
+        private const val STOP_TIMEOUT_MS = 5_000L
+
+        fun factory(catalog: CatalogRepository, watch: WatchRepository): ViewModelProvider.Factory =
+            viewModelFactory { initializer { HomeViewModel(catalog, watch) } }
+    }
+}
