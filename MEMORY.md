@@ -32,6 +32,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-11: Login: the user couldn't type into the password field after Tab (the field required OK to start editing). Fixed: typing/Tab/Enter work like a normal form. Lesson: test text-input flows with a hardware keyboard (emulator) AND the remote. The user then logged in successfully.
 - 2026-10-11: The user gave permission to download and analyse the official TV APK ("please download yourself"). Done locally in the scratchpad; the APK and decompiled code are NOT committed, only the facts (docs/auth.md §0).
 - 2026-10-11: "Use a few more agents, you have a limit of 10 in parallel": scaled to 9 parallel agents. The real constraint is RAM (16 GB, about 5 GB free), so builds go through the `tools/gw.sh` queue (2 slots, no daemon).
 - 2026-10-11: "Let's consider the subtitle and its settings, because this app has subtitles with movies": subtitles are a core feature. Wrote docs/subtitles.md: own engine (timing offset, bidi, styling) + settings in the player and on a Settings page. Added as M1.10.

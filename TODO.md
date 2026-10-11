@@ -59,7 +59,9 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - [x] 2026-10-11 · Found: the movie video CDN (dl20.acenteri.ir, dl2.ecenteri.ir) was unreachable for a while from this machine; the app shows a Persian error with retry / lower quality. Series CDN fine (M)
 - [x] 2026-10-11 · M3.2 + 3.3 + 3.8 Login (username/password → Bearer token), «لیست من» (local + site favourites sync), progress push on player exit / pull on app start; 118 tests (DE+UI); wired by M: «لیست من» top-bar tab, details «+ لیست من» button. Verified on the emulator: login screen, add to My List → appears in «لیست من · ۱ عنوان»
 - [x] 2026-10-11 · M1.8b Baseline Profile generated on TV_API34: 24,938 rules + 21,849 startup rules, shipped in the APK (M). 📺 gain to be measured on the TV
-- [ ] **Waiting on you (U):** log in once on the virtual TV (you type your username/password yourself) so login, favourites sync and progress sync can be verified with the real server
+- [x] 2026-10-11 · **Real login works** (user typed it on the virtual TV; session token stored, value never read) (U + M)
+- [x] 2026-10-11 · Fix: login form keyboard. Hardware typing goes straight into a focused field; Tab/Enter jumps from username into the password field ready to type; Enter in the password field logs in (user feedback) (M)
+- [ ] **Waiting on you (U):** after watching, check «لیست من» (site favourites) and whether the website/phone app shows the film in "continue watching" at the time you stopped
 - **🔄 Running now: none (all agents finished)**
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 

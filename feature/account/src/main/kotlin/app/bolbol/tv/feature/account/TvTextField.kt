@@ -16,6 +16,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -30,6 +34,8 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import kotlinx.coroutines.launch
+import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -65,6 +71,16 @@ private val FieldShape = RoundedCornerShape(BolbolSpacing.CardRadius)
  * with bullets and marks the field as a password for accessibility. [onImeAction] runs on the IME's Next/Done key.
  * [containerFocus] focuses the frame (for the initial focus of a screen).
  */
+/** Lets a screen put a [TvTextField] straight into typing mode (e.g. Tab/Next from the previous field). */
+internal class TvTextFieldController {
+    internal var requests by mutableIntStateOf(0)
+        private set
+
+    fun startEditing() {
+        requests++
+    }
+}
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun TvTextField(
@@ -76,6 +92,7 @@ internal fun TvTextField(
     imeAction: ImeAction = ImeAction.Next,
     onImeAction: () -> Unit = {},
     hint: String = "برای نوشتن، دکمهٔ تأیید را بزنید",
+    controller: TvTextFieldController? = null,
 ) {
     val fieldFocus = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -84,6 +101,17 @@ internal fun TvTextField(
     var frameFocused by remember { mutableStateOf(false) }
     var fieldFocused by remember { mutableStateOf(false) }
     val ringed = frameFocused || fieldFocused
+
+    // Programmatic "start typing here" (Tab / Next from the previous field).
+    val requests = controller?.requests ?: 0
+    LaunchedEffect(requests) {
+        if (requests == 0) return@LaunchedEffect
+        editing = true
+        withFrameNanos { } // let focusProperties(canFocus = editing) apply before requesting focus
+        fieldFocus.requestFocus()
+        keyboard?.show()
+    }
+    val scope = rememberCoroutineScope()
 
     val textStyle = MaterialTheme.typography.bodyLarge.copy(
         color = BolbolColors.TextPrimary,
@@ -95,6 +123,25 @@ internal fun TvTextField(
         modifier = modifier
             .focusRequester(containerFocus)
             .onFocusChanged { frameFocused = it.isFocused }
+            .onPreviewKeyEvent { event ->
+                // A physical keyboard (or the emulator's) types straight into the field: the first printable
+                // key starts editing and is kept, no OK press needed. D-pad/Back/Enter keep their TV meaning.
+                val code = event.utf16CodePoint
+                if (!editing && event.type == KeyEventType.KeyDown && code > 31 && code != 127 && event.key != Key.Tab) {
+                    onValueChange(value + code.toChar())
+                    editing = true
+                    scope.launch {
+                        withFrameNanos { }
+                        fieldFocus.requestFocus()
+                    }
+                    true
+                } else if (!editing && event.type == KeyEventType.KeyDown && event.key == Key.Tab) {
+                    onImeAction()
+                    true
+                } else {
+                    false
+                }
+            }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 editing = true
                 fieldFocus.requestFocus()
@@ -131,8 +178,13 @@ internal fun TvTextField(
                             }
                             true
                         }
-                        Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                        Key.DirectionCenter -> {
                             if (event.type == KeyEventType.KeyUp) keyboard?.show()
+                            true
+                        }
+                        // Physical keyboard: Tab / Enter = Next (username) or Done (password).
+                        Key.Tab, Key.Enter, Key.NumPadEnter -> {
+                            if (event.type == KeyEventType.KeyDown) onImeAction()
                             true
                         }
                         Key.Back -> {

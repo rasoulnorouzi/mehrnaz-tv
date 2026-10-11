@@ -190,6 +190,7 @@ private fun LoginCard(
         )
         Spacer(Modifier.height(8.dp))
 
+        val passwordEditor = remember { TvTextFieldController() }
         FieldLabel("نام کاربری یا ایمیل")
         TvTextField(
             value = username,
@@ -197,7 +198,8 @@ private fun LoginCard(
             modifier = Modifier.fillMaxWidth(),
             containerFocus = usernameFocus,
             imeAction = ImeAction.Next,
-            onImeAction = { focusManager.moveFocus(FocusDirection.Down) },
+            // Next / Tab / Enter: go straight into typing the password.
+            onImeAction = { passwordEditor.startEditing() },
         )
 
         Spacer(Modifier.height(4.dp))
@@ -209,7 +211,9 @@ private fun LoginCard(
                 modifier = Modifier.weight(1f),
                 masked = !revealed,
                 imeAction = ImeAction.Done,
-                onImeAction = { focusManager.moveFocus(FocusDirection.Down) },
+                controller = passwordEditor,
+                // Done / Enter in the password field logs in.
+                onImeAction = onLogin,
             )
             SelectableChip(text = "نمایش رمز", selected = revealed, onClick = { onRevealedChange(!revealed) })
         }
