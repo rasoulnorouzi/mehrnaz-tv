@@ -33,15 +33,18 @@ Disney+/Prime (season tabs + episode list, Skip Intro, next-episode countdown), 
 
 ## Screens
 1. **Home**
-   - Top bar: جستجو · خانه · فیلم · سریال · کارتون · لیست من · تنظیمات.
+   - Top bar (as built): جستجو · خانه · فیلم · سریال · لیست من · تنظیمات (6 tabs; the bar remembers the last focused tab).
    - Hero area (top 45 %) shows the focused item's backdrop + title + meta.
    - Rows: **ادامه تماشا (Continue Watching)** first, then the API sections (newest movies, top 250, Iranian, Turkish, …, newest series, suggestions).
    - Paints from cache instantly, then refreshes.
+   - Every server row ends with a poster-sized **«مشاهده همه»** card → the Browse grid for that row.
+   - **Continue Watching card: long-press OK or MENU** → popup «ادامه پخش» · «علامت‌گذاری به‌عنوان دیده‌شده» · «حذف از ادامه تماشا» · «انصراف». Progress bars show at least 3 % fill once started.
 2. **Details**
    - Backdrop + scrim. Title (fa + en), year · runtime · age · IMDb · genres, plot (3 lines, expandable).
    - Buttons: **ادامه از ۴۷:۱۲ / پخش**, start over, audio chips (دوبله / زیرنویس), quality, my list.
+   - **«+ لیست من» / «✓ در لیست من»** toggle next to the play buttons (local list; synced with the site's favourites when logged in).
    - Movie: cast row and related row.
-   - Series: season tabs + vertical episode list (WideCard with progress); focus starts on the next unwatched episode.
+   - Series (as built: two panes, info on the start side, episodes on the end side): season chips + vertical episode list with progress/✓; primary button «ادامه فصل X قسمت Y» / «شروع …»; **long-press an episode toggles watched**.
 3. **Player**
    - Full-screen SurfaceView. Overlay on any key, auto-hides after 4 s.
    - Overlay: title/episode, seek bar with time (Persian digits), play/pause, ±10 s (D-pad, accelerating
@@ -50,9 +53,10 @@ Disney+/Prime (season tabs + episode list, Skip Intro, next-episode countdown), 
    - Next-episode card at the last ~30 s / credits with a 10 s countdown.
 4. **Search:** keyboard (start side) + results grid (end side) + mic button + "type on your phone" QR.
 5. **Category / View all:** a 5-column grid of PosterCards, paged (next page within the last 2 rows), with quick-filter chips for the Movies/Series tabs: «همه» · «۲۵۰ برتر IMDb» (+ «ایرانی», «ترکی» for movies; country ids are per taxonomy). "View all" pages have no chips.
-6. **Account / Settings:** login (credentials or pairing code), mirror selection, default audio/quality,
+6. **«لیست من» (Account):** login card (username/email + password, «نمایش رمز», «ورود»); fields accept typing directly from a hardware keyboard, Tab/Enter moves to the password, Enter logs in; OK on a field opens the TV keyboard. Logged in: «سلام، …», VIP days, «خروج», and the My List grid.
+7. **Settings:** login (credentials or pairing code), mirror selection, default audio/quality,
    subtitle size, show-performance toggle, clear cache, app version.
-7. **Errors:** offline, server unreachable (tries the next mirror automatically), stream failed (try
+8. **Errors:** offline, server unreachable (tries the next mirror automatically), stream failed (try
    another quality) — always with a focused retry button.
 
 ## Focus rules

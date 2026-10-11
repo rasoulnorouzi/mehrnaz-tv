@@ -73,3 +73,11 @@ threat model. The password is never stored. Revisit if the app is ever shared or
 **2026-10-11 · "My List" = the site's `favorite-list`; server `watch-list` = continue watching with position**
 (confirmed from the official TV app, docs/auth.md section 0). My List stays local-first in Room and is mirrored
 best effort; progress is pushed on player exit and pulled at app start, only filling in what is missing or further.
+
+## Accounts & sync (M3)
+**2026-10-11 · Login = the official app's API** (confirmed by decompiling it with the user's permission, docs/auth.md §0):
+form `username`/`password` → `data.token`; `Authorization: Bearer`. Token stored in app-private SharedPreferences
+(`account_session.xml`): the TV app sandbox is the protection for this private app; the password is never stored or logged.
+**«لیست من» = local Room list (source of truth) + best-effort two-way sync with the site's favourites** (toggle endpoint, so
+membership is checked before toggling). **Progress sync:** push `current_time` (seconds) to the site's watch-list when the
+player closes; pull once per app start, filling titles/episodes missing locally or further on the server.

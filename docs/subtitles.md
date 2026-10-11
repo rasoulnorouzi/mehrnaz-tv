@@ -57,3 +57,12 @@ search per tick, it is cheaper than the platform pipeline.
   real cue, credit cue dropped, tags stripped, RLE lines preserved.
 - On the emulator: screenshots of the player with subtitles at each size, outline vs box, yellow, and after +2 s offset.
 - On the TV (📺): no dropped frames attributable to subtitle updates (gfxinfo during dialogue scenes).
+
+## As built (2026-10-11, M1.10b)
+- Engine: `core/player/.../subtitles/` (`VttParser`, `SubtitleLoader`, `SubtitleSync`, `SubtitleOffset`, `SubtitleCues`).
+  ExoPlayer gets **no** text tracks; one `SubtitleText` composable draws everything (player + Settings preview).
+- **Visual-order repair (beyond the original spec):** about 200 lines in the Naked Gun file were typed for LTR players
+  (punctuation at the wrong end). The engine detects and repairs them; verified on the emulator: «ساخت،» and «می‌کنم.» render
+  correctly. Risk: a false positive could flip a correct line. Revisit with more files if a user reports odd punctuation.
+- Credit cues dropped: «بلبل جان», "bolboljan", and the handle `@bollbolljan`.
+- With the player's settings panel open, subtitles are re-centred in the still-visible video area (manager fix).
