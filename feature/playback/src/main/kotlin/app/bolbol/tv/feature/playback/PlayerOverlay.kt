@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -80,6 +81,11 @@ internal fun PlayerOverlay(
     onTogglePlay: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    episodeButtons: EpisodeButtons = EpisodeButtons(visible = false, previous = null, next = null),
+    hasEpisodePanel: Boolean = false,
+    onPreviousEpisode: () -> Unit = {},
+    onNextEpisode: () -> Unit = {},
+    onOpenEpisodes: () -> Unit = {},
 ) {
     Box(modifier.fillMaxSize()) {
         Column(
@@ -129,12 +135,24 @@ internal fun PlayerOverlay(
         ) {
             SeekBarRow(position, chrome)
             Spacer(Modifier.height(12.dp))
+            // RTL row, start (right) → end: «قسمت قبل» · play/pause · «قسمت بعد» · «قسمت‌ها» · «تنظیمات پخش».
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 val playing = status.playWhenReady && !status.isEnded
+                if (episodeButtons.visible) {
+                    SkipEpisodeButton(forward = false, enabled = episodeButtons.hasPrevious, onClick = onPreviousEpisode)
+                }
                 Button(onClick = onTogglePlay, modifier = Modifier.focusRequester(chrome.playPauseFocus)) {
                     PlayPauseGlyph(playing, Modifier.size(14.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(if (playing) R.string.player_pause else R.string.player_play))
+                }
+                if (episodeButtons.visible) {
+                    SkipEpisodeButton(forward = true, enabled = episodeButtons.hasNext, onClick = onNextEpisode)
+                }
+                if (hasEpisodePanel) {
+                    Button(onClick = onOpenEpisodes, modifier = Modifier.focusRequester(chrome.episodesFocus)) {
+                        Text(stringResource(R.string.player_episodes))
+                    }
                 }
                 Button(onClick = onOpenSettings, modifier = Modifier.focusRequester(chrome.settingsFocus)) {
                     Text(stringResource(R.string.player_settings))
@@ -232,6 +250,62 @@ private fun PlayPauseGlyph(playing: Boolean, modifier: Modifier = Modifier) {
             }
             drawPath(path, color)
         }
+    }
+}
+
+/**
+ * «قسمت قبل» / «قسمت بعد» (v1.1-1). Series only; disabled (still drawn, so the row never shifts) at the
+ * first / last episode. Opaque colours: no translucency over the video beyond the scrim.
+ */
+@Composable
+private fun SkipEpisodeButton(forward: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        colors = ButtonDefaults.colors(
+            disabledContainerColor = BolbolColors.Surface,
+            disabledContentColor = BolbolColors.TextSecondary,
+        ),
+    ) {
+        if (!forward) {
+            SkipGlyph(forward = false, Modifier.size(14.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(stringResource(if (forward) R.string.player_next_episode else R.string.player_previous_episode))
+        if (forward) {
+            Spacer(Modifier.width(8.dp))
+            SkipGlyph(forward = true, Modifier.size(14.dp))
+        }
+    }
+}
+
+/**
+ * ⏭ / ⏮ drawn in the reading direction (unlike play/pause): in RTL «قسمت قبل» sits at the start (right)
+ * and points right, «قسمت بعد» at the end (left) and points left; each glyph sits on the outer side of
+ * its label.
+ */
+@Composable
+private fun SkipGlyph(forward: Boolean, modifier: Modifier = Modifier) {
+    val color = LocalContentColor.current
+    Canvas(modifier) {
+        val pointsRight = forward == (layoutDirection == LayoutDirection.Ltr)
+        val bar = size.width * 0.2f
+        val tip = size.width - bar
+        val path = Path().apply {
+            if (pointsRight) {
+                moveTo(0f, 0f)
+                lineTo(tip, size.height / 2)
+                lineTo(0f, size.height)
+            } else {
+                moveTo(size.width, 0f)
+                lineTo(bar, size.height / 2)
+                lineTo(size.width, size.height)
+            }
+            close()
+        }
+        drawPath(path, color)
+        val barLeft = if (pointsRight) tip else 0f
+        drawRect(color, Offset(barLeft, 0f), Size(bar, size.height))
     }
 }
 

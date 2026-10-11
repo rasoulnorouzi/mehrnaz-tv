@@ -14,15 +14,29 @@ import androidx.compose.ui.input.key.type
 import app.bolbol.tv.core.player.PlayerTuning
 import app.bolbol.tv.core.player.SeekKeyRepeater
 
-internal enum class OverlayFocus { SeekBar, PlayPause, Settings }
+internal enum class OverlayFocus { SeekBar, PlayPause, Episodes, Settings }
+
+/** The side panels at the end edge (one at a time, same width [PANEL_WIDTH]). */
+internal enum class PlayerPanel(
+    /** The controls button that opened the panel: focus returns there when it closes. */
+    val opener: OverlayFocus,
+) {
+    /** «تنظیمات پخش»: audio, quality, subtitles. */
+    Settings(OverlayFocus.Settings),
+
+    /** «قسمت‌ها»: seasons + episodes of a series (v1.1-4). */
+    Episodes(OverlayFocus.Episodes),
+}
 
 /** Screen-local UI state of the player chrome (overlay, side panel, debug box, focus). */
 @Stable
 internal class PlayerChrome {
     var overlayVisible by mutableStateOf(false)
         private set
-    var panelOpen by mutableStateOf(false)
+    /** The open side panel, or null. */
+    var panel by mutableStateOf<PlayerPanel?>(null)
         private set
+    val panelOpen: Boolean get() = panel != null
     var debugVisible by mutableStateOf(false)
         private set
 
@@ -40,6 +54,7 @@ internal class PlayerChrome {
     val seekBarFocus = FocusRequester()
     val playPauseFocus = FocusRequester()
     val settingsFocus = FocusRequester()
+    val episodesFocus = FocusRequester()
 
     // Written from onFocusChanged; read only by key handling (no recomposition needed).
     var rootFocused = false
@@ -86,15 +101,16 @@ internal class PlayerChrome {
         focusRequests++
     }
 
-    fun openPanel() {
-        panelOpen = true
+    fun openPanel(which: PlayerPanel = PlayerPanel.Settings) {
+        panel = which
     }
 
     /** Closes the side panel and puts focus back on the button that opened it. */
     fun closePanel() {
-        panelOpen = false
+        val closing = panel ?: return
+        panel = null
         overlayVisible = true
-        overlayFocus = OverlayFocus.Settings
+        overlayFocus = closing.opener
         focusRequests++
     }
 
@@ -116,6 +132,7 @@ internal class PlayerChrome {
  * a key event.
  *
  * The timeline is LTR (docs/decisions.md): DPAD_RIGHT = forward, regardless of the RTL layout.
+ * MEDIA_NEXT / MEDIA_PREVIOUS switch episodes (series); DOWN on the controls' button row opens «قسمت‌ها».
  */
 internal class PlayerKeyHandler(
     private val chrome: PlayerChrome,
@@ -188,7 +205,14 @@ internal class PlayerKeyHandler(
             }
             Key.Menu -> {
                 if (down && native.repeatCount == 0) {
-                    if (chrome.panelOpen) chrome.closePanel() else chrome.openPanel()
+                    if (chrome.panelOpen) chrome.closePanel() else chrome.openPanel(PlayerPanel.Settings)
+                }
+                return true
+            }
+            // v1.1-1: the remote's ⏮ / ⏭ switch episodes (series only; ignored for movies and at the ends).
+            Key.MediaNext, Key.MediaPrevious -> {
+                if (down && native.repeatCount == 0) {
+                    if (key == Key.MediaNext) viewModel.playNextEpisode() else viewModel.playPreviousEpisode()
                 }
                 return true
             }
@@ -229,6 +253,12 @@ internal class PlayerKeyHandler(
             }
             (key == Key.DirectionUp || key == Key.DirectionDown) && (!chrome.overlayVisible || chrome.rootFocused) -> {
                 if (down) chrome.showOverlay(OverlayFocus.PlayPause, force = true)
+                return true
+            }
+            // Shortcut (v1.1-4): DOWN on the controls' button row (nothing lies below it) opens «قسمت‌ها»,
+            // so DOWN, DOWN from the bare video opens the episodes panel.
+            key == Key.DirectionDown && chrome.overlayVisible && !chrome.seekBarFocused && viewModel.hasEpisodePanel -> {
+                if (down && native.repeatCount == 0) chrome.openPanel(PlayerPanel.Episodes)
                 return true
             }
         }

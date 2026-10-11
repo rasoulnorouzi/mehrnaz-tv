@@ -7,8 +7,10 @@ import androidx.activity.compose.setContent
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.bolbol.tv.core.designsystem.BolbolTheme
 import app.bolbol.tv.core.model.AudioType
+import app.bolbol.tv.core.model.Episode
 import app.bolbol.tv.core.model.PlaybackPrefs
 import app.bolbol.tv.core.model.PlaybackRequest
+import app.bolbol.tv.core.model.Season
 import app.bolbol.tv.core.model.StreamOption
 import app.bolbol.tv.core.model.TitleSummary
 import app.bolbol.tv.core.model.TitleType
@@ -25,7 +27,7 @@ import okhttp3.OkHttpClient
  * ```
  * adb shell am start -n app.mehrnaz.tv/app.bolbol.tv.feature.playback.debug.PlayerTestActivity \
  *     [--ei quality 720] [--es audio dub|sub] [--el start_ms 600000] [--ez diag false] [--ez reset true] \
- *     [--ez next true]
+ *     [--ez next true] [--ez series true]
  * adb logcat -s BolbolPerf BolbolPlayer BolbolTest
  * ```
  * Defaults: 480p SUBTITLED (the emulator decodes in software), diagnostics on. Progress and prefs
@@ -33,6 +35,8 @@ import okhttp3.OkHttpClient
  * `--ez next true` pretends the movie has a next episode (S01E02) to exercise the auto-next card:
  * start ~40 s before the end (`--el start_ms`, duration shown in the overlay, or FF there);
  * playing "next" logs `onPlayNext 353371:1:2` and finishes.
+ * `--ez series true` pretends it is S01E02 of a 2-season series (v1.1-1/v1.1-4): «قسمت قبل/بعد» and «قسمت‌ها»
+ * appear (every episode plays the same movie); a manual switch logs `onSwitchEpisode …` and finishes.
  */
 class PlayerTestActivity : ComponentActivity() {
 
@@ -43,6 +47,7 @@ class PlayerTestActivity : ComponentActivity() {
         val startMs = intent.getLongExtra("start_ms", -1L).takeIf { it >= 0 }
         val diagnostics = intent.getBooleanExtra("diag", true)
         val withNext = intent.getBooleanExtra("next", false)
+        val asSeries = intent.getBooleanExtra("series", false)
         if (savedInstanceState == null) {
             val reset = intent.getBooleanExtra("reset", false)
             if (reset) Fakes.watch.clear()
@@ -51,7 +56,9 @@ class PlayerTestActivity : ComponentActivity() {
                 Fakes.prefs.reset(PlaybackPrefs(audio, quality))
             }
         }
-        val request = NakedGun.request(startMs).let { if (withNext) it.copy(next = WatchKey(353371, 1, 2)) else it }
+        val request = NakedGun.request(startMs)
+            .let { if (withNext) it.copy(next = WatchKey(353371, 1, 2)) else it }
+            .let { if (asSeries) NakedGun.asSeriesEpisode(it) else it }
         val playerFactory = PlayerFactory(applicationContext, Fakes.http)
 
         setContent {
@@ -69,6 +76,10 @@ class PlayerTestActivity : ComponentActivity() {
                     onExit = ::finish,
                     onPlayNext = { next ->
                         Log.i("BolbolTest", "onPlayNext ${next.asString()}")
+                        finish()
+                    },
+                    onSwitchEpisode = { episode ->
+                        Log.i("BolbolTest", "onSwitchEpisode ${episode.asString()}")
                         finish()
                     },
                     showDiagnostics = diagnostics,
@@ -128,6 +139,24 @@ private object NakedGun {
         hasDub = true,
         hasSubtitle = true,
     )
+
+    /** S01E02 of a fake series: season 1 has 8 episodes (odd ones dubbed), season 2 has 5. */
+    fun asSeriesEpisode(movie: PlaybackRequest): PlaybackRequest {
+        val subbed = streams.filter { it.audio == AudioType.SUBTITLED }
+        fun season(number: Int, count: Int) = Season(
+            number = number,
+            episodes = (1..count).map { e ->
+                Episode(number, e, if (e == 3) "The Long Night" else "Episode $e", if (e % 2 == 1) streams else subbed)
+            },
+        )
+        return movie.copy(
+            key = WatchKey(353371, 1, 2),
+            subtitleLine = "فصل ۱ · قسمت ۲",
+            previous = WatchKey(353371, 1, 1),
+            next = WatchKey(353371, 1, 3),
+            seasons = listOf(season(1, 8), season(2, 5)),
+        )
+    }
 
     fun request(startPositionMs: Long?) = PlaybackRequest(
         key = WatchKey(353371),

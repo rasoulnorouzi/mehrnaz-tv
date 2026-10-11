@@ -51,6 +51,24 @@ Disney+/Prime (season tabs + episode list, Skip Intro, next-episode countdown), 
      when held), audio/subtitle/quality menu, subtitle size, next episode.
    - Resume dialog on start: "ادامه از ۴۷:۱۲" (focused) / "از ابتدا".
    - Next-episode card at the last ~30 s / credits with a 10 s countdown.
+   - Controls row (RTL, start → end): movies «پخش/توقف» · «تنظیمات پخش»; **series** «قسمت قبل» · «پخش/توقف» ·
+     «قسمت بعد» · «قسمت‌ها» · «تنظیمات پخش» (v1.1-1/v1.1-4). «قسمت قبل/بعد» are always drawn for a series (the row
+     never shifts) and **disabled** at the first / last episode; their ⏮/⏭ glyphs follow the reading direction
+     (in RTL «قسمت قبل» points right, «قسمت بعد» left, each on the outer side of its label), unlike play/pause.
+     The remote's **MEDIA_PREVIOUS / MEDIA_NEXT** do the same. A manual switch saves this episode's position
+     (not marked completed), replaces the player entry (one ExoPlayer; Back still returns to details) and the new
+     episode opens with the resume prompt if it has saved progress. Auto-next (card) keeps: completed + start at 0.
+   - **«قسمت‌ها» panel** (series): the same end-edge side panel as «تنظیمات پخش» (`PANEL_WIDTH` 400 dp, solid
+     surface, subtitles re-centre beside it) while the video keeps playing. Title «قسمت‌ها», season chips
+     («فصل ۱ · فصل ۲ …», only with >1 season; otherwise a «فصل ۱» label), then the season's episodes in a
+     LazyColumn (no images): «قسمت ۳» + title (generic "Episode 3" titles hidden), «دوبله» pill when a dubbed
+     stream exists, ✓ when watched, a 3 dp progress bar when started. The playing episode has a lighter fill,
+     an accent marker at the start edge and «در حال پخش»; its season is preselected and it **has focus on open**.
+     OK on it closes the panel; OK on another episode switches to it. Opens from the button or with **DOWN on
+     the controls' button row** (so DOWN, DOWN from the bare video). The next-episode countdown is frozen while
+     it is open.
+   - **BACK order:** side panel (settings or episodes; focus returns to the button that opened it) → controls →
+     next-episode card → exit. From the resume dialog or the error panel BACK exits at once.
 4. **Search:** keyboard (start side) + results grid (end side) + mic button + "type on your phone" QR.
 5. **Category / View all:** a 5-column grid of PosterCards, paged (next page within the last 2 rows), with quick-filter chips for the Movies/Series tabs: «همه» · «۲۵۰ برتر IMDb» (+ «ایرانی», «ترکی» for movies; country ids are per taxonomy). "View all" pages have no chips.
 6. **Profile and «لیست من»** (two top-bar tabs; login/logout lives only in Profile):

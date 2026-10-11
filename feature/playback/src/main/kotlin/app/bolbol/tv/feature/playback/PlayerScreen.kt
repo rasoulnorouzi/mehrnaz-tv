@@ -61,9 +61,15 @@ private const val LOW_MEMORY_LEVEL = 80
  * "قسمت بعد" card with a 10 s countdown appears in the last 30 s (or at the end); OK plays the next
  * episode now, BACK dismisses it. Leaving marks this episode completed, then calls [onPlayNext].
  *
+ * Series (v1.1-1, v1.1-4): the controls add «قسمت قبل» / «قسمت بعد» (also MEDIA_PREVIOUS / MEDIA_NEXT) and
+ * «قسمت‌ها», a side panel with seasons + episodes over the still-playing video (DOWN on the button row
+ * opens it too). A manual pick saves this episode's position (not completed) and calls [onSwitchEpisode].
+ *
  * @param onExit navigate back; called after playback is paused (the ViewModel saves on clear).
  * @param onPlayNext open the player for the next episode (replace this entry so this player is
  *   released before the next one is created: one ExoPlayer at a time).
+ * @param onSwitchEpisode open the player for an episode picked by hand, with the resume prompt; replace
+ *   this entry exactly like [onPlayNext].
  * @param subtitleTypeface ignored: subtitles are drawn by the designsystem `SubtitleText` with
  *   Vazirmatn. Kept only so existing call sites compile; remove it from the call site.
  * @param showDiagnostics force the debug box on (it can also be toggled with UP ×3).
@@ -74,6 +80,7 @@ fun PlayerScreen(
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
     onPlayNext: (next: WatchKey) -> Unit = {},
+    onSwitchEpisode: (episode: WatchKey) -> Unit = {},
     @Suppress("UNUSED_PARAMETER") subtitleTypeface: Typeface? = null,
     showDiagnostics: Boolean = false,
 ) {
@@ -97,6 +104,7 @@ fun PlayerScreen(
     val chrome = remember { PlayerChrome() }
     val currentOnExit by rememberUpdatedState(onExit)
     val currentOnPlayNext by rememberUpdatedState(onPlayNext)
+    val currentOnSwitchEpisode by rememberUpdatedState(onSwitchEpisode)
     val exit = remember(viewModel) {
         {
             viewModel.prepareExit()
@@ -165,6 +173,7 @@ fun PlayerScreen(
         }
     }
     LaunchedEffect(viewModel) { viewModel.playNext.collect { currentOnPlayNext(it) } }
+    LaunchedEffect(viewModel) { viewModel.switchEpisode.collect { currentOnSwitchEpisode(it) } }
     LaunchedEffect(chrome.toastId) {
         if (chrome.toast != null) {
             delay(TOAST_MS)
@@ -200,6 +209,7 @@ fun PlayerScreen(
             when (chrome.overlayFocus) {
                 OverlayFocus.SeekBar -> chrome.seekBarFocus
                 OverlayFocus.PlayPause -> chrome.playPauseFocus
+                OverlayFocus.Episodes -> chrome.episodesFocus
                 OverlayFocus.Settings -> chrome.settingsFocus
             }
         }
@@ -254,10 +264,24 @@ fun PlayerScreen(
                 position = controller.position,
                 chrome = chrome,
                 onTogglePlay = controller::togglePlayPause,
-                onOpenSettings = chrome::openPanel,
+                onOpenSettings = { chrome.openPanel(PlayerPanel.Settings) },
+                episodeButtons = viewModel.episodeButtons,
+                hasEpisodePanel = viewModel.hasEpisodePanel,
+                onPreviousEpisode = viewModel::playPreviousEpisode,
+                onNextEpisode = viewModel::playNextEpisode,
+                onOpenEpisodes = { chrome.openPanel(PlayerPanel.Episodes) },
             )
         }
-        if (playing && chrome.panelOpen && !hasError) {
+        if (playing && chrome.panel == PlayerPanel.Episodes && !hasError) {
+            EpisodesPanel(
+                seasons = viewModel.request.seasons,
+                current = viewModel.request.key,
+                progress = viewModel.titleProgress,
+                onPick = viewModel::switchToEpisode,
+                onClose = chrome::closePanel,
+            )
+        }
+        if (playing && chrome.panel == PlayerPanel.Settings && !hasError) {
             val showOffsetToast = { ms: Int ->
                 chrome.showToast(context.getString(R.string.player_subtitle_offset_toast, formatSubtitleOffset(ms)))
             }

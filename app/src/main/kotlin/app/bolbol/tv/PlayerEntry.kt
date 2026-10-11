@@ -29,7 +29,13 @@ private sealed interface Resolve {
  * picks up fresh links after process death.
  */
 @Composable
-fun PlayerEntry(app: BolbolApp, route: PlayerRoute, onExit: () -> Unit, onPlayNext: (WatchKey) -> Unit) {
+fun PlayerEntry(
+    app: BolbolApp,
+    route: PlayerRoute,
+    onExit: () -> Unit,
+    onPlayNext: (WatchKey) -> Unit,
+    onSwitchEpisode: (WatchKey) -> Unit = {},
+) {
     var attempt by remember { mutableIntStateOf(0) }
     val state by produceState<Resolve>(Resolve.Loading, route, attempt) {
         value = try {
@@ -55,7 +61,13 @@ fun PlayerEntry(app: BolbolApp, route: PlayerRoute, onExit: () -> Unit, onPlayNe
                 ),
             )
             val showPerf by app.appSettings.showPerformance.collectAsState()
-            PlayerScreen(viewModel = vm, onExit = onExit, onPlayNext = onPlayNext, showDiagnostics = showPerf)
+            PlayerScreen(
+                viewModel = vm,
+                onExit = onExit,
+                onPlayNext = onPlayNext,
+                onSwitchEpisode = onSwitchEpisode,
+                showDiagnostics = showPerf,
+            )
         }
     }
 }

@@ -127,6 +127,12 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                         app.pushProgressAfterPlayback(route.postId, route.season, route.episode)
                         backStack[backStack.lastIndex] = PlayerRoute(next.postId, next.season, next.episode, 0)
                     },
+                    // «قسمت قبل/بعد», ⏮/⏭, the «قسمت‌ها» panel: same replace, but this episode isn't marked
+                    // completed and the picked one offers «ادامه از …» if it has saved progress.
+                    onSwitchEpisode = { key ->
+                        app.pushProgressAfterPlayback(route.postId, route.season, route.episode)
+                        backStack[backStack.lastIndex] = PlayerRoute(key.postId, key.season, key.episode, PlayerRoute.ASK)
+                    },
                 )
             }
             entry<SearchRoute> {

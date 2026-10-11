@@ -38,9 +38,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -106,6 +109,37 @@ class PlayerViewModel(
 
     /** Emits [PlaybackRequest.next] once, when the countdown ends, playback ends, or OK is pressed. */
     val playNext: Flow<WatchKey> = playNextChannel.receiveAsFlow()
+
+    private val switchEpisodeChannel = Channel<WatchKey>(Channel.CONFLATED)
+
+    /**
+     * Emits once when the viewer picks another episode by hand (v1.1-1 «قسمت قبل» / «قسمت بعد», MEDIA_NEXT /
+     * MEDIA_PREVIOUS, v1.1-4 the «قسمت‌ها» panel). Unlike [playNext] this episode is NOT marked completed,
+     * and the new one starts with the resume prompt (if it has saved progress).
+     */
+    val switchEpisode: Flow<WatchKey> = switchEpisodeChannel.receiveAsFlow()
+
+    /** Prev/next buttons for the controls (hidden for movies). */
+    internal val episodeButtons: EpisodeButtons = request.episodeButtons()
+
+    /** The «قسمت‌ها» button/panel exists (a series with an episode list). */
+    val hasEpisodePanel: Boolean = request.hasEpisodePanel()
+
+    /**
+     * Saved progress of every episode of this title, for the «قسمت‌ها» panel. Room is observed only while
+     * the panel collects it (plus 5 s, so reopening it at once doesn't re-query).
+     */
+    val titleProgress: StateFlow<List<PlaybackProgress>> by lazy {
+        watch.progressForTitle(request.key.postId)
+            .catch { e ->
+                Log.w(TAG, "progressForTitle failed", e)
+                emit(emptyList())
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PROGRESS_KEEP_MS), emptyList())
+    }
+
+    /** Set once this screen is leaving for another episode: nothing else may leave or mark it completed. */
+    private var leaving = false
 
     private var chromeCovering = false
     private var lastAutoNextStepMs = -1L
@@ -180,12 +214,36 @@ class PlayerViewModel(
     /** «تنظیم مجدد». Returns the new offset (0). */
     fun resetSubtitleOffset(): Int = controller.setSubtitleOffset(0)
 
+    // ---- manual episode switch (v1.1-1, v1.1-4) ---------------------------------------------
+
+    /** «قسمت قبل» / MEDIA_PREVIOUS. No-op for movies and the first episode. */
+    fun playPreviousEpisode() {
+        request.previous?.let(::switchToEpisode)
+    }
+
+    /** «قسمت بعد» / MEDIA_NEXT. No-op for movies and the last episode. */
+    fun playNextEpisode() {
+        request.next?.let(::switchToEpisode)
+    }
+
+    /**
+     * Leave for [target] (another episode of this title). Pausing saves the current position at once
+     * (a forced save; the release saves again, deduplicated); the episode is NOT marked completed. The
+     * screen then replaces this player with one for [target] (one ExoPlayer at a time).
+     */
+    fun switchToEpisode(target: WatchKey) {
+        if (leaving || !request.canSwitchTo(target)) return
+        leaving = true
+        controller.pause()
+        switchEpisodeChannel.trySend(target)
+    }
+
     // ---- next episode (M2.2) -----------------------------------------------------------------
 
     /** OK on the card: mark this episode completed and leave for the next one now. */
     fun playNextNow() {
         val next = request.next ?: return
-        if (_autoNext.value !is AutoNextState.Counting) return
+        if (leaving || _autoNext.value !is AutoNextState.Counting) return
         _autoNext.value = AutoNextState.PlayNext
         leaveFor(next)
     }
@@ -215,6 +273,7 @@ class PlayerViewModel(
 
     private fun stepAutoNext() {
         val next = request.next ?: return
+        if (leaving) return
         val now = clock.elapsedRealtimeMs()
         val elapsed = if (lastAutoNextStepMs < 0) 0 else now - lastAutoNextStepMs
         lastAutoNextStepMs = now
@@ -234,6 +293,8 @@ class PlayerViewModel(
     }
 
     private fun leaveFor(next: WatchKey) {
+        if (leaving) return
+        leaving = true
         controller.markCompleted()
         controller.pause()
         playNextChannel.trySend(next)
@@ -280,6 +341,7 @@ class PlayerViewModel(
         private const val TAG = "BolbolPlayer"
         private const val COUNTDOWN_TICK_MS = 200L
         private const val WINDOW_POLL_MS = 1_000L
+        private const val PROGRESS_KEEP_MS = 5_000L
 
         /**
          * @param createPlayer usually `{ playerFactory.create() }` (core:player PlayerFactory);

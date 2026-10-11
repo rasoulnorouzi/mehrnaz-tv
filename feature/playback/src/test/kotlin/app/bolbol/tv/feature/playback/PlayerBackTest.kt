@@ -45,6 +45,40 @@ class PlayerBackTest {
         assertEquals(listOf(BackAction.ClosePanel, BackAction.HideOverlay, BackAction.Exit), seen)
     }
 
+    @Test fun episodesPanelClosesFirstAndReturnsFocusToItsButton() {
+        // v1.1-4: the «قسمت‌ها» panel is a side panel like «تنظیمات پخش»: panel → controls → exit.
+        var panel: PlayerPanel? = PlayerPanel.Episodes
+        var overlay = false // opened with DOWN, DOWN or from the controls (which it hides)
+        var focus: OverlayFocus? = null
+        val seen = mutableListOf<BackAction>()
+        while (true) {
+            val next = action(panelOpen = panel != null, overlayVisible = overlay)
+            seen += next
+            when (next) {
+                BackAction.ClosePanel -> { // what PlayerChrome.closePanel() does
+                    focus = panel!!.opener
+                    panel = null
+                    overlay = true
+                }
+                BackAction.HideOverlay -> overlay = false
+                BackAction.DismissNextCard -> error("no card in this scenario")
+                BackAction.Exit -> break
+            }
+        }
+        assertEquals(listOf(BackAction.ClosePanel, BackAction.HideOverlay, BackAction.Exit), seen)
+        assertEquals(OverlayFocus.Episodes, focus)
+    }
+
+    @Test fun eachPanelReturnsFocusToTheButtonThatOpenedIt() {
+        assertEquals(OverlayFocus.Settings, PlayerPanel.Settings.opener)
+        assertEquals(OverlayFocus.Episodes, PlayerPanel.Episodes.opener)
+    }
+
+    @Test fun episodesPanelGoesBeforeTheFrozenNextCard() {
+        // The card's countdown is frozen and hidden while a panel is open; BACK closes the panel first.
+        assertEquals(BackAction.ClosePanel, action(panelOpen = true, nextCardVisible = true))
+    }
+
     @Test fun nextEpisodeCardIsDismissedAfterTheControls() {
         assertEquals(BackAction.DismissNextCard, action(nextCardVisible = true))
         assertEquals(BackAction.HideOverlay, action(overlayVisible = true, nextCardVisible = true))

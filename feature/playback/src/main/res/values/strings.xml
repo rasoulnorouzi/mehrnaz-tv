@@ -34,8 +34,15 @@
     <string name="player_subtitle_offset_toast">زیرنویس: %1$s ثانیه</string>
     <string name="player_subtitle_load_failed">زیرنویس بارگذاری نشد</string>
 
-    <!-- Auto-next card (M2.2). -->
+    <!-- Auto-next card (M2.2) and the controls' episode buttons (v1.1-1). -->
     <string name="player_next_episode">قسمت بعد</string>
+    <string name="player_previous_episode">قسمت قبل</string>
+
+    <!-- «قسمت‌ها» side panel (v1.1-4). -->
+    <string name="player_episodes">قسمت&#8204;ها</string>
+    <string name="player_season">فصل %1$s</string>
+    <string name="player_episode_now_playing">در حال پخش</string>
+    <string name="player_episode_watched">دیده&#8204;شده</string>
 
     <string name="player_retry">تلاش دوباره</string>
     <string name="player_lower_quality">کیفیت پایین&#8204;تر</string>
