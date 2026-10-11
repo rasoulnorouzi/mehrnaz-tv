@@ -2,18 +2,13 @@
 
 package app.bolbol.tv.core.player
 
-import android.net.Uri
-import android.text.SpannableStringBuilder
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
-import androidx.media3.common.text.Cue
-import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
@@ -22,15 +17,22 @@ import app.bolbol.tv.core.model.PlaybackPrefs
 import app.bolbol.tv.core.model.PlaybackRequest
 import app.bolbol.tv.core.model.PrefsRepository
 import app.bolbol.tv.core.model.StreamOption
+import app.bolbol.tv.core.model.SubtitleStyle
 import app.bolbol.tv.core.model.WatchRepository
+import app.bolbol.tv.core.player.subtitles.SubtitleLoader
+import app.bolbol.tv.core.player.subtitles.SubtitleOffset
+import app.bolbol.tv.core.player.subtitles.SubtitleSync
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -50,6 +52,12 @@ data class PlayerStatus(
     val isEnded: Boolean get() = playbackState == Player.STATE_ENDED
 }
 
+/** One-shot things the UI should tell the user about (each is delivered once). */
+sealed interface PlayerEvent {
+    /** The .vtt couldn't be fetched or parsed: toast "زیرنویس بارگذاری نشد", keep playing. */
+    data object SubtitleLoadFailed : PlayerEvent
+}
+
 /** Playhead numbers, refreshed every [PlayerTuning.TICK_INTERVAL_MS] and right after seeks. */
 data class PlaybackPosition(
     val positionMs: Long = 0,
@@ -59,7 +67,8 @@ data class PlaybackPosition(
 
 /**
  * Drives one [ExoPlayer] for one player screen: starts streams, switches quality/audio, saves
- * watch progress, filters subtitle cues and collects diagnostics. UI-free.
+ * watch progress, runs the subtitle engine (subtitles/: load, parse, sync, offset, style) and
+ * collects diagnostics. UI-free.
  *
  * Threading: call everything on the main thread, and give a [scope] on the main dispatcher
  * (ExoPlayer's application thread). The [scope] must outlive [release]: the final progress
@@ -67,12 +76,15 @@ data class PlaybackPosition(
  * (which is already cancelled when onCleared runs).
  *
  * The caller owns [player] and releases it after [release].
+ *
+ * @param subtitleLoader fetches the side-loaded .vtt files; null = no subtitles (tests).
  */
 class PlaybackController(
     val player: ExoPlayer,
     private val watch: WatchRepository,
     private val prefs: PrefsRepository,
     private val scope: CoroutineScope,
+    private val subtitleLoader: SubtitleLoader?,
     private val clock: PlaybackClock = PlaybackClock.System,
 ) {
     private val _status = MutableStateFlow(PlayerStatus())
@@ -81,10 +93,25 @@ class PlaybackController(
     private val _position = MutableStateFlow(PlaybackPosition())
     val position: StateFlow<PlaybackPosition> = _position.asStateFlow()
 
-    private val _cues = MutableStateFlow<List<Cue>>(emptyList())
+    private val subtitleSync = SubtitleSync(scope, positionMs = { player.currentPosition })
 
-    /** Current subtitle cues with the site-credit cue removed and Persian lines forced RTL. */
-    val cues: StateFlow<List<Cue>> = _cues.asStateFlow()
+    /** Subtitle lines on screen now (credits dropped, bidi-fixed); emits only when they change. */
+    val subtitleLines: StateFlow<List<String>> = subtitleSync.lines
+
+    private val _subtitleStyle = MutableStateFlow(SubtitleStyle())
+
+    /** The user's global subtitle look (PrefsRepository.subtitleStyle), applied live. */
+    val subtitleStyle: StateFlow<SubtitleStyle> = _subtitleStyle.asStateFlow()
+
+    private val _subtitleOffsetMs = MutableStateFlow(0)
+
+    /** This title's sync offset in ms (positive = subtitles later), read on [start]. */
+    val subtitleOffsetMs: StateFlow<Int> = _subtitleOffsetMs.asStateFlow()
+
+    private val eventChannel = Channel<PlayerEvent>(Channel.BUFFERED)
+
+    /** One-shot events for toasts. Collect from one place only (the screen). */
+    val events: Flow<PlayerEvent> = eventChannel.receiveAsFlow()
 
     private val _diagnostics = MutableStateFlow(PlaybackDiagnostics())
     val diagnostics: StateFlow<PlaybackDiagnostics> = _diagnostics.asStateFlow()
@@ -109,6 +136,15 @@ class PlaybackController(
     private var stoppedByLifecycle = false
     private var released = false
 
+    /** Finished on purpose (auto-next): every later save keeps the item completed. */
+    private var markedCompleted = false
+    private var subtitleUrl: String? = null
+    private var subtitleJob: Job? = null
+    private var offsetPostId: Long? = null
+    private var offsetLoadJob: Job? = null
+    private var offsetSaveJob: Job? = null
+    private var styleJob: Job? = null
+
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             publishStatus()
@@ -117,6 +153,18 @@ class PlaybackController(
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (!playWhenReady) saveProgress(SaveReason.PAUSE)
+        }
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            subtitleSync.setPlaying(isPlaying)
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int,
+        ) {
+            subtitleSync.update()
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -146,10 +194,6 @@ class PlaybackController(
                 videoAspectRatio = videoSize.width * videoSize.pixelWidthHeightRatio / videoSize.height
                 publishStatus()
             }
-        }
-
-        override fun onCues(cueGroup: CueGroup) {
-            _cues.value = prepareCues(cueGroup.cues)
         }
     }
 
@@ -181,12 +225,21 @@ class PlaybackController(
         player.addListener(playerListener)
         player.addAnalyticsListener(analyticsListener)
         player.addAnalyticsListener(statsListener)
+        styleJob = scope.launch {
+            safely("subtitleStyle") {
+                prefs.subtitleStyle().collect { style ->
+                    _subtitleStyle.value = style
+                    subtitleSync.enabled = style.enabled
+                }
+            }
+        }
     }
 
     /**
      * Starts [stream] of [request] at [startPositionMs]. With [playWhenReady] = false the player
      * prepares and shows the first frame paused (used behind the resume prompt so "continue"
-     * starts instantly). TTFF is measured from this call.
+     * starts instantly). TTFF is measured from this call. Also loads the stream's subtitles and
+     * the title's saved sync offset.
      */
     fun start(request: PlaybackRequest, stream: StreamOption, startPositionMs: Long, playWhenReady: Boolean = true) {
         if (released) return
@@ -195,13 +248,15 @@ class PlaybackController(
         this.request = request
         this.stream = stream
         _error.value = null
-        _cues.value = emptyList()
         stoppedByLifecycle = false
+        markedCompleted = false
         savePolicy.reset(clock.elapsedRealtimeMs(), start)
         beginTtff(isSwitch = false)
         player.setMediaItem(stream.toMediaItem(request), start)
         player.playWhenReady = playWhenReady
         player.prepare()
+        loadSubtitleOffset(request.key.postId)
+        loadSubtitles(stream)
         startTicker()
         publishStatus()
         publishPosition()
@@ -219,13 +274,13 @@ class PlaybackController(
         val play = player.playWhenReady || _error.value != null
         this.stream = stream
         _error.value = null
-        _cues.value = emptyList()
         stoppedByLifecycle = false
         savePolicy.reset(clock.elapsedRealtimeMs(), position)
         beginTtff(isSwitch = true)
         player.setMediaItem(stream.toMediaItem(request), position)
         player.playWhenReady = play
         player.prepare()
+        loadSubtitles(stream)
         publishStatus()
         rememberChoice(request.key.postId, stream, rememberGlobally)
     }
@@ -260,6 +315,7 @@ class PlaybackController(
         if (released || request == null) return
         player.seekTo(positionMs.coerceAtLeast(0))
         publishPosition()
+        subtitleSync.update()
     }
 
     /** Relative seek, clamped (see [SeekSteps.target]). Returns the target position. */
@@ -275,16 +331,38 @@ class PlaybackController(
         player.setScrubbingModeEnabled(enabled)
     }
 
-    /** Persists the subtitle size globally and for this title (if it has its own prefs). */
-    fun saveSubtitleScale(scale: Float) {
-        val postId = request?.key?.postId ?: return
-        scope.launch {
-            safely("saveSubtitleScale") {
-                val global = prefs.globalPrefs().first()
-                prefs.saveGlobalPrefs(global.copy(subtitleScale = scale))
-                prefs.titlePrefs(postId)?.let { prefs.saveTitlePrefs(postId, it.copy(subtitleScale = scale)) }
-            }
-        }
+    /**
+     * Sets this title's subtitle sync offset (clamped to ±10 s and rounded to 0.5 s steps, see
+     * [SubtitleOffset]), applies it at once and saves it per title. Returns the applied value.
+     */
+    fun setSubtitleOffset(offsetMs: Int): Int {
+        val postId = request?.key?.postId
+        if (released || postId == null) return _subtitleOffsetMs.value
+        val value = SubtitleOffset.normalize(offsetMs)
+        offsetLoadJob?.cancel() // the user's choice wins over a late read
+        _subtitleOffsetMs.value = value
+        subtitleSync.offsetMs = value
+        offsetSaveJob?.cancel()
+        offsetSaveJob = scope.launch { safely("saveSubtitleOffset") { prefs.saveSubtitleOffsetMs(postId, value) } }
+        return value
+    }
+
+    /** Applies [style] live and saves it as the global subtitle style. */
+    fun setSubtitleStyle(style: SubtitleStyle) {
+        if (released || style == _subtitleStyle.value) return
+        _subtitleStyle.value = style
+        subtitleSync.enabled = style.enabled
+        scope.launch { safely("saveSubtitleStyle") { prefs.saveSubtitleStyle(style) } }
+    }
+
+    /**
+     * The viewer is leaving this item finished (auto-next): saves it as completed now, and every
+     * later save (pause, release, …) keeps it completed.
+     */
+    fun markCompleted() {
+        if (released || request == null) return
+        markedCompleted = true
+        saveProgress(SaveReason.ENDED)
     }
 
     /** Screen went to the background: save, pause and free decoders/buffers. */
@@ -325,6 +403,10 @@ class PlaybackController(
         logSummary()
         released = true
         tickJob?.cancel()
+        subtitleJob?.cancel()
+        offsetLoadJob?.cancel()
+        styleJob?.cancel()
+        subtitleSync.release()
         player.removeListener(playerListener)
         player.removeAnalyticsListener(analyticsListener)
         player.removeAnalyticsListener(statsListener)
@@ -345,7 +427,7 @@ class PlaybackController(
             key = request.key,
             positionMs = player.currentPosition,
             durationMs = knownDurationMs(),
-            ended = player.playbackState == Player.STATE_ENDED,
+            ended = markedCompleted || player.playbackState == Player.STATE_ENDED,
             reason = reason,
             nowElapsedMs = clock.elapsedRealtimeMs(),
             nowWallMs = clock.currentTimeMs(),
@@ -357,10 +439,56 @@ class PlaybackController(
     private fun rememberChoice(postId: Long, stream: StreamOption, rememberGlobally: Boolean) {
         scope.launch {
             safely("rememberChoice") {
-                val global = prefs.globalPrefs().first()
-                val scale = (prefs.titlePrefs(postId) ?: global).subtitleScale
-                prefs.saveTitlePrefs(postId, PlaybackPrefs(stream.audio, stream.quality, scale))
-                if (rememberGlobally) prefs.saveGlobalPrefs(global.copy(audio = stream.audio, quality = stream.quality))
+                prefs.saveTitlePrefs(postId, PlaybackPrefs(audio = stream.audio, quality = stream.quality))
+                if (rememberGlobally) {
+                    val global = prefs.globalPrefs().first()
+                    prefs.saveGlobalPrefs(global.copy(audio = stream.audio, quality = stream.quality))
+                }
+            }
+        }
+    }
+
+    /**
+     * Fetches [stream]'s .vtt unless that file is already loaded (or loading). Dubbed streams have
+     * none. On failure a single [PlayerEvent.SubtitleLoadFailed] is sent and playback goes on.
+     */
+    private fun loadSubtitles(stream: StreamOption) {
+        val url = stream.subtitleUrl?.takeIf { it.isNotBlank() }
+        if (url != null && url == subtitleUrl && (subtitleSync.track != null || subtitleJob?.isActive == true)) return
+        subtitleJob?.cancel()
+        subtitleUrl = url
+        subtitleSync.track = null
+        val loader = subtitleLoader
+        if (url == null || loader == null) return
+        subtitleJob = scope.launch {
+            val started = clock.elapsedRealtimeMs()
+            try {
+                val track = loader.load(url)
+                if (!released && subtitleUrl == url) {
+                    subtitleSync.track = track
+                    Log.i(TAG, "subtitles: ${track.size} cues in ${clock.elapsedRealtimeMs() - started}ms")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "subtitle load failed: ${e.message}", e.cause)
+                if (!released && subtitleUrl == url) eventChannel.trySend(PlayerEvent.SubtitleLoadFailed)
+            }
+        }
+    }
+
+    /** Reads the title's saved sync offset (once per title; episodes of a series share it). */
+    private fun loadSubtitleOffset(postId: Long) {
+        if (offsetPostId == postId) return
+        offsetPostId = postId
+        offsetLoadJob?.cancel()
+        _subtitleOffsetMs.value = 0
+        subtitleSync.offsetMs = 0
+        offsetLoadJob = scope.launch {
+            safely("subtitleOffset") {
+                val saved = SubtitleOffset.normalize(prefs.subtitleOffsetMs(postId))
+                _subtitleOffsetMs.value = saved
+                subtitleSync.offsetMs = saved
             }
         }
     }
@@ -447,43 +575,17 @@ class PlaybackController(
 
     private fun Long.orUnknown(): Long = if (this == C.TIME_UNSET || this < 0) -1 else this
 
-    private fun prepareCues(cues: List<Cue>): List<Cue> {
-        if (cues.isEmpty()) return emptyList()
-        return SubtitleCues.withoutCredits(cues) { it.text }.map { cue ->
-            val text = cue.text ?: return@map cue
-            val points = SubtitleCues.rtlMarkInsertionPoints(text)
-            if (points.isEmpty()) {
-                cue
-            } else {
-                val rtl = SpannableStringBuilder(text)
-                for (i in points.indices.reversed()) rtl.insert(points[i], RLM)
-                cue.buildUpon().setText(rtl).build()
-            }
-        }
-    }
-
-    private fun StreamOption.toMediaItem(request: PlaybackRequest): MediaItem {
-        val subtitles = subtitleUrl?.takeIf { it.isNotBlank() }?.let { url ->
-            listOf(
-                MediaItem.SubtitleConfiguration.Builder(Uri.parse(url))
-                    .setMimeType(MimeTypes.TEXT_VTT)
-                    .setLanguage("fa")
-                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                    .build(),
-            )
-        } ?: emptyList()
-        return MediaItem.Builder()
+    /** Video only: subtitles are side-loaded by our own engine, never by ExoPlayer. */
+    private fun StreamOption.toMediaItem(request: PlaybackRequest): MediaItem =
+        MediaItem.Builder()
             .setUri(url)
             .setMediaId("${request.key.asString()}@$quality/$audio")
-            .setSubtitleConfigurations(subtitles)
             .build()
-    }
 
     companion object {
         /** Logcat tag grepped by tools/tv.sh perf. */
         const val PERF_TAG = "BolbolPerf"
         private const val TAG = "BolbolPlayer"
         private const val NOT_MEASURING = -1L
-        private const val RLM = "\u200F"
     }
 }

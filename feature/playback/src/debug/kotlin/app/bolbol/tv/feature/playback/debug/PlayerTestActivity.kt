@@ -1,6 +1,7 @@
 package app.bolbol.tv.feature.playback.debug
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -23,11 +24,15 @@ import okhttp3.OkHttpClient
  *
  * ```
  * adb shell am start -n app.bolbol.tv/app.bolbol.tv.feature.playback.debug.PlayerTestActivity \
- *     [--ei quality 720] [--es audio dub|sub] [--el start_ms 600000] [--ez diag false] [--ez reset true]
+ *     [--ei quality 720] [--es audio dub|sub] [--el start_ms 600000] [--ez diag false] [--ez reset true] \
+ *     [--ez next true]
  * adb logcat -s BolbolPerf BolbolPlayer BolbolTest
  * ```
  * Defaults: 480p SUBTITLED (the emulator decodes in software), diagnostics on. Progress and prefs
  * live for the process, so BACK then relaunch shows the resume prompt (`--ez reset true` clears).
+ * `--ez next true` pretends the movie has a next episode (S01E02) to exercise the auto-next card:
+ * start ~40 s before the end (`--el start_ms`, duration shown in the overlay, or FF there);
+ * playing "next" logs `onPlayNext 353371:1:2` and finishes.
  */
 class PlayerTestActivity : ComponentActivity() {
 
@@ -37,6 +42,7 @@ class PlayerTestActivity : ComponentActivity() {
         val audio = if (intent.getStringExtra("audio") == "dub") AudioType.DUBBED else AudioType.SUBTITLED
         val startMs = intent.getLongExtra("start_ms", -1L).takeIf { it >= 0 }
         val diagnostics = intent.getBooleanExtra("diag", true)
+        val withNext = intent.getBooleanExtra("next", false)
         if (savedInstanceState == null) {
             val reset = intent.getBooleanExtra("reset", false)
             if (reset) Fakes.watch.clear()
@@ -45,7 +51,7 @@ class PlayerTestActivity : ComponentActivity() {
                 Fakes.prefs.reset(PlaybackPrefs(audio, quality))
             }
         }
-        val request = NakedGun.request(startMs)
+        val request = NakedGun.request(startMs).let { if (withNext) it.copy(next = WatchKey(353371, 1, 2)) else it }
         val playerFactory = PlayerFactory(applicationContext, Fakes.http)
 
         setContent {
@@ -53,12 +59,20 @@ class PlayerTestActivity : ComponentActivity() {
                 val vm: PlayerViewModel = viewModel(
                     factory = PlayerViewModel.factory(
                         request = request,
-                        createPlayer = { playerFactory.create() },
+                        playerFactory = playerFactory,
                         watch = Fakes.watch,
                         prefs = Fakes.prefs,
                     ),
                 )
-                PlayerScreen(viewModel = vm, onExit = ::finish, showDiagnostics = diagnostics)
+                PlayerScreen(
+                    viewModel = vm,
+                    onExit = ::finish,
+                    onPlayNext = { next ->
+                        Log.i("BolbolTest", "onPlayNext ${next.asString()}")
+                        finish()
+                    },
+                    showDiagnostics = diagnostics,
+                )
             }
         }
     }

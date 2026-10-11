@@ -13,6 +13,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import app.bolbol.tv.core.player.subtitles.SubtitleLoader
 import okhttp3.Call
 
 /**
@@ -29,6 +30,12 @@ class PlayerFactory(
     private val userAgent: String? = null,
 ) {
     private val appContext = context.applicationContext
+
+    /**
+     * Fetches the side-loaded .vtt files over the same [callFactory] (shared cache and pool).
+     * Pass it to `PlayerViewModel.factory(subtitleLoader = …)`.
+     */
+    val subtitleLoader: SubtitleLoader by lazy { SubtitleLoader(callFactory, userAgent) }
 
     /** Must be called on the main thread; the player's application looper is the caller's. */
     fun create(): ExoPlayer {
@@ -52,6 +59,13 @@ class PlayerFactory(
             .setSeekBackIncrementMs(PlayerTuning.SEEK_STEP_MS)
             .setSeekForwardIncrementMs(PlayerTuning.SEEK_STEP_MS)
             .build()
+            .apply {
+                // Subtitles are drawn by our own engine (subtitles/), never by ExoPlayer: no text
+                // track is ever selected, so the text renderer stays idle.
+                trackSelectionParameters = trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                    .build()
+            }
     }
 
     companion object {
