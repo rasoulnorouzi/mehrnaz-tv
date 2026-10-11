@@ -32,6 +32,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-11: The user gave permission to download and analyse the official TV APK ("please download yourself"). Done locally in the scratchpad; the APK and decompiled code are NOT committed, only the facts (docs/auth.md §0).
 - 2026-10-11: "Use a few more agents, you have a limit of 10 in parallel": scaled to 9 parallel agents. The real constraint is RAM (16 GB, about 5 GB free), so builds go through the `tools/gw.sh` queue (2 slots, no daemon).
 - 2026-10-11: "Let's consider the subtitle and its settings, because this app has subtitles with movies": subtitles are a core feature. Wrote docs/subtitles.md: own engine (timing offset, bidi, styling) + settings in the player and on a Settings page. Added as M1.10.
 - 2026-10-11: The search keyboard **must support both Persian and English** (user requirement).
@@ -43,6 +44,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
   an agent team. No corrections so far.
 
 ## Progress log
+- 2026-10-11: The official app's auth is confirmed: login form `username`/`password` → `data.token`; `Authorization: Bearer`; favorite-list (toggle `post_id`); watch-list with `current_time` in seconds (multipart). This enables cross-device progress sync. Mirrors playgen.ir and arzanycenter.ir also work.
 - 2026-10-11: MILESTONE: end-to-end on the emulator. Home (real data) → details → 720p playback with Persian subs → resume «ادامه از ۱:۰۷» + Continue Watching row. CDN throughput from the dev machine is about 45 Mbit/s with 0.4 s to first byte; emulator TTFF of 15.5 s is the software decoder, not the network.
 - 2026-10-11: Lesson: `gradlew --stop` kills ALL daemons machine-wide (it broke the manager's build). Banned; use tools/gw.sh (flock slots + --no-daemon) and the daemon idle timeout.
 - 2026-10-11: Learned: the API's image URLs on euploadi.com/uuploadi.ir 404; images live on the CDN (majnoonbazar.ir, seo2024.ir). Fixed in core:network with host rewrite + failover.

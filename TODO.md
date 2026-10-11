@@ -51,8 +51,9 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - [x] 2026-10-11 · M3.1 Auth investigation: username/email + password (no OTP); docs/auth.md (R)
 - [x] 2026-10-11 · **M1.11 End-to-end on the virtual TV ✅:** real home rows → details → play 720p with Persian subtitles → exit → «ادامه از ۱:۰۷» on details + «ادامه تماشا» row on Home (M). Screenshots: shots/2026-10-11/e2e-*.png
 - [x] 2026-10-11 · M2.4 + 3.4 + 3.5b Search merged + wired with the phone/QR remote: Persian/English keyboard, half-space, voice (fa-IR/en-US), recents, paging; 79 tests. Verified on the emulator: typing «باز» with the D-pad returns live results (UI + M)
+- [x] 2026-10-11 · Official TV app analysed (user permission): exact login (username/password → token), `Authorization: Bearer`, favourites = My List, watch-list = server progress in seconds; 2 more mirrors (playgen.ir, arzanycenter.ir) → docs/auth.md §0 (M)
 - **🔄 Running now (4 agents):**
-  - [ ] 🔄 M3.2 + 3.3 Login (you type it on the TV) + «لیست من» with watch-list sync (DE+UI, Sonnet)
+  - [ ] 🔄 M3.2 + 3.3 + 3.8 Login (you type it on the TV) + «لیست من» (= site favourites) + **progress sync with the site's watch-list** (DE+UI, Sonnet)
   - [ ] 🔄 M1.12 + 2.6 QA fixes (details title, "view all", progress bar) + watched / remove menus + My List button (UI, Sonnet)
   - [ ] 🔄 M1.8 Baseline Profile + Macrobenchmark modules (PA, Sonnet)
   - [ ] 🔄 M1.10b Own subtitle engine + in-player subtitle menu + M2.2 auto-next episode (PE, Opus)
@@ -81,8 +82,7 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 
 ### M3: Integrations
 - [ ] 3.6b Check the Watch Next row on the emulator's home screen; 📺 PatchWall behaviour on the TV (M)
-- [ ] 3.7 (if feasible) Receive the website's "play on TV" (R + DE)
-- [ ] 3.8 (if feasible) Sync progress with the website's continue-watching (R → DE)
+- [ ] 3.7 ~~Receive the website's "play on TV"~~: dropped, the official TV app doesn't use it either
 
 ### M4: Performance hardening and polish
 - [ ] 4.1 📺 Full benchmark suite + traces of the slowest flows (PA)
