@@ -27,3 +27,6 @@ tools/.tv-ip
 
 # Agent worktrees
 .claude/worktrees/
+
+# Release artifacts (published as GitHub release assets, not committed)
+dist/
