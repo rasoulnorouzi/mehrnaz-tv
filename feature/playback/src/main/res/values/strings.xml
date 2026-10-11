@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Player screen strings (Persian). &#8204; is the zero-width non-joiner (Persian half-space). -->
+<resources>
+    <string name="player_resume_title">ادامه تماشا</string>
+    <string name="player_resume_from">ادامه از %1$s</string>
+    <string name="player_start_over">از ابتدا</string>
+
+    <string name="player_play">پخش</string>
+    <string name="player_pause">توقف</string>
+    <string name="player_settings">تنظیمات پخش</string>
+    <string name="player_buffering">در حال بارگذاری</string>
+
+    <string name="player_audio">صدا</string>
+    <string name="player_audio_dubbed">دوبله</string>
+    <string name="player_audio_subtitled">زیرنویس</string>
+    <string name="player_quality">کیفیت</string>
+    <string name="player_subtitle_size">اندازه زیرنویس</string>
+    <string name="player_subtitle_small">کوچک</string>
+    <string name="player_subtitle_normal">معمولی</string>
+    <string name="player_subtitle_large">بزرگ</string>
+
+    <string name="player_retry">تلاش دوباره</string>
+    <string name="player_lower_quality">کیفیت پایین&#8204;تر</string>
+    <string name="player_back">بازگشت</string>
+    <string name="player_error_network">اتصال به سرور فیلم برقرار نشد. اینترنت را بررسی کنید.</string>
+    <string name="player_error_source_4xx">فایل این کیفیت روی سرور پیدا نشد.</string>
+    <string name="player_error_source_5xx">سرور فیلم موقتاً در دسترس نیست.</string>
+    <string name="player_error_format">فایل ویدیو قابل پخش نیست.</string>
+    <string name="player_error_decoder">این تلویزیون نمی&#8204;تواند این کیفیت را پخش کند.</string>
+    <string name="player_error_other">پخش با خطا متوقف شد.</string>
+    <string name="player_no_streams">لینک پخشی برای این عنوان پیدا نشد.</string>
+</resources>
