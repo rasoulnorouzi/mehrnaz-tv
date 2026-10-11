@@ -61,7 +61,7 @@ internal val SubtitleOptionSpecs: List<OptionSpec<SubtitleStyle, SubtitleChange>
     ),
     OptionSpec(
         label = "رنگ",
-        options = listOf("سفید", "زرد"),
+        options = listOf("سفید", "زرد", "فیروزه‌ای", "سبز روشن", "صورتی"),
         selectedIndex = { it.color.ordinal },
         change = { SubtitleChange.Color(SubtitleColor.entries[it]) },
     ),

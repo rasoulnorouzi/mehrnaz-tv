@@ -18,7 +18,11 @@ data class SubtitleStyle(
     }
 }
 
-enum class SubtitleColor { WHITE, YELLOW }
+/**
+ * Subtitle text colour. Stored in Room by **name** (never by ordinal), so new values go at the end and need no
+ * schema change; an unknown stored name reads back as [WHITE]. The order is also the order of the Settings chips.
+ */
+enum class SubtitleColor { WHITE, YELLOW, CYAN, GREEN, PINK }
 
 /** OUTLINE = black edge around the letters, no box; BOX = semi-transparent black box behind the text. */
 enum class SubtitleBackground { OUTLINE, BOX }

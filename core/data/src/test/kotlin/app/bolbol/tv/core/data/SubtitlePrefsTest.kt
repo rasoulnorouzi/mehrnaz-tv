@@ -48,6 +48,28 @@ class SubtitlePrefsTest {
     }
 
     @Test
+    fun everyColourRoundTripsByName() = runTest {
+        val repo = prefs()
+        for (color in SubtitleColor.entries) {
+            repo.saveSubtitleStyle(custom.copy(color = color))
+            assertEquals(color, repo.subtitleStyle().first().color)
+        }
+        // Stored by name, so reordering/adding enum values never changes what an old row means.
+        assertEquals(listOf("WHITE", "YELLOW", "CYAN", "GREEN", "PINK"), SubtitleColor.entries.map { it.name })
+    }
+
+    @Test
+    fun anUnknownStoredColourNameFallsBackToWhite() = runTest {
+        prefsDao.plantStyle(
+            SubtitleStyleEntity(enabled = true, sizeScale = 1.0f, color = "ORANGE", background = "BOX", bold = true, position = "MID"),
+        )
+        val style = prefs().subtitleStyle().first()
+        assertEquals(SubtitleColor.WHITE, style.color)
+        assertEquals(SubtitleBackground.BOX, style.background) // the other fields are read normally
+        assertEquals(SubtitlePosition.MID, style.position)
+    }
+
+    @Test
     fun styleFlowEmitsDefaultsThenTheSavedValueThenLaterChanges() = runTest {
         val repo = prefs()
         val emitted = mutableListOf<SubtitleStyle>()

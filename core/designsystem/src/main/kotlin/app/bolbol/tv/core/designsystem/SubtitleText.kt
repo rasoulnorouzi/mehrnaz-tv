@@ -44,7 +44,13 @@ fun SubtitleText(
 ) {
     if (!style.enabled || lines.isEmpty()) return
     val text = remember(lines) { lines.joinToString("\n") }
-    val fill = if (style.color == SubtitleColor.YELLOW) BolbolColors.SubtitleYellow else Color.White
+    val fill = when (style.color) {
+        SubtitleColor.WHITE -> Color.White
+        SubtitleColor.YELLOW -> BolbolColors.SubtitleYellow
+        SubtitleColor.CYAN -> BolbolColors.SubtitleCyan
+        SubtitleColor.GREEN -> BolbolColors.SubtitleGreen
+        SubtitleColor.PINK -> BolbolColors.SubtitlePink
+    }
     val textStyle = remember(style, fill) {
         TextStyle(
             fontFamily = VazirmatnFamily,
