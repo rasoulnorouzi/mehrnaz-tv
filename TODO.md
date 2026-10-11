@@ -62,7 +62,12 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - [x] 2026-10-11 · **Real login works** (user typed it on the virtual TV; session token stored, value never read) (U + M)
 - [x] 2026-10-11 · Fix: login form keyboard. Hardware typing goes straight into a focused field; Tab/Enter jumps from username into the password field ready to type; Enter in the password field logs in (user feedback) (M)
 - [ ] **Waiting on you (U):** after watching, check «لیست من» (site favourites) and whether the website/phone app shows the film in "continue watching" at the time you stopped
-- **🔄 Running now: none (all agents finished)**
+- **🔄 Running now (2 agents):**
+  - [ ] 🔄 QA: full device pass of the release build on TV_API34 (search, UI, pages, bookmarking/My List, player, settings, back behaviour) → `qa/2026-10-11-full-pass.md` (QA, Sonnet)
+  - [ ] 🔄 User request: **«پروفایل» tab** (login / profile info / VIP / logout with confirmation) + **"Made with ❤ for Mehi by Rasoul"** on Home and About (UI, Sonnet)
+  - [ ] 🔄 User request: **subtitle sync open-ended**: ±120 s range, 0.5 s and 5 s steps, hold OK to repeat, value shown like «+۱۲٫۵ ثانیه» (PE, Opus)
+- [ ] Next: fix wave from the QA report (agents per module) → re-test
+- [ ] **Release v1.0.0** (user request): dedicated signing key (kept off GitHub), APK checks (minSdk 29, leanback, no native libs, signature), fresh-install test on the Android 10 virtual TV, GitHub release with the APK, send the APK + Mi TV install steps to the user (M)
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
