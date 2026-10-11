@@ -1,6 +1,7 @@
 package app.bolbol.tv.core.model
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 /** Thrown by repositories for expected failures; the UI shows a friendly Persian message. */
 sealed class CatalogException(message: String, cause: Throwable? = null) : Exception(message, cause) {
@@ -46,4 +47,13 @@ interface PrefsRepository {
     suspend fun titlePrefs(postId: Long): PlaybackPrefs?
     suspend fun saveGlobalPrefs(prefs: PlaybackPrefs)
     suspend fun saveTitlePrefs(postId: Long, prefs: PlaybackPrefs)
+
+    // Subtitles (docs/subtitles.md). Defaults keep older implementations/fakes compiling;
+    // the real implementation in core:data overrides all four.
+    fun subtitleStyle(): Flow<SubtitleStyle> = flowOf(SubtitleStyle())
+    suspend fun saveSubtitleStyle(style: SubtitleStyle) {}
+
+    /** Per-title timing offset in ms (positive = subtitles appear later). 0 when never set. */
+    suspend fun subtitleOffsetMs(postId: Long): Int = 0
+    suspend fun saveSubtitleOffsetMs(postId: Long, offsetMs: Int) {}
 }

@@ -46,7 +46,7 @@ data class ContinueWatchingItem(
 data class PlaybackPrefs(
     val audio: AudioType? = null,
     val quality: Int? = null,
-    /** Subtitle text scale, 1.0 = default. */
+    /** Deprecated: use [SubtitleStyle.sizeScale] via PrefsRepository.subtitleStyle(). Removed after M1.10. */
     val subtitleScale: Float = 1.0f,
 )
 
