@@ -33,6 +33,8 @@ Last updated: 2026-10-11 (**v1.1.0 released**: prev/next, episodes panel, CW «g
 - [x] 2026-10-11 · Requirement recorded: search keyboard in **both Persian and English** (U)
 
 ## 🔄 In progress / waiting
+- [ ] 2026-10-11 · **v1.2-1 Playback speed** (user request, fa: "speed up to 2× and also slower, then publish"): «سرعت پخش» chips
+  ۰٫۵× · ۰٫۷۵× · عادی · ۱٫۲۵× · ۱٫۵× · ۲× in «تنظیمات پخش»; kept for the app session (no DB change); then v1.2.0 release (PE/UI Sonnet → M)
 - [x] 2026-10-11 · **v1.1.0 RELEASED** (user: "go ahead for implementation and production"): 5 agents in parallel worktrees
   (2 Opus, 3 Sonnet), all merged and reviewed by M; signed APK installed **over v1.0.0** on the Android 11 emulator with history
   kept; GitHub release v1.1.0, APK sent to the user (M)

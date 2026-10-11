@@ -33,6 +33,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-11: (fa) Add playback speed, slower and up to 2×, then publish → v1.2-1 / v1.2.0. Decision (M): speed is kept for the app session, not saved to disk.
 - 2026-10-11: "The video lag resolves after a few seconds, don't bother too much; improve only if there's room." v1.1-2 fix already shipped; no more work on it unless the TV shows a problem.
 - 2026-10-11: (fa) Remove the «زودتر/دیرتر ۵ ثانیه» subtitle-sync buttons; 0.5 s steps are enough (v1.1-6). Supersedes the earlier "5 s steps" wish.
 - 2026-10-11: "Go ahead for implementation and production, assign tasks to agents": v1.1 started with 4 parallel agents.
