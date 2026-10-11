@@ -1,0 +1,30 @@
+HTTP/1.1 301 Moved Permanently
+Server: nginx/1.18.0 (Ubuntu)
+Date: Sun, 11 Oct 2026 13:28:56 GMT
+Content-Type: text/html; charset=UTF-8
+Content-Length: 0
+Connection: keep-alive
+set-cookie: PHPSESSID=<REDACTED>; path=/; secure
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate
+Pragma: no-cache
+X-Redirect-By: WordPress
+Location: https://euploadi.com/forget-password/
+X-Frame-Options: DENY
+Content-Security-Policy: frame-ancestors 'none';
+Cache-Control: public, max-age=2592000, immutable
+
+HTTP/1.1 200 OK
+Server: nginx/1.18.0 (Ubuntu)
+Date: Sun, 11 Oct 2026 13:28:56 GMT
+Content-Type: text/html; charset=UTF-8
+Transfer-Encoding: chunked
+Connection: keep-alive
+set-cookie: PHPSESSID=<REDACTED>; path=/; secure
+Expires: Thu, 19 Nov 1981 08:52:00 GMT
+Cache-Control: no-store, no-cache, must-revalidate
+Pragma: no-cache
+X-Frame-Options: DENY
+Content-Security-Policy: frame-ancestors 'none';
+Cache-Control: public, max-age=2592000, immutable
+
