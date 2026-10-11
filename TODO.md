@@ -50,12 +50,12 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - [x] 2026-10-11 · M3.5 Phone/QR remote module merged; 75 tests (DE)
 - [x] 2026-10-11 · M3.1 Auth investigation: username/email + password (no OTP); docs/auth.md (R)
 - [x] 2026-10-11 · **M1.11 End-to-end on the virtual TV ✅:** real home rows → details → play 720p with Persian subtitles → exit → «ادامه از ۱:۰۷» on details + «ادامه تماشا» row on Home (M). Screenshots: shots/2026-10-11/e2e-*.png
-- **🔄 Running now (5 agents):**
+- [x] 2026-10-11 · M2.4 + 3.4 + 3.5b Search merged + wired with the phone/QR remote: Persian/English keyboard, half-space, voice (fa-IR/en-US), recents, paging; 79 tests. Verified on the emulator: typing «باز» with the D-pad returns live results (UI + M)
+- **🔄 Running now (4 agents):**
   - [ ] 🔄 M3.2 + 3.3 Login (you type it on the TV) + «لیست من» with watch-list sync (DE+UI, Sonnet)
   - [ ] 🔄 M1.12 + 2.6 QA fixes (details title, "view all", progress bar) + watched / remove menus + My List button (UI, Sonnet)
   - [ ] 🔄 M1.8 Baseline Profile + Macrobenchmark modules (PA, Sonnet)
   - [ ] 🔄 M1.10b Own subtitle engine + in-player subtitle menu + M2.2 auto-next episode (PE, Opus)
-  - [ ] 🔄 M2.4 + M3.4 Search: Persian/English keyboard + voice (UI, Sonnet)
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
@@ -77,11 +77,9 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - [ ] 2.1 Series details: season tabs, episode list with progress, jump to next unwatched (UI + DE)
 - [ ] 2.2 Auto-next episode with countdown (PE)
 - [ ] 2.3 Remember dub/sub, quality, subtitle size (DE)
-- [ ] 2.4 Search: TV keyboard with **both Persian (فارسی) and English layouts + a switch key** (user requirement), instant typeahead (evaluate `search-data.json`), recent searches (UI + DE)
+- [ ] 2.4b (optional) Instant local typeahead from the site's `search-data.json` index (DE)
 
 ### M3: Integrations
-- [ ] 3.4 Voice search with the remote's mic (UI)
-- [ ] 3.5b Put the phone/QR remote into the search screen (M)
 - [ ] 3.6b Check the Watch Next row on the emulator's home screen; 📺 PatchWall behaviour on the TV (M)
 - [ ] 3.7 (if feasible) Receive the website's "play on TV" (R + DE)
 - [ ] 3.8 (if feasible) Sync progress with the website's continue-watching (R → DE)

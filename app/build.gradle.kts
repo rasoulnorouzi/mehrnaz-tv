@@ -52,6 +52,8 @@ dependencies {
     implementation(project(":feature:browse"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:tvhome"))
+    implementation(project(":feature:search"))
+    implementation(project(":core:lanremote"))
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)

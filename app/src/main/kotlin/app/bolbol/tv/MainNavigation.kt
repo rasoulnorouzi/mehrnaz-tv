@@ -20,7 +20,14 @@ import app.bolbol.tv.core.designsystem.BolbolText
 import app.bolbol.tv.core.model.Category
 import app.bolbol.tv.core.model.ListQuery
 import app.bolbol.tv.core.model.WatchKey
+import app.bolbol.tv.core.lanremote.PhoneRemotePanel
+import app.bolbol.tv.feature.search.SearchScreen
+import app.bolbol.tv.feature.search.SearchViewModel
 import app.bolbol.tv.feature.settings.SettingsScreen
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import app.bolbol.tv.feature.settings.SettingsViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import app.bolbol.tv.feature.browse.BrowseScreen
@@ -70,7 +77,7 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                         when (dest) {
                             HomeDestination.MOVIES -> open(BrowseRoute("فیلم‌ها", Category.MOVIES.name))
                             HomeDestination.SERIES -> open(BrowseRoute("سریال‌ها", Category.SERIES.name))
-                            HomeDestination.SEARCH -> open(ComingSoonRoute("جستجو"))
+                            HomeDestination.SEARCH -> open(SearchRoute)
                             HomeDestination.SETTINGS -> open(SettingsRoute)
                         }
                     },
@@ -99,6 +106,19 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
             }
             entry<PlayerRoute> { route ->
                 PlayerEntry(app, route, onExit = back)
+            }
+            entry<SearchRoute> {
+                // Text typed on a phone (QR remote) flows into the search query.
+                val phoneText = remember {
+                    MutableSharedFlow<String>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+                }
+                val context = LocalContext.current
+                SearchScreen(
+                    viewModel = viewModel(factory = SearchViewModel.factory(data.catalog, context.applicationContext)),
+                    onOpenTitle = { open(DetailsRoute(it.id)) },
+                    externalInput = phoneText,
+                    phoneRemoteContent = { PhoneRemotePanel(onText = { phoneText.tryEmit(it) }) },
+                )
             }
             entry<SettingsRoute> {
                 SettingsScreen(
