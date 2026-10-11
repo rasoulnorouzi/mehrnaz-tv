@@ -263,7 +263,6 @@ private fun SpeedSection(speed: Float, onSpeed: (Float) -> Unit) {
                 label = if (PlaybackSpeeds.isNormal(choice)) stringResource(R.string.player_speed_normal) else formatSpeedMultiplier(choice),
                 selected = abs(choice - speed) < 0.001f,
                 onClick = { onSpeed(choice) },
-                modifier = Modifier.weight(1f),
             )
         }
     }
