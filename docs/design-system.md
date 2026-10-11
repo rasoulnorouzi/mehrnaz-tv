@@ -29,7 +29,7 @@ Disney+/Prime (season tabs + episode list, Skip Intro, next-episode countdown), 
   debounced to the focused item.
 - `TvButton` (primary yellow / secondary outline), `Chip` (audio/quality pickers), `ProgressBar`,
   `Shimmer` placeholder (solid colour blocks; no animated gradients on low-end).
-- `TvKeyboard`: Persian + English layouts, grid, with long-press for digits.
+- `TvKeyboard`: **Persian (فارسی) and English layouts, both required** (user requirement 2026-10-11). Has a visible switch key (فا / EN) and remembers the last-used layout. Digits row, space, backspace, clear. Grid of D-pad-friendly keys; long-press for alternates (e.g. ی/ي, ک/ك).
 
 ## Screens
 1. **Home**

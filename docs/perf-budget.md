@@ -3,6 +3,8 @@
 Target hardware: Mi TV P1 43": 4× Cortex-A55 @1.5 GHz, Mali-G52 MP2, **2 GB RAM**, Android 10 (API 29).
 All numbers are measured on **the real TV**, release build, with the Baseline Profile installed.
 The emulator is for screenshots and profile generation only; never quote emulator timings.
+(Proof, 2026-10-11: the API 29 TV emulator renders in software, so a trivial screen showed 90 % janky frames
+and `Graphics: 0 KB`. Emulator frame stats are meaningless; `tools/tv.sh perf` flags them.)
 
 ## Budgets
 | Metric | Budget | How it's measured |

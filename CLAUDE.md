@@ -18,6 +18,7 @@ The main session (Opus) is the **project manager**. It delegates to the agents i
 | Device quirks (codecs, ADB, launcher, RAM) | `docs/device.md` |
 | Why something was chosen (or to change a choice) | `docs/decisions.md`. Add a new dated entry; never silently reverse |
 | Delegating work to a sub-agent | `.claude/agents/*.md` + §Agent rules below |
+| Adding a module / Gradle or version questions | `docs/modules.md`, `gradle/libs.versions.toml` |
 | Installing, screenshotting, or driving the TV | `tools/tv.sh help`, `docs/device.md` §ADB |
 | Background (why this project exists) | `docs/feasibility-analysis.md` |
 
@@ -57,11 +58,14 @@ The main session (Opus) is the **project manager**. It delegates to the agents i
 - Parallel agents get **disjoint modules** (use git worktrees when writing code in parallel).
   The manager reviews every diff before it is merged.
 - Agents return short reports (≤150 words + file list). Long output goes into files, not chat.
+- The agent types in `.claude/agents/` load only when the session starts **inside this folder**.
+  Otherwise use `general-purpose` with the same `model` and paste the role file's instructions into the brief.
 
-## Commands (after M0 sets them up)
+## Commands (ANDROID_HOME defaults to ~/Android/Sdk)
 ```bash
 ./gradlew :app:assembleRelease          # optimised build (R8 + baseline profile)
-tools/tv.sh connect                     # adb connect to the TV over Wi-Fi
+tools/tv.sh emu                         # start the virtual TV (BolbolTV_API29) if no device
+tools/tv.sh connect <ip>                # adb connect to the real TV over Wi-Fi
 tools/tv.sh install                     # build + install on the TV
 tools/tv.sh shot <name>                 # screenshot → shots/<date>/<name>.png
 tools/tv.sh key DPAD_RIGHT [n]          # drive the UI with the remote's keys

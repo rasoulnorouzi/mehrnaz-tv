@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-11 (emulator path, git, GitHub CLI)
+Last updated: 2026-10-11 (M0 done on the emulator; TV-only items pending)
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -24,22 +24,24 @@ Last updated: 2026-10-11 (emulator path, git, GitHub CLI)
 - [x] 2026-10-11 · Android command-line tools downloaded to `~/Android/Sdk` (M)
 - [x] 2026-10-11 · GitHub CLI installed to `~/.local/bin/gh` (M)
 - [x] 2026-10-11 · Local git repository created, first commit `490b59d` (M)
+- [x] 2026-10-11 · Private GitHub repo created and pushed: github.com/rasoulnorouzi/bolboljan-androidtv (M)
+- [x] 2026-10-11 · 0.1 SDK packages installed: platform-tools, emulator, build-tools 36.1, platforms 36 + 37, Android TV images API 29 + 34 (M)
+- [x] 2026-10-11 · 0.1b Virtual TVs created: `BolbolTV_API29` (copy of your TV: Android 10, 2 GB, 4 cores, 1080p) + `TV_API34` (M)
+- [x] 2026-10-11 · 0.2 Gradle skeleton: AGP 9.4.1, Gradle 9.8.1, Kotlin 2.4.21, `:app` + `:core:designsystem`, R8 release, recipe in `docs/modules.md` (M)
+- [x] 2026-10-11 · 0.3 `tools/tv.sh` written by the Haiku agent and reviewed by M; all subcommands except `trace` tested on the emulator (C + M)
+- [x] 2026-10-11 · 0.5 Hello-world Persian RTL app on the virtual TV: right-to-left order, Persian shaping, mixed text and remote focus verified with screenshots (M)
+- [x] 2026-10-11 · Requirement recorded: search keyboard in **both Persian and English** (U)
 
 ## 🔄 In progress / waiting
-- [ ] **Waiting on you (U):** accept the Android SDK license (one terminal command)
-- [ ] **Waiting on you (U):** log in to GitHub once (`gh auth login`) so I can create the private repo
+- [ ] **Waiting on you (U):** approve starting **M1 (Watchable MVP)**
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
 
 ### M0: Foundations
-- [ ] 0.1 Install SDK packages: platform-tools (adb), build-tools, emulator, Android TV images API 29 + 34 (M, after the license)
-- [ ] 0.1b Create emulators: `BolbolTV_API29` (copy of your TV: Android 10, 2 GB RAM, 1080p) + `TV_API34` (for Baseline Profiles) (M)
-- [ ] 0.1c Create the private GitHub repo and push (M, after GitHub login)
-- [ ] 0.2 Gradle multi-module skeleton, version catalog, R8, minSdk 29 (M)
-- [ ] 0.3 `tools/tv.sh`: connect / install / shot / key / text / logs / perf / trace (C, reviewed by M)
 - [ ] 0.4 📺 Connect to the TV over Wi-Fi ADB + install scrcpy; fill in "Verified on device" in `docs/device.md` (U + M)
-- [ ] 0.5 Hello-world Persian RTL app on the emulator + first screenshot (QA); repeat on the TV later 📺
+- [ ] 0.5b 📺 Repeat the hello-world check on the real TV
+- [ ] 0.7 Verify `tools/tv.sh trace` (Perfetto) once there is real UI to trace (M1)
 - [ ] 0.6 📺 Measure the official app as the baseline → `perf/reports/official-baseline.md` (PA)
 
 ### M1: Watchable MVP
@@ -57,7 +59,7 @@ Last updated: 2026-10-11 (emulator path, git, GitHub CLI)
 - [ ] 2.1 Series details: season tabs, episode list with progress, jump to next unwatched (UI + DE)
 - [ ] 2.2 Auto-next episode with countdown (PE)
 - [ ] 2.3 Remember dub/sub, quality, subtitle size (DE)
-- [ ] 2.4 Search: TV keyboard, instant typeahead (evaluate `search-data.json`), recent searches (UI + DE)
+- [ ] 2.4 Search: TV keyboard with **both Persian (فارسی) and English layouts + a switch key** (user requirement), instant typeahead (evaluate `search-data.json`), recent searches (UI + DE)
 - [ ] 2.5 Category / "view all" pages with paging (UI + DE)
 - [ ] 2.6 Mark watched/unwatched, remove from Continue Watching (DE + UI)
 

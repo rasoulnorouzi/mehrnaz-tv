@@ -59,7 +59,7 @@ Room cache (stale-while-revalidate for home rows, so the home screen paints inst
 | 2.1 | Series details: season tabs + episode list with progress bars/watched ticks; opens at the next unwatched episode | UI + DE | screenshots; logic unit-tested |
 | 2.2 | Auto-next: countdown card near the end, "next episode" button, honours remembered audio/quality | PE | plays S01E01 → E02 hands-free |
 | 2.3 | Remembered preferences per title + global (dub/sub, quality, subtitle size) | DE | prefs persist across restarts |
-| 2.4 | Search: Persian/English on-screen keyboard, debounced query, results grid, recent searches. Evaluate the site's static `search-data.json` index (size/freshness) for instant local typeahead; fall back to `/post/search` | UI + DE | search "friends" works with the remote only; results < 300 ms |
+| 2.4 | Search: on-screen keyboard with **both Persian and English layouts** (switch key; remembers the last layout; user requirement), debounced query, results grid, recent searches. Evaluate the site's static `search-data.json` index (size/freshness) for instant local typeahead; fall back to `/post/search` | UI + DE | search "friends" works with the remote only; results < 300 ms |
 | 2.5 | Category pages (movies/series/cartoons/docs, "view all" from rows) with paging | UI + DE | infinite scroll with no jank |
 | 2.6 | Mark watched/unwatched, remove from Continue Watching | DE + UI | long-press menu works |
 

@@ -4,9 +4,9 @@ Living memory for this project. Update it at the end of every session or milesto
 Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 
 ## ▶ Current status
-- **Milestone:** M0 (Foundations), in progress.
-- **Next task:** M0.1 SDK packages + emulators (after the user accepts the SDK license), M0.1c GitHub repo (after `gh auth login`).
-- **Blockers:** SDK license + GitHub login (user). **No TV access for now**: develop on the emulator; 📺 tasks wait.
+- **Milestone:** M0 done on the emulator (TV-only items 0.4/0.5b/0.6 wait for the TV). M1 next, pending the user's go-ahead.
+- **Next task:** M1.1 network layer (DE) + M1.3 design system (UI) + M1.4 player core (PE), in parallel on disjoint modules.
+- **Blockers:** none. **No TV access for now**: develop on the emulator; 📺 tasks wait.
 
 ## User profile & preferences
 - Persian speaker; communicates in English (voice-typed, so expect transcription noise:
@@ -32,6 +32,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-11: The search keyboard **must support both Persian and English** (user requirement).
 - 2026-10-11: The user has no TV access for now, so we use the Android TV emulator; performance numbers wait for the real TV. They asked for a **private GitHub repo** (approved pushing to it).
 - 2026-10-11: The user found the technical instructions confusing ("clearly guide me"). Give the user **plain-language, numbered, click-by-click steps** with exact commands; avoid jargon.
 - 2026-10-11: The user asked for a TODO list (done / doing / to do) and **a report after every task or
@@ -40,6 +41,13 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
   an agent team. No corrections so far.
 
 ## Progress log
+- 2026-10-11: M0 done (emulator). GitHub repo private at rasoulnorouzi/bolboljan-androidtv (gh logged in via keyring).
+  SDK at ~/Android/Sdk via the new `android` CLI (`android --sdk=$HOME/Android/Sdk sdk install …`; no license prompt).
+  compileSdk had to be 37 (AndroidX requires it). Haiku wrote tools/tv.sh (good quality). Hello screen verified by
+  screenshots (RTL, shaping, bidi, focus). Emulator perf numbers are invalid (software rendering).
+  Lesson: project agent types load only when a session starts in the project folder; use general-purpose + model meanwhile.
+  Lesson: the user's `!`-launched interactive commands (gh auth login) spawned several tabs; for interactive steps,
+  launch the command myself with run_in_terminal and tell the user exactly what to press.
 - 2026-10-11: Java 21 installed (user). Android cmdline-tools in `~/Android/Sdk` (new "Android CLI" 1.0; sdkmanager still works but is deprecated). gh 2.102.0 in `~/.local/bin`. Local git repo, first commit 490b59d.
 - 2026-10-11: Created the project folder. Feasibility study done (`docs/feasibility-analysis.md`):
   public JSON API `/wp-json/mapi/v1`, seekable MP4, VTT subtitles. Researched the device and the
