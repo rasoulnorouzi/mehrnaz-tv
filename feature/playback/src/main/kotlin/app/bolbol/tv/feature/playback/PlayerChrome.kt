@@ -162,6 +162,15 @@ internal class PlayerKeyHandler(
             return true
         }
 
+        // v1.1-1: the remote's ⏮ / ⏭ switch episodes (series only; ignored for movies and at the ends). Also on the
+        // resume prompt and the error panel, so an episode that won't play can be skipped.
+        if (event.key == Key.MediaNext || event.key == Key.MediaPrevious) {
+            if (down && event.nativeKeyEvent.repeatCount == 0) {
+                if (event.key == Key.MediaNext) viewModel.playNextEpisode() else viewModel.playPreviousEpisode()
+            }
+            return true
+        }
+
         val controller = viewModel.controller
         val active = viewModel.screen.value.phase == PlayerPhase.Playing && controller.error.value == null
         if (!active) return false
@@ -206,13 +215,6 @@ internal class PlayerKeyHandler(
             Key.Menu -> {
                 if (down && native.repeatCount == 0) {
                     if (chrome.panelOpen) chrome.closePanel() else chrome.openPanel(PlayerPanel.Settings)
-                }
-                return true
-            }
-            // v1.1-1: the remote's ⏮ / ⏭ switch episodes (series only; ignored for movies and at the ends).
-            Key.MediaNext, Key.MediaPrevious -> {
-                if (down && native.repeatCount == 0) {
-                    if (key == Key.MediaNext) viewModel.playNextEpisode() else viewModel.playPreviousEpisode()
                 }
                 return true
             }
