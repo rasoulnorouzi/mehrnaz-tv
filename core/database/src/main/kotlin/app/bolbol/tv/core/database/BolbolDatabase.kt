@@ -19,6 +19,7 @@ import androidx.room.RoomDatabase
         SubtitleStyleEntity::class,
         SubtitleOffsetEntity::class,
         HomeCacheEntity::class,
+        MyListEntity::class,
     ],
     version = 1,
     exportSchema = true,
@@ -27,6 +28,7 @@ abstract class BolbolDatabase : RoomDatabase() {
     abstract fun watchDao(): WatchDao
     abstract fun prefsDao(): PrefsDao
     abstract fun homeCacheDao(): HomeCacheDao
+    abstract fun myListDao(): MyListDao
 
     companion object {
         const val FILE_NAME = "bolbol.db"

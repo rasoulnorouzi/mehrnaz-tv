@@ -1,6 +1,7 @@
 package app.bolbol.tv.core.data
 
 import app.bolbol.tv.core.database.ContinueWatchingRow
+import app.bolbol.tv.core.database.MyListEntity
 import app.bolbol.tv.core.database.PrefsEntity
 import app.bolbol.tv.core.database.ProgressEntity
 import app.bolbol.tv.core.database.SubtitleStyleEntity
@@ -55,6 +56,34 @@ internal fun TitleSummary.toSnapshot(hiddenFromContinue: Boolean, lastWatchedAtM
     )
 
 internal fun TitleSnapshotEntity.toSummary(): TitleSummary = TitleSummary(
+    id = postId,
+    type = type?.let { name -> TitleType.entries.firstOrNull { it.name == name } },
+    title = title,
+    faTitle = faTitle,
+    posterUrl = posterUrl,
+    backdropUrl = backdropUrl,
+    year = year,
+    imdbRating = imdbRating,
+    hasDub = hasDub,
+    hasSubtitle = hasSubtitle,
+)
+
+internal fun TitleSummary.toMyList(addedAtMs: Long, pendingSync: Int): MyListEntity = MyListEntity(
+    postId = id,
+    type = type?.name,
+    title = title,
+    faTitle = faTitle,
+    posterUrl = posterUrl,
+    backdropUrl = backdropUrl,
+    year = year,
+    imdbRating = imdbRating,
+    hasDub = hasDub,
+    hasSubtitle = hasSubtitle,
+    addedAtMs = addedAtMs,
+    pendingSync = pendingSync,
+)
+
+internal fun MyListEntity.toSummary(): TitleSummary = TitleSummary(
     id = postId,
     type = type?.let { name -> TitleType.entries.firstOrNull { it.name == name } },
     title = title,

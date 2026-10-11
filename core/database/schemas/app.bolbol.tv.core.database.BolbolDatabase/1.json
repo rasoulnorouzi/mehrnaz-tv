@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "c8a7379ada2d3f480f484a4106e79097",
+    "identityHash": "85908d015c31b1e161cecbbbe7d712ad",
     "entities": [
       {
         "tableName": "progress",
@@ -295,11 +295,101 @@
             "id"
           ]
         }
+      },
+      {
+        "tableName": "my_list",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`postId` INTEGER NOT NULL, `type` TEXT, `title` TEXT NOT NULL, `faTitle` TEXT NOT NULL, `posterUrl` TEXT, `backdropUrl` TEXT, `year` INTEGER, `imdbRating` REAL, `hasDub` INTEGER NOT NULL, `hasSubtitle` INTEGER NOT NULL, `addedAtMs` INTEGER NOT NULL, `pendingSync` INTEGER NOT NULL, PRIMARY KEY(`postId`))",
+        "fields": [
+          {
+            "fieldPath": "postId",
+            "columnName": "postId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "faTitle",
+            "columnName": "faTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "posterUrl",
+            "columnName": "posterUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "backdropUrl",
+            "columnName": "backdropUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "imdbRating",
+            "columnName": "imdbRating",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "hasDub",
+            "columnName": "hasDub",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasSubtitle",
+            "columnName": "hasSubtitle",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "addedAtMs",
+            "columnName": "addedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pendingSync",
+            "columnName": "pendingSync",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "postId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_my_list_addedAtMs",
+            "unique": false,
+            "columnNames": [
+              "addedAtMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_my_list_addedAtMs` ON `${TABLE_NAME}` (`addedAtMs`)"
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c8a7379ada2d3f480f484a4106e79097')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '85908d015c31b1e161cecbbbe7d712ad')"
     ]
   }
 }

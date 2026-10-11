@@ -136,3 +136,56 @@ interface HomeCacheDao {
     @Upsert
     suspend fun upsert(entity: HomeCacheEntity)
 }
+
+/**
+ * "My List". Single-statement writes guarded by the expected `pendingSync` value, so a sync running in the background
+ * can never overwrite a change the user made meanwhile (see `AccountRepositoryImpl.syncMyList`).
+ * Abstract class like [WatchDao] so tests can fake it.
+ */
+@Dao
+abstract class MyListDao {
+
+    /** Visible items (no tombstones), newest first. */
+    @Query("SELECT * FROM my_list WHERE pendingSync != 2 ORDER BY addedAtMs DESC, postId DESC")
+    abstract fun observeVisible(): Flow<List<MyListEntity>>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM my_list WHERE postId = :postId AND pendingSync != 2)")
+    abstract fun observeContains(postId: Long): Flow<Boolean>
+
+    /** Every row including tombstones, for the sync. */
+    @Query("SELECT * FROM my_list")
+    abstract suspend fun all(): List<MyListEntity>
+
+    @Query("SELECT * FROM my_list WHERE postId = :postId")
+    abstract suspend fun get(postId: Long): MyListEntity?
+
+    /** Rows still waiting for the server (adds and tombstones). */
+    @Query("SELECT COUNT(*) FROM my_list WHERE pendingSync != 0")
+    abstract suspend fun pendingCount(): Int
+
+    @Upsert
+    abstract suspend fun upsert(entity: MyListEntity)
+
+    /** Server-side item we do not have yet. Returns the rowid, or -1 when the row already existed. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun insertIfAbsent(entity: MyListEntity): Long
+
+    /** Local removal: keep the row hidden until the server confirms it. */
+    @Query("UPDATE my_list SET pendingSync = 2 WHERE postId = :postId")
+    abstract suspend fun markRemoved(postId: Long)
+
+    @Query("DELETE FROM my_list WHERE postId = :postId")
+    abstract suspend fun delete(postId: Long)
+
+    /** Marks the row as in sync, but only if it is still in the [expected] pending state. */
+    @Query("UPDATE my_list SET pendingSync = 0 WHERE postId = :postId AND pendingSync = :expected")
+    abstract suspend fun clearPending(postId: Long, expected: Int)
+
+    /** Deletes the row, but only if it is still in the [expected] pending state. */
+    @Query("DELETE FROM my_list WHERE postId = :postId AND pendingSync = :expected")
+    abstract suspend fun deleteIfPending(postId: Long, expected: Int)
+
+    /** After a login every synced row becomes "to add", so the first sync is a union and deletes nothing. */
+    @Query("UPDATE my_list SET pendingSync = 1 WHERE pendingSync = 0")
+    abstract suspend fun markSyncedAsPendingAdd()
+}

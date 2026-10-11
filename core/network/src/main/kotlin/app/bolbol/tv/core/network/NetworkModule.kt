@@ -25,18 +25,30 @@ class NetworkModule(
     context: Context,
     mirrors: List<String> = DEFAULT_MIRRORS,
     imageHosts: List<String> = DEFAULT_IMAGE_HOSTS,
+    private val tokenProvider: TokenProvider = TokenProvider { null },
 ) {
     private val appContext = context.applicationContext
     private val mirrorList = MirrorList(mirrors)
     private val imageHostList = MirrorList(imageHosts)
 
     val okHttpClient: OkHttpClient by lazy {
-        createOkHttpClient(File(appContext.cacheDir, "http"), mirrorList, imageHostList)
+        createOkHttpClient(File(appContext.cacheDir, "http"), mirrorList, imageHostList, tokenProvider)
     }
 
     val catalog: CatalogRemoteDataSource by lazy {
         RetrofitCatalogRemote(
             service = createService(okHttpClient, mirrorList),
+            images = ImageUrls { imageHostList.primary() },
+        )
+    }
+
+    /**
+     * The optional account (login, favourites = My List, server progress). The login token comes from the
+     * [TokenProvider] given to this module and is attached by the shared client to `user/` calls only.
+     */
+    val account: AccountRemoteDataSource by lazy {
+        RetrofitAccountRemote(
+            service = createAccountService(okHttpClient, mirrorList),
             images = ImageUrls { imageHostList.primary() },
         )
     }
@@ -54,8 +66,16 @@ class NetworkModule(
     fun setImageHosts(imageHosts: List<String>) = imageHostList.update(imageHosts)
 
     companion object {
-        /** Site roots of the API mirrors, in order of preference (docs/api.md section 1). */
-        val DEFAULT_MIRRORS: List<String> = listOf("https://euploadi.com/", "https://uuploadi.ir/")
+        /**
+         * Site roots of the API mirrors, in order of preference (docs/api.md section 1). The last two are the hosts the
+         * official TV app uses (docs/auth.md section 0); both serve the same `mapi/v1` JSON.
+         */
+        val DEFAULT_MIRRORS: List<String> = listOf(
+            "https://euploadi.com/",
+            "https://uuploadi.ir/",
+            "https://playgen.ir/",
+            "https://arzanycenter.ir/",
+        )
 
         /**
          * Image CDN site roots, in order of preference (docs/api.md quirk 7). The API's own hosts 404 for uploads,
@@ -69,7 +89,12 @@ private const val CACHE_SIZE_BYTES = 50L * 1024 * 1024
 private const val CONNECT_TIMEOUT_SECONDS = 10L
 private const val READ_TIMEOUT_SECONDS = 20L
 
-internal fun createOkHttpClient(cacheDir: File, mirrors: MirrorList, imageHosts: MirrorList): OkHttpClient =
+internal fun createOkHttpClient(
+    cacheDir: File,
+    mirrors: MirrorList,
+    imageHosts: MirrorList,
+    tokens: TokenProvider = TokenProvider { null },
+): OkHttpClient =
     OkHttpClient.Builder()
         .cache(Cache(cacheDir, CACHE_SIZE_BYTES))
         .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -77,12 +102,19 @@ internal fun createOkHttpClient(cacheDir: File, mirrors: MirrorList, imageHosts:
         .retryOnConnectionFailure(true)
         .addInterceptor(MirrorInterceptor(mirrors))
         .addInterceptor(ImageCdnInterceptor(imageHosts))
+        // Network interceptor: sees the real mirror of every attempt and every redirect hop (see AuthTokenInterceptor).
+        .addNetworkInterceptor(AuthTokenInterceptor(mirrors, tokens))
         .build()
 
-internal fun createService(client: OkHttpClient, mirrors: MirrorList): BolboljanService =
+private fun retrofit(client: OkHttpClient, mirrors: MirrorList): Retrofit =
     Retrofit.Builder()
         .baseUrl(mirrors.apiBaseUrl())
         .client(client)
         .addConverterFactory(BolboljanJson.asConverterFactory("application/json; charset=UTF-8".toMediaType()))
         .build()
-        .create(BolboljanService::class.java)
+
+internal fun createService(client: OkHttpClient, mirrors: MirrorList): BolboljanService =
+    retrofit(client, mirrors).create(BolboljanService::class.java)
+
+internal fun createAccountService(client: OkHttpClient, mirrors: MirrorList): AccountService =
+    retrofit(client, mirrors).create(AccountService::class.java)

@@ -186,6 +186,8 @@ Recommendation: task 3.7 depends on the hypothesis-1 test. If it fails, drop 3.7
 
 ## 8. Recommended implementation plan (Q7)
 
+> Sections 8.1-8.6 were written before section 0 confirmed the API (they say `X-Token`, two lists, a Keystore); where they differ, section 0 and 8.7 (what is built) win.
+
 Design rule: **everything account-related is optional and fails soft.** The app is fully usable as a guest; losing the token or the server never blocks playback. Start tolerant, tighten after the first real login.
 
 ### 8.1 Screens (`feature/account`, Persian RTL, D-pad first)
@@ -253,6 +255,34 @@ Debug builds only: log the **shape** (keys and JSON types) of the auth responses
 ### 8.6 Fallback if `mapi` lists are unusable
 
 Sign in through the website path (`GET /sign-in/` with an iPhone Safari UA to read `ajax_var.nonce`, then `POST admin-ajax.php action=yascode_ajax_login fields=username=..&password=.. _wpnonce=..`, keep the WordPress cookies) and use `yascode_add_watchlist_post` / `yascode_panel_watchlist_toggle` to write. There is no JSON read for the lists (HTML scraping of the panel), so this is write-only and fragile. Not recommended; listed so nobody rediscovers it.
+
+### 8.7 What is implemented (M3.2, M3.3; 2026-10-11, not yet run against a real login)
+
+Built on the confirmed API of section 0 (the guesses in 8.1-8.5 above are superseded where they differ). Only unit-tested with MockWebServer and fakes.
+
+| Piece | Where | Notes |
+|---|---|---|
+| Wire format in one place | `core/network/.../AccountWire.kt` | paths, field names, `Authorization: Bearer`, key lists. First thing to edit if a real response differs |
+| Tolerant readers | `AccountParsing.kt` | token from `data.token` (also `token`, `access_token`, ... shallowest first), `display_name`, `vip.days_left`, list shapes (array, envelope, keyed by id, bare ids, `{post:{}}`), progress items. Unknown list shape = failure, never "empty list" |
+| HTTP | `AccountService`, `RetrofitAccountRemote` (`NetworkModule.account`) | all four mirrors; account calls send `Cache-Control: no-store`; only key names and JSON types are logged, and only after `adb shell setprop log.tag.BolbolAccount DEBUG` |
+| Token header | `AuthTokenInterceptor`, a **network** interceptor | Bearer only on `.../mapi/v1/user/` paths, only to a mirror origin (scheme+host+port); a redirect to any other origin never gets it |
+| Session | `core/data/.../SessionStore.kt` | private SharedPreferences `account_session` (token, display name, VIP days); loaded lazily on a background thread. **No Keystore encryption**: decided for this private one-TV app, see docs/decisions.md. The password is never stored |
+| My List | Room table `my_list` (`MyListEntity`, `MyListDao`), `AccountRepositoryImpl` | local-first; `pendingSync` 0 = synced, 1 = add pending, 2 = removed (hidden tombstone) |
+| Sync rules | `MyListMerge.kt` (`planMerge`, pure) | see below |
+| Progress | `AccountRepositoryImpl.pushProgress / pullProgress`, exposed as `DataGraph.pushProgress / pullProgress` | server `user/watch-list` |
+| UI | `feature/account`: `AccountScreen`, `AccountViewModel`, `TvTextField` | login card, header with VIP line, 5-column My List grid |
+
+**My List sync (`syncMyList`, never throws, runs only when signed in).**
+1. At most one per 10 minutes unless local changes are pending (so app start and screen open are cheap); the profile (`user/profile`) is refreshed at most hourly. Each local change schedules a push after 800 ms (bursts coalesce).
+2. Read `user/favorite-list` (all pages, max 10; `total_page` if present, else a full `per_page` page triggers the next request). If a page is missing or the server ignores `page`, the list is flagged **incomplete**: then nothing is deleted and no add is pushed (the route toggles, so pushing an add for an item on an unread page would remove it).
+3. `planMerge`: synced row missing on the server is deleted (server removal); pending add already on the server is settled; pending add missing there is pushed; tombstone gone from the server is dropped; tombstone still there is pushed; server-only ids are inserted (summary from the list payload, else from `post/{id}`, at most 12 details calls per sync, the rest next time). Server removals only touch rows with no pending change.
+4. Each pending id is toggled **once**, only after its state was read in step 2, and only if its pending flag is unchanged; the first failed push stops pushing. Then the list is read again: confirmed items become synced, the others stay pending.
+5. Login turns every synced row into "add pending", so the first sync after a login is a union and deletes nothing. Logout keeps the list.
+6. HTTP 401/403 on a `user/` call = expired token: the session is dropped (list kept). Other errors are silent.
+
+**Server continue-watching.** `pushProgress(progress)` posts `post_id`, `current_time` (whole seconds) and, for episodes, `season` + `episode` as multipart (no-op signed out or under 1 s). `pullProgress()` reads `user/watch-list` and saves an item into local progress only if it is missing locally, or the local one is not completed and the server position is further by more than 5 s; it never lowers or completes local progress. Because the server has no timestamp, nothing else can be decided. `duration` has no documented unit: seconds are assumed, a value below the position is read as minutes, otherwise it is treated as unknown (0). Taken titles re-enter Continue Watching like any watched title.
+
+**Still unverified until a real login** (check with the shape log, then fix `AccountWire` / `AccountParsing`): that `data.token` is where the token is; the `favorite-list` item fields (we accept `id` plus `title`/`image` or `thumbnail`, else details are fetched); whether `favorite-list` is paged; that a token from one mirror works on the others; the `duration` unit of `watch-list`; what a wrong password returns (we treat 400/401/403 with a JSON body, or 200 with `success:false`, as wrong credentials, except a message containing "الزامی" (required), which means our request shape was refused).
 
 ## 9. Side finding: `GET /post/player-links?id=<postId>` (public)
 

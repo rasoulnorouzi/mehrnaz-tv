@@ -2,10 +2,17 @@ package app.bolbol.tv.core.data
 
 import android.content.Context
 import app.bolbol.tv.core.database.BolbolDatabase
+import app.bolbol.tv.core.model.AccountRepository
 import app.bolbol.tv.core.model.CatalogRepository
+import app.bolbol.tv.core.model.PlaybackProgress
 import app.bolbol.tv.core.model.PrefsRepository
 import app.bolbol.tv.core.model.WatchRepository
 import app.bolbol.tv.core.network.NetworkModule
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import okhttp3.OkHttpClient
 
 /**
@@ -25,7 +32,8 @@ class DataGraph(
     imageHosts: List<String> = NetworkModule.DEFAULT_IMAGE_HOSTS,
 ) {
     private val appContext = context.applicationContext
-    private val network by lazy { NetworkModule(appContext, mirrors, imageHosts) }
+    private val session by lazy { SessionStore(SharedPreferencesSessionStorage(appContext)) }
+    private val network by lazy { NetworkModule(appContext, mirrors, imageHosts, tokenProvider = session) }
     private val database by lazy { BolbolDatabase.create(appContext) }
 
     /** Shared by the API, the image loader and the video player (disk cache, timeouts, API mirror + image CDN failover). */
@@ -38,6 +46,44 @@ class DataGraph(
     val watch: WatchRepository by lazy { WatchRepositoryImpl(database.watchDao()) }
 
     val prefs: PrefsRepository by lazy { PrefsRepositoryImpl(database.prefsDao()) }
+
+    private val accountImpl by lazy {
+        AccountRepositoryImpl(
+            remote = network.account,
+            dao = database.myListDao(),
+            session = session,
+            watch = watch,
+            resolveSummary = { id ->
+                try {
+                    catalog.details(id).summary
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    null
+                }
+            },
+            // Lives as long as the process: runs the debounced push after My List changes.
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+        )
+    }
+
+    /** Optional Bolboljan account + "My List" (docs/auth.md). Works offline and signed out; syncs best effort. */
+    val account: AccountRepository get() = accountImpl
+
+    /** Days of VIP left for the signed-in user (null: none or signed out); feed it to `AccountViewModel.factory`. */
+    val accountVipDaysLeft: Flow<Int?> get() = accountImpl.vipDaysLeft
+
+    /**
+     * Sends [progress] to the server's continue-watching list (call on player exit). No-op when signed out;
+     * never throws.
+     */
+    suspend fun pushProgress(progress: PlaybackProgress) = accountImpl.pushProgress(progress)
+
+    /**
+     * Fills local watch progress from the server (call after app start). Only adds titles/episodes missing locally
+     * or whose server position is further; no-op when signed out; never throws.
+     */
+    suspend fun pullProgress() = accountImpl.pullProgress()
 
     /** The API mirror calls currently start with (diagnostics). */
     val currentMirror: String get() = network.currentMirror

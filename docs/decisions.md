@@ -63,3 +63,13 @@ Features see only `core:model` interfaces.
 **2026-10-11 · Player timeline stays left-to-right inside the RTL UI.** DPAD_RIGHT = forward +10 s,
 the seek bar fills left→right. This matches the remote's arrows and how media timelines work. The rest of
 the player chrome (titles, menus) is RTL.
+
+**2026-10-11 · Account session stored in plain private SharedPreferences, no Keystore.** The login token (and display
+name, VIP days) is kept in `shared_prefs/account_session.xml` inside the app sandbox. Why: the app is private, sideloaded
+on one TV, `allowBackup` is false, and the token only reaches the user's own favourites and watch positions on a movie
+site; Keystore + DataStore (docs/auth.md 8.4's first recommendation) would add moving parts for no real gain on this
+threat model. The password is never stored. Revisit if the app is ever shared or the token gains wider powers.
+
+**2026-10-11 · "My List" = the site's `favorite-list`; server `watch-list` = continue watching with position**
+(confirmed from the official TV app, docs/auth.md section 0). My List stays local-first in Room and is mirrored
+best effort; progress is pushed on player exit and pulled at app start, only filling in what is missing or further.
