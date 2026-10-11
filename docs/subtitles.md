@@ -38,13 +38,13 @@ search per tick, it is cheaper than the platform pipeline.
 | Background | حاشیه (black outline, no box) · کادر نیمه‌شفاف (60 % black box) | حاشیه |
 | Weight | معمولی (Vazirmatn Medium) · ضخیم (Bold) | ضخیم |
 | Position | پایین · کمی بالاتر · بالاتر (8 % / 14 % / 20 % from the bottom) | پایین |
-| Timing offset | −120 s … +120 s on a 0.5 s grid (`SubtitleStyle.OFFSET_MAX_MS` = 120 000, user request 2026-10-11: "any amount, e.g. ±50 s"); steps of 0.5 s and 5 s, **hold OK to repeat**; **saved per title** (per release) | 0 |
+| Timing offset | −120 s … +120 s on a 0.5 s grid (`SubtitleStyle.OFFSET_MAX_MS` = 120 000, user request 2026-10-11: "any amount, e.g. ±50 s"); steps of 0.5 s only, **hold OK to repeat** (5 s steps removed 2026-10-11 at the user's request); **saved per title** (per release) | 0 |
 
 **Where the user changes them:**
-- **In the player** (quick menu on MENU / "تنظیمات پخش"): on/off, size, and sync: «زودتر ۰٫۵ ثانیه» / «دیرتر ۰٫۵ ثانیه»,
-  «زودتر ۵ ثانیه» / «دیرتر ۵ ثانیه» (2-column grid) and «تنظیم مجدد», with instant effect on the live subtitle.
-  Holding OK on a step button repeats it (first repeat after 400 ms, then every 120 ms: +50 s with the 5 s button
-  in ~1.4 s). The title shows the value with sign and one decimal, «همگام‌سازی: +۱۲٫۵ ثانیه», and every change shows
+- **In the player** (quick menu on MENU / "تنظیمات پخش"): on/off, size, and sync: «زودتر ۰٫۵ ثانیه» / «دیرتر ۰٫۵ ثانیه»
+  (one row of two equal-width buttons) and a full-width «تنظیم مجدد», with instant effect on the live subtitle.
+  Holding OK on a step button repeats it (first repeat after 400 ms, then every 120 ms). The 5 s buttons were removed
+  2026-10-11 at the user's request: the half-second steps are enough. The title shows the value with sign and one decimal, «همگام‌سازی: +۱۲٫۵ ثانیه», and every change shows
   the same value in a small toast «زیرنویس: +۱۲٫۵ ثانیه». Saving is debounced (400 ms) while a button is held.
 - **Settings → زیرنویس**: all options, with a live preview (sample Persian line + a line starting with "-") over a
   still frame.

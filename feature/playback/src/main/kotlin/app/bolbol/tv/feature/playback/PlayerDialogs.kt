@@ -175,7 +175,7 @@ private fun PlaybackError.messageRes(): Int = when (kind) {
 /**
  * "تنظیمات پخش" side panel at the end edge: audio (دوبله / زیرنویس), quality (۱۰۸۰ / ۷۲۰ / ۴۸۰) and,
  * for subtitled streams, the subtitle quick menu (docs/subtitles.md): on/off, size (4 steps) and sync
- * (±0.5 s and ±5 s steps with hold-to-repeat, «تنظیم مجدد», the current offset up to ±120 s). Changes apply live;
+ * (±0.5 s steps with hold-to-repeat, «تنظیم مجدد», the current offset up to ±120 s). Changes apply live;
  * colour, box, position and weight live on the Settings page. Focus starts on the current audio.
  * Scrolls vertically when the sections don't fit (focus brings the row into view).
  */
@@ -262,30 +262,23 @@ private fun SubtitleSection(
             )
         }
     }
-    // «همگام‌سازی: +۱۲٫۵ ثانیه», then a 2-column grid (earlier at the start/right, later at the end/left):
+    // «همگام‌سازی: +۱۲٫۵ ثانیه», then one row (earlier at the start/right, later at the end/left) and reset:
     //   زودتر ۰٫۵ | دیرتر ۰٫۵
-    //   زودتر ۵   | دیرتر ۵
-    //   تنظیم مجدد
-    // Equal-width columns keep UP/DOWN moving straight between the rows. Holding OK repeats a step.
+    //   تنظیم مجدد (full width)
+    // Equal-width columns + a full-width reset keep LEFT/RIGHT between the steps and UP/DOWN straight
+    // between the rows (nothing unreachable). Holding OK repeats a step. (5 s steps removed 2026-10-11.)
     val offsetText = stringResource(R.string.player_subtitle_seconds, formatSubtitleOffset(offsetMs))
     Spacer(Modifier.height(20.dp))
     Text(stringResource(R.string.player_subtitle_sync, offsetText), style = MaterialTheme.typography.labelMedium, color = BolbolColors.TextSecondary)
     Spacer(Modifier.height(8.dp))
     val small = SubtitleOffset.SMALL_STEP_MS
-    val large = SubtitleOffset.LARGE_STEP_MS
     StepRow(
         R.string.player_subtitle_earlier to -small,
         R.string.player_subtitle_later to small,
         onShift = onShift,
     )
     Spacer(Modifier.height(8.dp))
-    StepRow(
-        R.string.player_subtitle_earlier_large to -large,
-        R.string.player_subtitle_later_large to large,
-        onShift = onShift,
-    )
-    Spacer(Modifier.height(8.dp))
-    OptionButton(stringResource(R.string.player_subtitle_reset), selected = false, onClick = onReset)
+    OptionButton(stringResource(R.string.player_subtitle_reset), selected = false, onClick = onReset, modifier = Modifier.fillMaxWidth())
 }
 
 @Composable
