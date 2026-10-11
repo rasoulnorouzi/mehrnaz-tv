@@ -10,6 +10,15 @@ import app.bolbol.tv.core.model.AudioType
 /** Blank -> null, otherwise trimmed. */
 internal fun String?.nullIfBlank(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
 
+/**
+ * A stream/subtitle URL: blank -> null, trimmed, and the site's mangled apostrophe repaired. File names
+ * with an apostrophe ("Kill.Jackie.S01E03.She's.Gone…") arrive with a backslash instead ("She\s.Gone",
+ * an addslashes leftover), which 404s; the real file has the apostrophe (verified 2026-10-11: HTTP 206).
+ * A backslash is never valid in these URLs, so every `\'` or lone `\` becomes `'`.
+ */
+internal fun String?.mediaUrlOrNull(): String? =
+    nullIfBlank()?.let { if ('\\' in it) it.replace("\\'", "'").replace('\\', '\'') else it }
+
 /** Persian (U+06F0..) and Arabic-Indic (U+0660..) digits -> ASCII digits. */
 internal fun String.normalizeDigits(): String {
     if (none { it in '٠'..'٩' || it in '۰'..'۹' }) return this

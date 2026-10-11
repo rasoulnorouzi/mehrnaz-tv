@@ -107,14 +107,14 @@ internal fun mapMovieStreams(
 ): List<StreamOption> {
     val byKey = downloads.filter { it.key.isNotEmpty() }.associateBy { it.key }
     return players.mapNotNull { player ->
-        val url = player.playLink.nullIfBlank() ?: return@mapNotNull null
+        val url = player.playLink.mediaUrlOrNull() ?: return@mapNotNull null
         val download = byKey[player.key] ?: downloads.firstOrNull { it.dlLink.isNotBlank() && it.dlLink == player.playLink }
         val quality = parseQuality(player.qualityLink) ?: parseQuality(download?.qualityLink.orEmpty()) ?: 0
         StreamOption(
             quality = quality,
             audio = parseAudio(player.typeLink.ifBlank { download?.linkType.orEmpty() }),
             url = url,
-            subtitleUrl = player.fasubLink.nullIfBlank() ?: download?.dlSub.nullIfBlank(),
+            subtitleUrl = player.fasubLink.mediaUrlOrNull() ?: download?.dlSub.mediaUrlOrNull(),
             label = download?.qualityLink.nullIfBlank() ?: qualityLabel(quality),
             sizeText = formatSize(download?.dlCapacity.orEmpty()),
         )
@@ -210,7 +210,7 @@ internal fun mapSeasons(
             titleNumbers.toSet().size == titleNumbers.size
 
         player.items.forEachIndexed { position, item ->
-            val streamUrl = item.playLink.nullIfBlank() ?: return@forEachIndexed
+            val streamUrl = item.playLink.mediaUrlOrNull() ?: return@forEachIndexed
             val downloadItem = downloadItems.getOrNull(position)
             val number = if (useTitleNumbers) titleNumbers[position]!! else position + 1
 
@@ -222,7 +222,7 @@ internal fun mapSeasons(
                 quality = quality,
                 audio = audio,
                 url = streamUrl,
-                subtitleUrl = item.fasubLink.nullIfBlank() ?: downloadItem?.subtitle.nullIfBlank(),
+                subtitleUrl = item.fasubLink.mediaUrlOrNull() ?: downloadItem?.subtitle.mediaUrlOrNull(),
                 label = label,
                 sizeText = sizeText,
             )

@@ -4,6 +4,7 @@ import app.bolbol.tv.core.model.AudioType
 import app.bolbol.tv.core.network.mapper.cleanTitle
 import app.bolbol.tv.core.network.mapper.decodeHtmlEntities
 import app.bolbol.tv.core.network.mapper.formatSize
+import app.bolbol.tv.core.network.mapper.mediaUrlOrNull
 import app.bolbol.tv.core.network.mapper.parseAudio
 import app.bolbol.tv.core.network.mapper.parseImdb
 import app.bolbol.tv.core.network.mapper.parseMetacritic
@@ -177,5 +178,20 @@ class TextMapperTest {
         assertEquals("2.42 GB", formatSize("2.42 GB"))
         assertNull(formatSize(""))
         assertNull(formatSize("   "))
+    }
+
+    // --- media URLs ---------------------------------------------------------------------------
+
+    @Test
+    fun mediaUrlRepairsTheMangledApostrophe() {
+        val base = "https://dl1.hostikadeh.ir/stream_serial/Series8/Kill.Jackie.2026/S01/720p/"
+        assertEquals(
+            base + "Kill.Jackie.S01E03.She's.Gone.720p.WEB-DL.x264.mp4",
+            (base + "Kill.Jackie.S01E03.She\\s.Gone.720p.WEB-DL.x264.mp4").mediaUrlOrNull(),
+        )
+        assertEquals(base + "It's.mp4", (base + "It\\'s.mp4").mediaUrlOrNull())
+        assertEquals(base + "Plain.mp4", "  ${base}Plain.mp4 ".mediaUrlOrNull())
+        assertNull("  ".mediaUrlOrNull())
+        assertNull((null as String?).mediaUrlOrNull())
     }
 }
