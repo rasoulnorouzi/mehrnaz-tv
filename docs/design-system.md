@@ -38,13 +38,13 @@ Disney+/Prime (season tabs + episode list, Skip Intro, next-episode countdown), 
    - Rows: **ادامه تماشا (Continue Watching)** first, then the API sections (newest movies, top 250, Iranian, Turkish, …, newest series, suggestions).
    - Paints from cache instantly, then refreshes.
    - Every server row ends with a poster-sized **«مشاهده همه»** card → the Browse grid for that row.
-   - **Continue Watching card: long-press OK or MENU** → popup «ادامه پخش» · «علامت‌گذاری به‌عنوان دیده‌شده» · «حذف از ادامه تماشا» · «انصراف». Progress bars show at least 3 % fill once started.
+   - **Continue Watching card: long-press OK or MENU** → popup «ادامه پخش» · «رفتن به صفحهٔ فیلم» / «رفتن به صفحهٔ سریال» (opens the details page; for a series, with that episode's season selected and that episode focused once) · «علامت‌گذاری به‌عنوان دیده‌شده» · «حذف از ادامه تماشا» · «انصراف». Progress bars show at least 3 % fill once started.
 2. **Details**
    - Backdrop + scrim. Title (fa + en), year · runtime · age · IMDb · genres, plot (3 lines, expandable).
    - Buttons: **ادامه از ۴۷:۱۲ / پخش**, start over, audio chips (دوبله / زیرنویس), quality, my list.
    - **«+ لیست من» / «✓ در لیست من»** toggle next to the play buttons (local list; synced with the site's favourites when logged in).
    - Movie: cast row and related row.
-   - Series (as built: two panes, info on the start side, episodes on the end side): season chips + vertical episode list with progress/✓; primary button «ادامه فصل X قسمت Y» / «شروع …»; **long-press an episode toggles watched**.
+   - Series (as built: two panes, info on the start side, episodes on the end side): season chips + vertical episode list with progress/✓; primary button «ادامه فصل X قسمت Y» / «شروع …»; **long-press an episode toggles watched**. Opened from Continue Watching's «رفتن به صفحهٔ سریال» the details select that episode's season and focus the episode row once (not again after returning from the player); a missing season/episode falls back to the default focus.
 3. **Player**
    - Full-screen SurfaceView. Overlay on any key, auto-hides after 4 s.
    - Overlay: title/episode, seek bar with time (Persian digits), play/pause, ±10 s (D-pad, accelerating

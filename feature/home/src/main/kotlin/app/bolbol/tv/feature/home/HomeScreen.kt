@@ -100,14 +100,15 @@ internal val TabDestinations: List<HomeDestination?> = listOf(
  *
  * - Every server row that has a `viewAll` query ends with a "مشاهده همه" card that calls [onViewAll]
  *   with that query and the row's title.
- * - Long-pressing OK (or MENU) on a Continue Watching card opens a menu: resume, mark as watched,
- *   remove from the row, cancel.
+ * - Long-pressing OK (or MENU) on a Continue Watching card opens a menu: resume, go to the title's page
+ *   ([onOpenTitleAt]; for a series the details open on that episode), mark as watched, remove from the row, cancel.
  */
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
     onOpenTitle: (TitleSummary) -> Unit,
     onResume: (ContinueWatchingItem) -> Unit,
+    onOpenTitleAt: (ContinueWatchingItem) -> Unit,
     onNavigate: (HomeDestination) -> Unit,
     modifier: Modifier = Modifier,
     onViewAll: (ListQuery, title: String) -> Unit = { _, _ -> },
@@ -133,6 +134,7 @@ fun HomeScreen(
                         onViewAllFocused = { rowId -> viewModel.onViewAllFocused(rowId) },
                         onOpenTitle = onOpenTitle,
                         onResume = onResume,
+                        onOpenTitleAt = onOpenTitleAt,
                         onViewAll = onViewAll,
                         onMarkWatched = { viewModel.markWatched(it) },
                         onRemove = { viewModel.removeFromContinueWatching(it) },
@@ -239,6 +241,7 @@ private fun HomeContent(
     onViewAllFocused: (rowId: String) -> Unit,
     onOpenTitle: (TitleSummary) -> Unit,
     onResume: (ContinueWatchingItem) -> Unit,
+    onOpenTitleAt: (ContinueWatchingItem) -> Unit,
     onViewAll: (ListQuery, String) -> Unit,
     onMarkWatched: (ContinueWatchingItem) -> Unit,
     onRemove: (ContinueWatchingItem) -> Unit,
@@ -327,12 +330,15 @@ private fun HomeContent(
             val cardFocus = FocusTarget(HomeRow.CONTINUE_ROW_ID, item.title.id)
             ContinueMenu(
                 title = item.title.faTitle.ifBlank { item.title.title },
+                isSeries = item.isSeries(),
                 openedByHold = open.heldSelect,
                 onChoose = { action ->
                     menu = null
                     when (action) {
                         // Leaving for the player: nothing to restore here.
                         ContinueAction.RESUME -> onResume(item)
+                        // Details restore nothing here either: Back lands on the card via the ViewModel's lastFocus.
+                        ContinueAction.OPEN_TITLE -> onOpenTitleAt(item)
                         ContinueAction.CANCEL -> gate.moveTo(cardFocus)
                         ContinueAction.MARK_WATCHED -> {
                             currentRows.neighbourFocus(cardFocus)?.let(gate::moveTo)

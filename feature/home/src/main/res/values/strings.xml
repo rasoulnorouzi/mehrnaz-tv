@@ -17,6 +17,8 @@
 
     <!-- Continue Watching card menu (long-press OK or MENU) -->
     <string name="home_menu_resume">ادامه پخش</string>
+    <string name="home_menu_open_movie">رفتن به صفحهٔ فیلم</string>
+    <string name="home_menu_open_series">رفتن به صفحهٔ سریال</string>
     <string name="home_menu_mark_watched">علامت‌گذاری به‌عنوان دیده‌شده</string>
     <string name="home_menu_remove">حذف از ادامه تماشا</string>
     <string name="home_menu_cancel">انصراف</string>
