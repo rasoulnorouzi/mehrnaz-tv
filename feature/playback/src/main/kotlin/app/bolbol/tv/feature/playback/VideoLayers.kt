@@ -1,26 +1,20 @@
-@file:OptIn(UnstableApi::class)
-
 package app.bolbol.tv.feature.playback
 
-import android.graphics.Color
-import android.graphics.Typeface
 import android.view.SurfaceView
-import androidx.annotation.OptIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.media3.common.text.Cue
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.CaptionStyleCompat
-import androidx.media3.ui.SubtitleView
+import app.bolbol.tv.core.designsystem.SubtitleText
+import app.bolbol.tv.core.model.SubtitleStyle
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -44,42 +38,19 @@ internal fun VideoSurface(player: ExoPlayer, aspectRatio: Float, modifier: Modif
 }
 
 /**
- * Persian subtitles rendered by media3-ui's [SubtitleView] (canvas painter) from the
- * controller's filtered cues: white text, black outline, no background box.
+ * Persian subtitles from our own engine (core:player subtitles/), drawn by the shared
+ * designsystem [SubtitleText] (the same renderer as the Settings preview). [lines] is collected
+ * here so only this layer recomposes when a cue changes. With [aboveControls] the subtitle box
+ * ends where the overlay's bottom controls start, so the text moves up instead of being hidden.
  */
 @Composable
 internal fun SubtitleLayer(
-    cues: StateFlow<List<Cue>>,
-    typeface: Typeface,
-    scale: Float,
-    bottomPaddingFraction: Float,
+    lines: StateFlow<List<String>>,
+    style: SubtitleStyle,
+    aboveControls: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val current by cues.collectAsStateWithLifecycle()
-    val style = remember(typeface) {
-        CaptionStyleCompat(
-            /* foregroundColor = */ Color.WHITE,
-            /* backgroundColor = */ Color.TRANSPARENT,
-            /* windowColor = */ Color.TRANSPARENT,
-            /* edgeType = */ CaptionStyleCompat.EDGE_TYPE_OUTLINE,
-            /* edgeColor = */ Color.BLACK,
-            /* typeface = */ typeface,
-        )
-    }
-    AndroidView(
-        factory = { context ->
-            SubtitleView(context).apply {
-                // Our size setting wins over sizes embedded in the VTT; keep italics etc.
-                setApplyEmbeddedFontSizes(false)
-                setApplyEmbeddedStyles(true)
-            }
-        },
-        update = { view ->
-            view.setStyle(style)
-            view.setFractionalTextSize(SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * scale)
-            view.setBottomPaddingFraction(bottomPaddingFraction)
-            view.setCues(current)
-        },
-        modifier = modifier.fillMaxSize(),
-    )
+    val current by lines.collectAsStateWithLifecycle()
+    val area = if (aboveControls) Modifier.fillMaxWidth().fillMaxHeight(1f - CONTROLS_HEIGHT_FRACTION) else Modifier.fillMaxSize()
+    SubtitleText(lines = current, style = style, modifier = modifier.then(area))
 }

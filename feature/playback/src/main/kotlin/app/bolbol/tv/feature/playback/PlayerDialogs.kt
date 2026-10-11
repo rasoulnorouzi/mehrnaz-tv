@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,7 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -37,17 +41,19 @@ import app.bolbol.tv.core.designsystem.BolbolSpacing
 import app.bolbol.tv.core.designsystem.toPersianDigits
 import app.bolbol.tv.core.model.AudioType
 import app.bolbol.tv.core.model.StreamOption
+import app.bolbol.tv.core.model.SubtitleStyle
 import app.bolbol.tv.core.player.PlaybackError
 import app.bolbol.tv.core.player.audioTypes
 import app.bolbol.tv.core.player.qualitiesFor
 import kotlin.math.abs
 
-/** Subtitle size choices (label → PlaybackPrefs.subtitleScale). */
+/** Subtitle size choices: label → SubtitleStyle.SIZE_STEPS (کوچک / معمولی / بزرگ / خیلی بزرگ). */
 internal val SubtitleSizes = listOf(
-    R.string.player_subtitle_small to 0.8f,
-    R.string.player_subtitle_normal to 1.0f,
-    R.string.player_subtitle_large to 1.25f,
-)
+    R.string.player_subtitle_small,
+    R.string.player_subtitle_normal,
+    R.string.player_subtitle_large,
+    R.string.player_subtitle_xlarge,
+).zip(SubtitleStyle.SIZE_STEPS)
 
 private val DialogShape = RoundedCornerShape(12.dp)
 
@@ -150,17 +156,24 @@ private fun PlaybackError.messageRes(): Int = when (kind) {
 }
 
 /**
- * "تنظیمات پخش" side panel at the end edge: audio (دوبله / زیرنویس), quality (۱۰۸۰ / ۷۲۰ / ۴۸۰),
- * subtitle size (کوچک / معمولی / بزرگ, subtitled streams only). Focus starts on the current audio.
+ * "تنظیمات پخش" side panel at the end edge: audio (دوبله / زیرنویس), quality (۱۰۸۰ / ۷۲۰ / ۴۸۰) and,
+ * for subtitled streams, the subtitle quick menu (docs/subtitles.md): on/off, size (4 steps) and sync
+ * («زودتر ۰٫۵ ثانیه» / «دیرتر ۰٫۵ ثانیه» / «تنظیم مجدد» with the current offset). Changes apply live;
+ * colour, box, position and weight live on the Settings page. Focus starts on the current audio.
+ * Scrolls vertically when the sections don't fit (focus brings the row into view).
  */
 @Composable
 internal fun StreamPickerPanel(
     streams: List<StreamOption>,
     current: StreamOption?,
-    subtitleScale: Float,
+    subtitleStyle: SubtitleStyle,
+    subtitleOffsetMs: Int,
     onAudio: (AudioType) -> Unit,
     onQuality: (Int) -> Unit,
-    onSubtitleScale: (Float) -> Unit,
+    onSubtitlesEnabled: (Boolean) -> Unit,
+    onSubtitleSize: (Float) -> Unit,
+    onSubtitleShift: (direction: Int) -> Unit,
+    onSubtitleReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val firstFocus = remember { FocusRequester() }
@@ -169,8 +182,9 @@ internal fun StreamPickerPanel(
             Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
-                .width(360.dp)
+                .width(PANEL_WIDTH)
                 .background(BolbolColors.Surface)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = BolbolSpacing.SafeVertical),
         ) {
             Text(stringResource(R.string.player_settings), style = MaterialTheme.typography.titleMedium, color = BolbolColors.TextPrimary)
@@ -198,15 +212,7 @@ internal fun StreamPickerPanel(
                 }
             }
             if (current?.subtitleUrl != null) {
-                PickerSection(stringResource(R.string.player_subtitle_size)) {
-                    for ((label, scale) in SubtitleSizes) {
-                        OptionButton(
-                            label = stringResource(label),
-                            selected = abs(scale - subtitleScale) < 0.01f,
-                            onClick = { onSubtitleScale(scale) },
-                        )
-                    }
-                }
+                SubtitleSection(subtitleStyle, subtitleOffsetMs, onSubtitlesEnabled, onSubtitleSize, onSubtitleShift, onSubtitleReset)
             }
         }
     }
@@ -214,12 +220,59 @@ internal fun StreamPickerPanel(
 }
 
 @Composable
+private fun SubtitleSection(
+    style: SubtitleStyle,
+    offsetMs: Int,
+    onEnabled: (Boolean) -> Unit,
+    onSize: (Float) -> Unit,
+    onShift: (direction: Int) -> Unit,
+    onReset: () -> Unit,
+) {
+    Spacer(Modifier.height(24.dp))
+    Text(stringResource(R.string.player_subtitles), style = MaterialTheme.typography.titleSmall, color = BolbolColors.TextPrimary)
+    Spacer(Modifier.height(8.dp))
+    OptionRow {
+        OptionButton(stringResource(R.string.player_subtitles_on), selected = style.enabled, onClick = { onEnabled(true) })
+        OptionButton(stringResource(R.string.player_subtitles_off), selected = !style.enabled, onClick = { onEnabled(false) })
+    }
+    if (!style.enabled) return
+    PickerSection(stringResource(R.string.player_subtitle_size)) {
+        for ((label, scale) in SubtitleSizes) {
+            OptionButton(
+                label = stringResource(label),
+                selected = abs(scale - style.sizeScale) < 0.01f,
+                onClick = { onSize(scale) },
+            )
+        }
+    }
+    val offsetText = stringResource(R.string.player_subtitle_seconds, formatSubtitleOffset(offsetMs))
+    PickerSection(stringResource(R.string.player_subtitle_sync, offsetText)) {
+        OptionButton(stringResource(R.string.player_subtitle_earlier), selected = false, onClick = { onShift(-1) })
+        OptionButton(stringResource(R.string.player_subtitle_later), selected = false, onClick = { onShift(+1) })
+        OptionButton(stringResource(R.string.player_subtitle_reset), selected = false, onClick = onReset)
+    }
+}
+
+@Composable
 private fun PickerSection(title: String, options: @Composable () -> Unit) {
     Spacer(Modifier.height(20.dp))
     Text(title, style = MaterialTheme.typography.labelMedium, color = BolbolColors.TextSecondary)
     Spacer(Modifier.height(8.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { options() }
+    OptionRow(options)
 }
+
+/** Buttons flow start→end and wrap when the labels don't fit the panel width. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun OptionRow(options: @Composable () -> Unit) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) { options() }
+}
+
+private val PANEL_WIDTH = 400.dp
+
 
 @Composable
 private fun OptionButton(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {

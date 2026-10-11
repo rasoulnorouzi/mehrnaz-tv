@@ -24,7 +24,7 @@ kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:player"))
-    implementation(libs.media3.ui)
+    // No media3-ui: subtitles are drawn by core:designsystem SubtitleText, the video by a plain SurfaceView.
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     // BackHandler (close panel → hide overlay → exit) and the debug PlayerTestActivity.

@@ -5,6 +5,7 @@ import app.bolbol.tv.core.model.ContinueWatchingItem
 import app.bolbol.tv.core.model.PlaybackPrefs
 import app.bolbol.tv.core.model.PlaybackProgress
 import app.bolbol.tv.core.model.PrefsRepository
+import app.bolbol.tv.core.model.SubtitleStyle
 import app.bolbol.tv.core.model.TitleSummary
 import app.bolbol.tv.core.model.WatchKey
 import app.bolbol.tv.core.model.WatchRepository
@@ -66,8 +67,27 @@ internal class InMemoryPrefsRepository(initial: PlaybackPrefs) : PrefsRepository
         Log.i(TAG, "saveTitlePrefs $postId $prefs")
     }
 
+    private val style = MutableStateFlow(SubtitleStyle())
+    private val offsets = MutableStateFlow<Map<Long, Int>>(emptyMap())
+
+    override fun subtitleStyle(): Flow<SubtitleStyle> = style
+
+    override suspend fun saveSubtitleStyle(style: SubtitleStyle) {
+        this.style.value = style
+        Log.i(TAG, "saveSubtitleStyle $style")
+    }
+
+    override suspend fun subtitleOffsetMs(postId: Long): Int = offsets.value[postId] ?: 0
+
+    override suspend fun saveSubtitleOffsetMs(postId: Long, offsetMs: Int) {
+        offsets.update { it + (postId to offsetMs) }
+        Log.i(TAG, "saveSubtitleOffsetMs $postId $offsetMs")
+    }
+
     fun reset(prefs: PlaybackPrefs) {
         global.value = prefs
         perTitle.value = emptyMap()
+        style.value = SubtitleStyle()
+        offsets.value = emptyMap()
     }
 }

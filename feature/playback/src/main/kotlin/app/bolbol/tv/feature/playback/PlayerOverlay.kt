@@ -64,8 +64,8 @@ private val BottomScrim = Brush.verticalGradient(listOf(Color.Transparent, Color
 private val TrackColor = Color(0x59FFFFFF)
 private val BufferedColor = Color(0x99FFFFFF)
 
-/** Fraction of the screen height the bottom controls cover (subtitles move above it). */
-internal const val OVERLAY_SUBTITLE_PADDING = 0.27f
+/** Fraction of the screen height the bottom controls cover (subtitles and the next-episode card move above it). */
+internal const val CONTROLS_HEIGHT_FRACTION = 0.2f
 
 /**
  * The controls overlay: RTL title block on top; LTR timeline + RTL controls row at the bottom.

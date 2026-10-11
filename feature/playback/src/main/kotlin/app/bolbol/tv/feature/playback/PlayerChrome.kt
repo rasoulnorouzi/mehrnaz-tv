@@ -45,8 +45,31 @@ internal class PlayerChrome {
     var rootFocused = false
     var seekBarFocused = false
 
+    /** The "قسمت بعد" card is on screen (written from composition; read by key handling). */
+    var autoNextVisible = false
+
+    /** Small in-player message ("زیرنویس: +۱٫۵ ثانیه"); [toastId] restarts its timer. */
+    var toast by mutableStateOf<String?>(null)
+        private set
+    var toastId by mutableIntStateOf(0)
+        private set
+
     fun onInteraction() {
         interactions++
+    }
+
+    fun showToast(text: String) {
+        toast = text
+        toastId++
+    }
+
+    fun clearToast() {
+        toast = null
+    }
+
+    /** Re-applies the focus rule (root when the overlay is hidden), e.g. after the card closes. */
+    fun refocus() {
+        focusRequests++
     }
 
     /** Shows the overlay; focus moves to [focus] only if it was hidden (or [force]). */
@@ -153,6 +176,15 @@ internal class PlayerKeyHandler(
         }
 
         if (chrome.panelOpen) return false
+
+        // Next-episode card: OK plays the next episode now (BACK dismisses it via BackHandler).
+        if (chrome.autoNextVisible && !chrome.overlayVisible && key.isCenter()) {
+            if (down && native.repeatCount == 0) {
+                viewModel.playNextNow()
+                swallowCenterUp = true
+            }
+            return true
+        }
 
         if (down && key == Key.DirectionUp && native.repeatCount == 0 && isThirdQuickUpPress(native.eventTime)) {
             chrome.toggleDebug()

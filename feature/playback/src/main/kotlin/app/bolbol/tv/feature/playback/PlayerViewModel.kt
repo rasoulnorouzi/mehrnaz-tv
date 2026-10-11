@@ -13,25 +13,38 @@ import app.bolbol.tv.core.model.PlaybackProgress
 import app.bolbol.tv.core.model.PlaybackRequest
 import app.bolbol.tv.core.model.PrefsRepository
 import app.bolbol.tv.core.model.StreamOption
+import app.bolbol.tv.core.model.WatchKey
 import app.bolbol.tv.core.model.WatchRepository
 import app.bolbol.tv.core.model.pick
+import app.bolbol.tv.core.player.AutoNextInput
+import app.bolbol.tv.core.player.AutoNextPolicy
+import app.bolbol.tv.core.player.AutoNextState
 import app.bolbol.tv.core.player.PlaybackClock
 import app.bolbol.tv.core.player.PlaybackController
+import app.bolbol.tv.core.player.PlayerFactory
 import app.bolbol.tv.core.player.ResumeDecision
 import app.bolbol.tv.core.player.ResumePolicy
 import app.bolbol.tv.core.player.find
 import app.bolbol.tv.core.player.forAudio
 import app.bolbol.tv.core.player.nextLowerQuality
+import app.bolbol.tv.core.player.subtitles.SubtitleLoader
+import app.bolbol.tv.core.player.subtitles.SubtitleOffset
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
 
 /** What the player screen shows besides video. */
 sealed interface PlayerPhase {
@@ -49,20 +62,20 @@ sealed interface PlayerPhase {
 
 data class PlayerScreenState(
     val phase: PlayerPhase = PlayerPhase.Loading,
-    /** Effective subtitle scale (title prefs, else global), 1.0 = default size. */
-    val subtitleScale: Float = 1f,
 )
 
 /**
  * Owns the screen's single [ExoPlayer] (created by [createPlayer], released in [onCleared]) and
  * its [PlaybackController]. Built with [factory] (manual DI, docs/decisions.md §Architecture).
+ * Also runs the next-episode countdown (M2.2, rules in [AutoNextPolicy]).
  */
 class PlayerViewModel(
     val request: PlaybackRequest,
     createPlayer: () -> ExoPlayer,
     private val watch: WatchRepository,
     private val prefs: PrefsRepository,
-    clock: PlaybackClock = PlaybackClock.System,
+    subtitleLoader: SubtitleLoader?,
+    private val clock: PlaybackClock = PlaybackClock.System,
 ) : ViewModel() {
 
     /**
@@ -72,22 +85,40 @@ class PlayerViewModel(
     private val playerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     val player: ExoPlayer = createPlayer()
-    val controller = PlaybackController(player, watch, prefs, playerScope, clock)
+    val controller = PlaybackController(
+        player = player,
+        watch = watch,
+        prefs = prefs,
+        scope = playerScope,
+        subtitleLoader = subtitleLoader ?: fallbackSubtitleLoader(),
+        clock = clock,
+    )
 
     private val _screen = MutableStateFlow(PlayerScreenState())
     val screen: StateFlow<PlayerScreenState> = _screen.asStateFlow()
 
+    private val _autoNext = MutableStateFlow<AutoNextState>(AutoNextState.Waiting)
+
+    /** The next-episode card's state; stays [AutoNextState.Waiting] when [PlaybackRequest.next] is null. */
+    val autoNext: StateFlow<AutoNextState> = _autoNext.asStateFlow()
+
+    private val playNextChannel = Channel<WatchKey>(Channel.CONFLATED)
+
+    /** Emits [PlaybackRequest.next] once, when the countdown ends, playback ends, or OK is pressed. */
+    val playNext: Flow<WatchKey> = playNextChannel.receiveAsFlow()
+
+    private var chromeCovering = false
+    private var lastAutoNextStepMs = -1L
+
     init {
         viewModelScope.launch { begin() }
+        if (request.next != null) watchAutoNext()
     }
 
     private suspend fun begin() {
         val global = orNull("globalPrefs") { prefs.globalPrefs().first() } ?: PlaybackPrefs()
         val titlePrefs = orNull("titlePrefs") { prefs.titlePrefs(request.key.postId) }
-        val effective = titlePrefs ?: global
-        _screen.update { it.copy(subtitleScale = effective.subtitleScale) }
-
-        val stream = request.streams.pick(effective)
+        val stream = request.streams.pick(titlePrefs ?: global)
         if (stream == null) {
             _screen.update { it.copy(phase = PlayerPhase.NoStreams) }
             return
@@ -130,11 +161,82 @@ class PlayerViewModel(
         request.streams.find(current.audio, quality)?.let { controller.switchStream(it) }
     }
 
-    fun setSubtitleScale(scale: Float) {
-        if (_screen.value.subtitleScale == scale) return
-        _screen.update { it.copy(subtitleScale = scale) }
-        controller.saveSubtitleScale(scale)
+    // ---- subtitles (docs/subtitles.md §Settings: the player's quick menu) ------------------
+
+    fun setSubtitlesEnabled(enabled: Boolean) =
+        controller.setSubtitleStyle(controller.subtitleStyle.value.copy(enabled = enabled))
+
+    /** One of SubtitleStyle.SIZE_STEPS. */
+    fun setSubtitleSize(scale: Float) =
+        controller.setSubtitleStyle(controller.subtitleStyle.value.copy(sizeScale = scale))
+
+    /** «زودتر» (-1) / «دیرتر» (+1) by 0.5 s. Returns the new offset in ms (for the toast). */
+    fun shiftSubtitles(direction: Int): Int =
+        controller.setSubtitleOffset(SubtitleOffset.nudge(controller.subtitleOffsetMs.value, direction))
+
+    /** «تنظیم مجدد». Returns the new offset (0). */
+    fun resetSubtitleOffset(): Int = controller.setSubtitleOffset(0)
+
+    // ---- next episode (M2.2) -----------------------------------------------------------------
+
+    /** OK on the card: mark this episode completed and leave for the next one now. */
+    fun playNextNow() {
+        val next = request.next ?: return
+        if (_autoNext.value !is AutoNextState.Counting) return
+        _autoNext.value = AutoNextState.PlayNext
+        leaveFor(next)
     }
+
+    /** BACK on the card: keep watching (it comes back once when playback ends). */
+    fun dismissAutoNext() {
+        _autoNext.value = AutoNextPolicy.dismiss(_autoNext.value, controller.status.value.isEnded)
+    }
+
+    /** The overlay or the side panel covers the card: its countdown is frozen meanwhile. */
+    fun setChromeCovering(covering: Boolean) {
+        if (chromeCovering == covering) return
+        stepAutoNext() // account the time before the change with the old value
+        chromeCovering = covering
+    }
+
+    private fun watchAutoNext() {
+        // Player events (ended, paused, …) are handled at once; time in between by a light poll.
+        viewModelScope.launch { controller.status.collect { stepAutoNext() } }
+        viewModelScope.launch {
+            while (isActive) {
+                delay(if (_autoNext.value is AutoNextState.Counting) COUNTDOWN_TICK_MS else WINDOW_POLL_MS)
+                stepAutoNext()
+            }
+        }
+    }
+
+    private fun stepAutoNext() {
+        val next = request.next ?: return
+        val now = clock.elapsedRealtimeMs()
+        val elapsed = if (lastAutoNextStepMs < 0) 0 else now - lastAutoNextStepMs
+        lastAutoNextStepMs = now
+        val status = controller.status.value
+        val input = AutoNextInput(
+            positionMs = player.currentPosition,
+            durationMs = status.durationMs,
+            ended = status.isEnded,
+            playing = status.isPlaying,
+            held = chromeCovering || _screen.value.phase != PlayerPhase.Playing || controller.error.value != null,
+        )
+        val old = _autoNext.value
+        val new = AutoNextPolicy.step(old, input, elapsed)
+        if (new == old) return
+        _autoNext.value = new
+        if (new == AutoNextState.PlayNext) leaveFor(next)
+    }
+
+    private fun leaveFor(next: WatchKey) {
+        controller.markCompleted()
+        controller.pause()
+        playNextChannel.trySend(next)
+    }
+
+    // ---- errors, lifecycle ---------------------------------------------------------------------
 
     /** True when the error panel can offer the lower-quality button. */
     fun canLowerQuality(): Boolean = controller.stream?.let { request.streams.nextLowerQuality(it) } != null
@@ -167,14 +269,20 @@ class PlayerViewModel(
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        Log.w("BolbolPlayer", "$what failed", e)
+        Log.w(TAG, "$what failed", e)
         null
     }
 
     companion object {
+        private const val TAG = "BolbolPlayer"
+        private const val COUNTDOWN_TICK_MS = 200L
+        private const val WINDOW_POLL_MS = 1_000L
+
         /**
          * @param createPlayer usually `{ playerFactory.create() }` (core:player PlayerFactory);
          *   called once, on the main thread.
+         * @param subtitleLoader pass `playerFactory.subtitleLoader` (shared OkHttp client + cache).
+         *   Without it a private fallback client is used and a warning is logged.
          */
         fun factory(
             request: PlaybackRequest,
@@ -182,8 +290,25 @@ class PlayerViewModel(
             watch: WatchRepository,
             prefs: PrefsRepository,
             clock: PlaybackClock = PlaybackClock.System,
+            subtitleLoader: SubtitleLoader? = null,
         ): ViewModelProvider.Factory = viewModelFactory {
-            initializer { PlayerViewModel(request, createPlayer, watch, prefs, clock) }
+            initializer { PlayerViewModel(request, createPlayer, watch, prefs, subtitleLoader, clock) }
+        }
+
+        /** Preferred: player and subtitle loader from the app's single [PlayerFactory]. */
+        fun factory(
+            request: PlaybackRequest,
+            playerFactory: PlayerFactory,
+            watch: WatchRepository,
+            prefs: PrefsRepository,
+        ): ViewModelProvider.Factory =
+            factory(request, { playerFactory.create() }, watch, prefs, subtitleLoader = playerFactory.subtitleLoader)
+
+        private val fallbackLoader by lazy { SubtitleLoader(OkHttpClient()) }
+
+        private fun fallbackSubtitleLoader(): SubtitleLoader {
+            Log.w(TAG, "no SubtitleLoader injected: using a private OkHttpClient (pass playerFactory.subtitleLoader)")
+            return fallbackLoader
         }
     }
 }

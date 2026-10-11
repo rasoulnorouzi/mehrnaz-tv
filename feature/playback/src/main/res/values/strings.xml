@@ -14,10 +14,26 @@
     <string name="player_audio_dubbed">دوبله</string>
     <string name="player_audio_subtitled">زیرنویس</string>
     <string name="player_quality">کیفیت</string>
-    <string name="player_subtitle_size">اندازه زیرنویس</string>
+
+    <!-- Subtitle section of the settings panel (docs/subtitles.md §Settings). -->
+    <string name="player_subtitles">زیرنویس</string>
+    <string name="player_subtitles_on">روشن</string>
+    <string name="player_subtitles_off">خاموش</string>
+    <string name="player_subtitle_size">اندازه</string>
     <string name="player_subtitle_small">کوچک</string>
     <string name="player_subtitle_normal">معمولی</string>
     <string name="player_subtitle_large">بزرگ</string>
+    <string name="player_subtitle_xlarge">خیلی بزرگ</string>
+    <string name="player_subtitle_sync">همگام&#8204;سازی: %1$s</string>
+    <string name="player_subtitle_earlier">زودتر ۰٫۵ ثانیه</string>
+    <string name="player_subtitle_later">دیرتر ۰٫۵ ثانیه</string>
+    <string name="player_subtitle_reset">تنظیم مجدد</string>
+    <string name="player_subtitle_seconds">%1$s ثانیه</string>
+    <string name="player_subtitle_offset_toast">زیرنویس: %1$s ثانیه</string>
+    <string name="player_subtitle_load_failed">زیرنویس بارگذاری نشد</string>
+
+    <!-- Auto-next card (M2.2). -->
+    <string name="player_next_episode">قسمت بعد</string>
 
     <string name="player_retry">تلاش دوباره</string>
     <string name="player_lower_quality">کیفیت پایین&#8204;تر</string>

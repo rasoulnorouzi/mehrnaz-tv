@@ -27,4 +27,5 @@ dependencies {
     implementation(libs.media3.datasource.okhttp)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }

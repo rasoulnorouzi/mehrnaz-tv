@@ -23,4 +23,19 @@ class TimeFormatTest {
     @Test fun persianDigits() {
         assertEquals("۴۷:۱۲", formatPlaybackTime(2_832_000).toPersianDigits())
     }
+
+    @Test fun subtitleOffsetSeconds() {
+        val lri = '\u2066'
+        val pdi = '\u2069'
+        assertEquals("۰", formatSubtitleOffset(0))
+        assertEquals("$lri+۱٫۵$pdi", formatSubtitleOffset(1_500))
+        assertEquals("$lri-۰٫۵$pdi", formatSubtitleOffset(-500))
+        assertEquals("$lri+۲$pdi", formatSubtitleOffset(2_000))
+        assertEquals("$lri-۱۰$pdi", formatSubtitleOffset(-10_000))
+    }
+
+    @Test fun fourSubtitleSizesInOrder() {
+        assertEquals(listOf(0.8f, 1.0f, 1.25f, 1.5f), SubtitleSizes.map { it.second })
+        assertEquals(R.string.player_subtitle_xlarge, SubtitleSizes.last().first)
+    }
 }
