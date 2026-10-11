@@ -23,6 +23,8 @@ dependencies {
     implementation(project(":core:model"))
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // BackHandler: Back from a page returns to the section list.
+    implementation(libs.androidx.activity.compose)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }
