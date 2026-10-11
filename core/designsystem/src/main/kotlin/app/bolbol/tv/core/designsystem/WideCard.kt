@@ -111,7 +111,8 @@ fun WideCard(
 /**
  * [WideCard] for a Continue Watching entry: backdrop (poster as fallback), Persian title, a
  * subtitle like `"فصل ۲ · قسمت ۳ · ۲۴ دقیقه مانده"` (the season is shown from season 2 on) or
- * just the remaining time for movies, and the saved progress bar.
+ * just the remaining time for movies ([formatContinueSubtitleFa]; «ادامه از ۱۲:۳۴» when the length is unknown), and
+ * the saved progress bar (a minimal sliver when the length is unknown).
  */
 @Composable
 fun WideCard(
@@ -120,20 +121,17 @@ fun WideCard(
     modifier: Modifier = Modifier,
     onFocused: (() -> Unit)? = null,
 ) {
-    val key = item.progress.key
-    val remaining = formatRemainingFa(item.progress.remainingMs)
-    val subtitle = if (key.isEpisode) {
-        formatEpisodeFa(key.season, key.episode, includeSeason = key.season > 1) + " · " + remaining
-    } else {
-        remaining
-    }
+    val progress = item.progress
     WideCard(
         title = item.title.faTitle.ifBlank { item.title.title },
         imageUrl = item.title.backdropUrl ?: item.title.posterUrl,
         onClick = onClick,
         modifier = modifier,
-        subtitle = subtitle,
-        progress = item.progress.fraction,
+        subtitle = formatContinueSubtitleFa(progress),
+        progress = if (progress.durationMs <= 0L && !progress.completed) UNKNOWN_LENGTH_PROGRESS else progress.fraction,
         onFocused = onFocused,
     )
 }
+
+/** Bar fill of a started title whose length is unknown: the same 3 % sliver the other cards use as their minimum. */
+private const val UNKNOWN_LENGTH_PROGRESS = 0.03f

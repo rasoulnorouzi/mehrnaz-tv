@@ -1,6 +1,9 @@
 package app.bolbol.tv.core.designsystem
 
+import app.bolbol.tv.core.model.PlaybackProgress
+import app.bolbol.tv.core.model.WatchKey
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class FormattersTest {
@@ -65,5 +68,48 @@ class FormattersTest {
         assertEquals("۲۰۲۵", "2025".toPersianDigits())
         assertEquals("قسمت ۳", "قسمت 3".toPersianDigits())
         assertEquals("۱۲", 12.toPersianDigits())
+    }
+
+    // ---- progress labels (QA-03: unknown length must never read «تمام شد») ----
+
+    private fun progress(key: WatchKey, positionMs: Long, durationMs: Long, completed: Boolean = false) =
+        PlaybackProgress(key, positionMs, durationMs, updatedAtMs = 1, completed = completed)
+
+    @Test
+    fun resumeFromShowsThePositionWithPersianDigits() {
+        assertEquals("ادامه از ۱۲:۳۴", formatResumeFromFa((12 * 60 + 34) * 1000L))
+        assertEquals("ادامه از ۱:۰۲:۰۳", formatResumeFromFa((3600 + 2 * 60 + 3) * 1000L))
+        assertEquals("ادامه", formatResumeFromFa(0))
+    }
+
+    @Test
+    fun unknownLengthShowsThePositionNotFinished() {
+        val position = (12 * 60 + 34) * 1000L
+        assertEquals("ادامه از ۱۲:۳۴", formatProgressLabelFa(position, durationMs = 0))
+        assertEquals("ادامه از ۱۲:۳۴", formatProgressLabelFa(position, durationMs = -1))
+    }
+
+    @Test
+    fun knownLengthShowsTheTimeLeft() {
+        assertEquals("۲۴ دقیقه مانده", formatProgressLabelFa(36 * 60_000L, 60 * 60_000L))
+    }
+
+    @Test
+    fun finishedIsShownOnlyForCompletedTitles() {
+        assertEquals("تمام شد", formatProgressLabelFa(60 * 60_000L, 60 * 60_000L, completed = true))
+        assertEquals("تمام شد", formatProgressLabelFa(1_000L, durationMs = 0, completed = true))
+        // Unfinished but at (or past) the saved end: still not «تمام شد».
+        assertEquals("۱ دقیقه مانده", formatProgressLabelFa(60 * 60_000L, 60 * 60_000L))
+        assertEquals("۱ دقیقه مانده", formatProgressLabelFa(61 * 60_000L, 60 * 60_000L))
+        assertNotEquals("تمام شد", formatProgressLabelFa(0, 0))
+    }
+
+    @Test
+    fun continueSubtitleForEpisodesAndMovies() {
+        val position = (12 * 60 + 34) * 1000L
+        assertEquals("قسمت ۲ · ادامه از ۱۲:۳۴", formatContinueSubtitleFa(progress(WatchKey(1, 1, 2), position, 0)))
+        assertEquals("فصل ۲ · قسمت ۱ · ادامه از ۱۲:۳۴", formatContinueSubtitleFa(progress(WatchKey(1, 2, 1), position, 0)))
+        assertEquals("ادامه از ۱۲:۳۴", formatContinueSubtitleFa(progress(WatchKey(1), position, 0)))
+        assertEquals("قسمت ۱ · ۲۹ دقیقه مانده", formatContinueSubtitleFa(progress(WatchKey(1, 1, 1), 1 * 60_000L, 30 * 60_000L)))
     }
 }

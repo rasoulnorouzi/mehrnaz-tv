@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +47,8 @@ private val GridEdgePadding = 12.dp
  * signed out a slim hint row says so and offers [onOpenProfile].
  *
  * Focus starts on the first poster, or on the hint's button when the list is empty and the user is signed out.
+ * Coming back from a title's details (Back) restores focus to the poster that was opened
+ * ([AccountViewModel.lastFocusedId]), or to the card that slid into its place when it was removed meanwhile.
  * Draws its own background; apply BolbolTheme (RTL) above it.
  */
 @Composable
@@ -56,53 +59,77 @@ fun AccountScreen(
     onOpenProfile: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val firstPosterFocus = remember { FocusRequester() }
-    val profileFocus = remember { FocusRequester() }
+    Box(modifier.fillMaxSize().background(BolbolColors.Background)) {
+        if (!state.loaded) return@Box
+        MyListGrid(state = state, viewModel = viewModel, onOpenTitle = onOpenTitle, onOpenProfile = onOpenProfile)
+    }
+}
 
-    // Once, when the list was first read: later changes (a sync adding titles) never steal focus.
-    LaunchedEffect(state.loaded) {
-        if (!state.loaded) return@LaunchedEffect
+/**
+ * The grid itself, composed only once the list was read, so the one-time decisions below (which card gets the first
+ * focus, where the grid starts) are made on the real list, also when the screen comes back from details.
+ */
+@Composable
+private fun MyListGrid(
+    state: AccountUiState,
+    viewModel: AccountViewModel,
+    onOpenTitle: (TitleSummary) -> Unit,
+    onOpenProfile: () -> Unit,
+) {
+    // Decided once, when the grid enters the composition: the poster that had focus before we went to details
+    // (QA-01: it used to be the first poster, or a top button), else the first one.
+    val targetIndex = remember { state.myList.initialFocusIndex(viewModel.lastFocusedId, viewModel.lastFocusedIndex) }
+    val targetId = remember { state.myList.getOrNull(targetIndex)?.id }
+    val targetFocus = remember { FocusRequester() }
+    val profileFocus = remember { FocusRequester() }
+    // The title row (and the sign-in hint while signed out) come before the first poster in the grid.
+    val headerItems = if (state.loggedIn) 1 else 2
+    val gridState = rememberLazyGridState(
+        initialFirstVisibleItemIndex = if (targetIndex < GRID_COLUMNS) 0 else headerItems + targetIndex - targetIndex % GRID_COLUMNS,
+    )
+
+    // Once, when the grid appears: later changes (a sync adding titles) never steal focus.
+    LaunchedEffect(Unit) {
         when {
-            state.myList.isNotEmpty() -> firstPosterFocus.requestFocusWhenAttached()
+            targetId != null -> targetFocus.requestFocusWhenAttached()
             !state.loggedIn -> profileFocus.requestFocusWhenAttached()
         }
     }
 
-    Box(modifier.fillMaxSize().background(BolbolColors.Background)) {
-        if (!state.loaded) return@Box
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(GRID_COLUMNS),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = BolbolSpacing.SafeHorizontal,
-                end = BolbolSpacing.SafeHorizontal,
-                top = BolbolSpacing.SafeVertical + GridEdgePadding,
-                bottom = BolbolSpacing.SafeVertical + GridEdgePadding,
-            ),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            item(key = KEY_TITLE, span = { GridItemSpan(maxLineSpan) }, contentType = "title") {
-                ListTitle(count = state.myList.size)
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(GRID_COLUMNS),
+        modifier = Modifier.fillMaxSize(),
+        state = gridState,
+        contentPadding = PaddingValues(
+            start = BolbolSpacing.SafeHorizontal,
+            end = BolbolSpacing.SafeHorizontal,
+            top = BolbolSpacing.SafeVertical + GridEdgePadding,
+            bottom = BolbolSpacing.SafeVertical + GridEdgePadding,
+        ),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        item(key = KEY_TITLE, span = { GridItemSpan(maxLineSpan) }, contentType = "title") {
+            ListTitle(count = state.myList.size)
+        }
+        if (!state.loggedIn) {
+            item(key = KEY_HINT, span = { GridItemSpan(maxLineSpan) }, contentType = "hint") {
+                SignInHint(onOpenProfile = onOpenProfile, buttonFocus = profileFocus)
             }
-            if (!state.loggedIn) {
-                item(key = KEY_HINT, span = { GridItemSpan(maxLineSpan) }, contentType = "hint") {
-                    SignInHint(onOpenProfile = onOpenProfile, buttonFocus = profileFocus)
-                }
+        }
+        if (state.myList.isEmpty()) {
+            item(key = KEY_EMPTY, span = { GridItemSpan(maxLineSpan) }, contentType = "empty") {
+                EmptyState(message = "لیست شما خالی است", modifier = Modifier.height(180.dp))
             }
-            if (state.myList.isEmpty()) {
-                item(key = KEY_EMPTY, span = { GridItemSpan(maxLineSpan) }, contentType = "empty") {
-                    EmptyState(message = "لیست شما خالی است", modifier = Modifier.height(180.dp))
-                }
-            } else {
-                itemsIndexed(items = state.myList, key = { _, item -> item.id }, contentType = { _, _ -> "poster" }) { index, item ->
-                    // 864 dp / 5 = 172.8 dp cells: centre each 140 dp card so the slack is shared evenly.
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                        PosterCard(
-                            item = item,
-                            onClick = { onOpenTitle(item) },
-                            modifier = if (index == 0) Modifier.focusRequester(firstPosterFocus) else Modifier,
-                        )
-                    }
+        } else {
+            itemsIndexed(items = state.myList, key = { _, item -> item.id }, contentType = { _, _ -> "poster" }) { index, item ->
+                // 864 dp / 5 = 172.8 dp cells: centre each 140 dp card so the slack is shared evenly.
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                    PosterCard(
+                        item = item,
+                        onClick = { onOpenTitle(item) },
+                        modifier = if (item.id == targetId) Modifier.focusRequester(targetFocus) else Modifier,
+                        onFocused = { viewModel.onCardFocused(item.id, index) },
+                    )
                 }
             }
         }

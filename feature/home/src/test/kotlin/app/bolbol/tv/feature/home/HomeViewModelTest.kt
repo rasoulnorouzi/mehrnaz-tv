@@ -129,6 +129,20 @@ class HomeViewModelTest {
         assertEquals(FocusTarget("section:a", 1), vm.lastFocus)
     }
 
+    @Test fun theViewAllCardIsRememberedAsAFocusTarget() = runTest {
+        val vm = HomeViewModel(FakeCatalog { flow { emit(feed(section("a", 1))) } }, FakeWatch())
+        vm.onCardFocused("section:a", 1)
+
+        vm.onViewAllFocused("section:a")
+
+        assertEquals(FocusTarget("section:a", VIEW_ALL_FOCUS_ID), vm.lastFocus)
+        assertTrue(vm.lastFocus!!.isViewAll)
+
+        // Moving back onto a poster replaces it.
+        vm.onCardFocused("section:a", 1)
+        assertEquals(FocusTarget("section:a", 1), vm.lastFocus)
+    }
+
     // ---- Continue Watching menu actions ----
 
     @Test fun markWatchedMarksTheLatestEpisodeOfTheEntry() = runTest {

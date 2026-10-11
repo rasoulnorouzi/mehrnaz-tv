@@ -4,8 +4,12 @@ import app.bolbol.tv.core.model.CatalogException
 import app.bolbol.tv.core.model.Category
 import app.bolbol.tv.core.model.ContinueWatchingItem
 import app.bolbol.tv.core.model.ListQuery
+import app.bolbol.tv.core.model.PlaybackProgress
+import app.bolbol.tv.core.model.WatchKey
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HomeUiStateTest {
@@ -105,6 +109,83 @@ class HomeUiStateTest {
         )
         assertEquals(query, (state.rows[0] as HomeRow.Titles).viewAll)
         assertNull((state.rows[1] as HomeRow.Titles).viewAll)
+    }
+
+    // ---- QA-05: the trailing «مشاهده همه» card is a focus target too ----
+
+    private val viewAllQuery = ListQuery(Category.MOVIES, imdbTop250 = true)
+    private val withViewAll = content(
+        FeedState.Loaded(listOf(section("a", 1, 2, 3, viewAll = viewAllQuery), section("b", 4, 5))),
+    ).rows // section:a (1, 2, 3 + view all), section:b (4, 5)
+
+    @Test fun theViewAllCardIsRestoredAfterBackFromItsGrid() {
+        val focus = withViewAll.resolveInitialFocus(FocusTarget("section:a", VIEW_ALL_FOCUS_ID))!!
+        assertEquals(0, focus.rowIndex)
+        assertEquals(3, focus.itemIndex) // the card after the three posters
+        assertTrue(focus.viewAll)
+        assertEquals(3L, focus.title.id) // the hero keeps the row's last title
+        assertEquals(FocusTarget("section:a", VIEW_ALL_FOCUS_ID), focus.target)
+    }
+
+    @Test fun aPosterTargetIsNotTheViewAllCard() {
+        val focus = withViewAll.resolveInitialFocus(FocusTarget("section:a", 2))!!
+        assertFalse(focus.viewAll)
+        assertEquals(1, focus.itemIndex)
+        assertEquals(FocusTarget("section:a", 2), focus.target)
+    }
+
+    @Test fun aRowWithoutAViewAllCardFallsBackToItsFirstPoster() {
+        val focus = withViewAll.resolveInitialFocus(FocusTarget("section:b", VIEW_ALL_FOCUS_ID))!!
+        assertFalse(focus.viewAll)
+        assertEquals(0, focus.itemIndex)
+        assertEquals(4L, focus.title.id)
+    }
+
+    @Test fun theViewAllTargetIsRecognised() {
+        assertTrue(FocusTarget("section:a", VIEW_ALL_FOCUS_ID).isViewAll)
+        assertFalse(FocusTarget("section:a", 7).isViewAll)
+    }
+
+    // ---- QA-04: hero image fallback ----
+
+    @Test fun heroUsesTheBackdropThenThePosterThenNothing() {
+        assertEquals("b", title(1, posterUrl = "p", backdropUrl = "b").heroImageUrl())
+        assertEquals("p", title(1, posterUrl = "p", backdropUrl = null).heroImageUrl())
+        assertEquals("p", title(1, posterUrl = "p", backdropUrl = " ").heroImageUrl())
+        assertNull(title(1, posterUrl = null, backdropUrl = null).heroImageUrl())
+        assertNull(title(1, posterUrl = "", backdropUrl = "").heroImageUrl())
+    }
+
+    @Test fun continueWatchingCardsAddWhereTheViewerStoppedToTheHero() {
+        val rows = content(
+            FeedState.Loaded(listOf(section("a", 1))),
+            listOf(resumable(9, season = 1, episode = 2, positionMs = 754_000, durationMs = 0)),
+        ).rows
+        assertEquals("قسمت ۲ · ادامه از ۱۲:۳۴", rows[0].captionAt(0))
+        assertNull(rows[1].captionAt(0))
+        assertEquals("قسمت ۲ · ادامه از ۱۲:۳۴", rows.resolveInitialFocus(null)!!.caption)
+        assertNull(rows.resolveInitialFocus(FocusTarget("section:a", 1))!!.caption)
+    }
+
+    // ---- QA-03: Continue Watching with an unknown length ----
+
+    private fun progress(positionMs: Long, durationMs: Long, completed: Boolean = false) =
+        PlaybackProgress(WatchKey(1, 1, 2), positionMs, durationMs, updatedAtMs = 1, completed = completed)
+
+    @Test fun unknownLengthShowsAMinimalBar() {
+        assertEquals(MIN_VISIBLE_PROGRESS, continueBarFraction(progress(754_000, durationMs = 0)), 0f)
+        assertEquals(MIN_VISIBLE_PROGRESS, continueBarFraction(progress(0, durationMs = 0)), 0f)
+    }
+
+    @Test fun knownLengthKeepsTheRealBar() {
+        assertEquals(0.25f, continueBarFraction(progress(750_000, 3_000_000)), 0.001f)
+        assertEquals(MIN_VISIBLE_PROGRESS, continueBarFraction(progress(1_000, 10_500_000)), 0f)
+        assertEquals(0f, continueBarFraction(progress(0, 3_000_000)), 0f)
+    }
+
+    @Test fun completedIsAFullBar() {
+        assertEquals(1f, continueBarFraction(progress(3_000_000, 3_000_000, completed = true)), 0f)
+        assertEquals(1f, continueBarFraction(progress(10_000, 0, completed = true)), 0f)
     }
 
     // ---- progress bar ----

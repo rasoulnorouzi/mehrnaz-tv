@@ -25,6 +25,20 @@ internal data class AccountUiState(
 )
 
 /**
+ * Position in this list of the card to focus when the grid opens:
+ *  - the remembered title ([rememberedId], see [AccountViewModel.lastFocusedId]) if it is still in the list;
+ *  - else, when a title was remembered but is gone (removed from My List on its details page), the card that slid
+ *    into its place ([rememberedIndex], clamped to the list);
+ *  - else the first card. -1 when the list is empty.
+ */
+internal fun List<TitleSummary>.initialFocusIndex(rememberedId: Long?, rememberedIndex: Int = 0): Int {
+    if (isEmpty()) return -1
+    if (rememberedId == null) return 0
+    val found = indexOfFirst { it.id == rememberedId }
+    return if (found >= 0) found else rememberedIndex.coerceIn(0, lastIndex)
+}
+
+/**
  * State of [AccountScreen], the «لیست من» tab: the local My List (docs/auth.md). Logging in and out lives in
  * [ProfileViewModel].
  *
@@ -33,6 +47,9 @@ internal data class AccountUiState(
  *
  * [vipDaysLeft] is no longer shown here (the VIP status moved to the Profile screen); the parameter stays so existing
  * wiring keeps compiling.
+ *
+ * [lastFocusedId] survives navigation (the ViewModel does, the composition does not) so Back from a title's details
+ * restores focus to the card that was opened, like Home and Browse do.
  *
  * Create with [factory] (manual DI, docs/decisions.md §Architecture).
  */
@@ -47,6 +64,25 @@ class AccountViewModel(
     ) { accountState, list ->
         AccountUiState(loaded = true, loggedIn = accountState.loggedIn, myList = list)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), AccountUiState())
+
+    private var focusedId: Long? = null
+    private var focusedIndex = 0
+
+    /**
+     * Id of the title card that last had focus, or null before the user has focused one. Read once when the grid
+     * (re)enters the composition; kept out of [state] on purpose (it changes on every D-pad move and must not
+     * recompose the screen).
+     */
+    internal val lastFocusedId: Long? get() = focusedId
+
+    /** Position of [lastFocusedId] in the list when it was focused (the fallback if the title has left the list). */
+    internal val lastFocusedIndex: Int get() = focusedIndex
+
+    /** The poster of title [id] at position [index] gained focus. */
+    internal fun onCardFocused(id: Long, index: Int) {
+        focusedId = id
+        focusedIndex = index
+    }
 
     init {
         viewModelScope.launch {
