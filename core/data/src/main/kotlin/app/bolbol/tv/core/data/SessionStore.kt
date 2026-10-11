@@ -1,6 +1,7 @@
 package app.bolbol.tv.core.data
 
 import android.content.Context
+import android.content.SharedPreferences
 import app.bolbol.tv.core.model.AccountState
 import app.bolbol.tv.core.network.TokenProvider
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,7 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * What is kept of a login: the token the server issued plus the non-secret profile fields shown on the Profile screen
- * (name, the login name split into [username] / [email], VIP days and expiry; display only). The password is never stored.
+ * (name, username, e-mail and the VIP plan; display only). The password is never stored.
  */
 internal data class StoredSession(
     val token: String,
@@ -18,6 +19,8 @@ internal data class StoredSession(
     val username: String? = null,
     val email: String? = null,
     val vipExpire: String? = null,
+    val vipExpirePercent: Int? = null,
+    val vipStatus: String? = null,
 ) {
     /** The profile fields without the token: safe to hand to the UI. */
     fun toProfile(): AccountProfileDetails = AccountProfileDetails(
@@ -26,21 +29,14 @@ internal data class StoredSession(
         displayName = displayName,
         vipDaysLeft = vipDaysLeft,
         vipExpire = vipExpire,
+        vipExpirePercent = vipExpirePercent,
+        vipStatus = vipStatus,
     )
 
     /** The token must never reach a log. */
     override fun toString(): String =
-        "StoredSession(token=<redacted>, displayName=$displayName, vipDaysLeft=$vipDaysLeft, " +
-            "username=$username, email=$email, vipExpire=$vipExpire)"
-}
-
-/**
- * What the login form's first field says about the user: a text with an "@" is the e-mail address, anything else is
- * the username. Returns (username, email); the other half stays unknown until the server's profile call carries it.
- */
-internal fun identityOf(loginName: String?): Pair<String?, String?> {
-    val name = loginName?.trim()?.takeIf { it.isNotEmpty() } ?: return null to null
-    return if ('@' in name) null to name else name to null
+        "StoredSession(token=<redacted>, displayName=$displayName, vipDaysLeft=$vipDaysLeft, username=$username, " +
+            "email=$email, vipExpire=$vipExpire, vipExpirePercent=$vipExpirePercent, vipStatus=$vipStatus)"
 }
 
 /** Persistence of the single [StoredSession]. Calls may block briefly (disk): never call from the main thread. */
@@ -62,14 +58,15 @@ internal class SharedPreferencesSessionStorage(context: Context) : SessionStorag
 
     override fun load(): StoredSession? {
         val token = prefs.getString(KEY_TOKEN, null)?.takeIf { it.isNotEmpty() } ?: return null
-        val vip = if (prefs.contains(KEY_VIP_DAYS)) prefs.getInt(KEY_VIP_DAYS, 0) else null
         return StoredSession(
             token = token,
             displayName = prefs.getString(KEY_NAME, null),
-            vipDaysLeft = vip,
+            vipDaysLeft = prefs.optionalInt(KEY_VIP_DAYS),
             username = prefs.getString(KEY_USERNAME, null),
             email = prefs.getString(KEY_EMAIL, null),
             vipExpire = prefs.getString(KEY_VIP_EXPIRE, null),
+            vipExpirePercent = prefs.optionalInt(KEY_VIP_PERCENT),
+            vipStatus = prefs.getString(KEY_VIP_STATUS, null),
         )
     }
 
@@ -81,8 +78,12 @@ internal class SharedPreferencesSessionStorage(context: Context) : SessionStorag
             putString(KEY_USERNAME, session.username)
             putString(KEY_EMAIL, session.email)
             putString(KEY_VIP_EXPIRE, session.vipExpire)
+            if (session.vipExpirePercent != null) putInt(KEY_VIP_PERCENT, session.vipExpirePercent) else remove(KEY_VIP_PERCENT)
+            putString(KEY_VIP_STATUS, session.vipStatus)
         }.commit()
     }
+
+    private fun SharedPreferences.optionalInt(key: String): Int? = if (contains(key)) getInt(key, 0) else null
 
     override fun clear() {
         prefs.edit().clear().commit()
@@ -96,6 +97,8 @@ internal class SharedPreferencesSessionStorage(context: Context) : SessionStorag
         const val KEY_USERNAME = "username"
         const val KEY_EMAIL = "email"
         const val KEY_VIP_EXPIRE = "vip_expire"
+        const val KEY_VIP_PERCENT = "vip_percent"
+        const val KEY_VIP_STATUS = "vip_status"
     }
 }
 
@@ -135,29 +138,19 @@ internal class SessionStore(private val storage: SessionStorage) : TokenProvider
 
     val isLoggedIn: Boolean get() = token() != null
 
-    /**
-     * [loginName] is what the user typed in the login form (username or e-mail); it fills whichever of
-     * [username] / [email] the server did not send. [vipExpire] is the plan's end date as the server wrote it.
-     */
-    fun signIn(
-        token: String,
-        displayName: String?,
-        vipDaysLeft: Int?,
-        loginName: String? = null,
-        username: String? = null,
-        email: String? = null,
-        vipExpire: String? = null,
-    ) {
+    /** Starts a session with [token] and the [profile] the login answer carried. */
+    fun signIn(token: String, profile: AccountProfileDetails) {
         ensureLoaded()
         synchronized(lock) {
-            val (typedUsername, typedEmail) = identityOf(loginName)
             val next = StoredSession(
                 token = token,
-                displayName = displayName,
-                vipDaysLeft = vipDaysLeft,
-                username = username ?: typedUsername,
-                email = email ?: typedEmail,
-                vipExpire = vipExpire,
+                displayName = profile.displayName,
+                vipDaysLeft = profile.vipDaysLeft,
+                username = profile.username,
+                email = profile.email,
+                vipExpire = profile.vipExpire,
+                vipExpirePercent = profile.vipExpirePercent,
+                vipStatus = profile.vipStatus,
             )
             storage.save(next)
             publish(next)
@@ -165,25 +158,23 @@ internal class SessionStore(private val storage: SessionStorage) : TokenProvider
     }
 
     /**
-     * Refreshes the name and VIP plan of the current session (days and expiry come together: null = no plan); a null
-     * [displayName], [username] or [email] keeps what is stored. Ignored when signed out meanwhile.
+     * Refreshes the profile of the current session. The VIP plan (days, expiry, percent, status) is replaced as a group
+     * (nothing there = no plan); a null [AccountProfileDetails.displayName], [AccountProfileDetails.username] or
+     * [AccountProfileDetails.email] keeps what is stored, so an answer that misses a field never erases it. Ignored when
+     * signed out meanwhile; no disk write when nothing changed.
      */
-    fun updateProfile(
-        displayName: String?,
-        vipDaysLeft: Int?,
-        vipExpire: String? = null,
-        username: String? = null,
-        email: String? = null,
-    ) {
+    fun updateProfile(profile: AccountProfileDetails) {
         ensureLoaded()
         synchronized(lock) {
             val current = session ?: return
             val next = current.copy(
-                displayName = displayName ?: current.displayName,
-                vipDaysLeft = vipDaysLeft,
-                vipExpire = vipExpire,
-                username = username ?: current.username,
-                email = email ?: current.email,
+                displayName = profile.displayName ?: current.displayName,
+                vipDaysLeft = profile.vipDaysLeft,
+                username = profile.username ?: current.username,
+                email = profile.email ?: current.email,
+                vipExpire = profile.vipExpire,
+                vipExpirePercent = profile.vipExpirePercent,
+                vipStatus = profile.vipStatus,
             )
             if (next == current) return
             storage.save(next)

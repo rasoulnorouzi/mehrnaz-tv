@@ -1,4 +1,4 @@
-package app.bolbol.tv.feature.settings
+package app.bolbol.tv.core.designsystem
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
-import app.bolbol.tv.core.designsystem.BolbolColors
 
 /** Soft red of the heart in the dedication (#FF6B81). */
 private val HeartColor = Color(0xFFFF6B81)
@@ -29,13 +28,13 @@ private val HeartColor = Color(0xFFFF6B81)
 private const val HEART_ID = "heart"
 
 /**
- * "Made with ❤ for Mehi by Rasoul", the same line the Home top bar shows (settings → درباره, under the version). One
- * left-to-right line in the secondary text colour; the heart is a vector inside the text (a font glyph would depend on
- * the TV's emoji font), so it is always drawn in [HeartColor]; the accessibility text still reads "Made with ❤ for
- * Mehi by Rasoul". Features cannot share code with each other, so `:feature:home` keeps its own copy.
+ * "Made with ❤ for Mehi by Rasoul": the dedication on the far end of the Home top bar and under the version in
+ * Settings → درباره. One left-to-right line in [BolbolColors.TextSecondary], not focusable. The heart is a vector inside
+ * the text (a font glyph would depend on the TV's emoji font), so it is always drawn, in #FF6B81; the accessibility
+ * text still reads "Made with ❤ for Mehi by Rasoul". [style] is the text style (Label 12 sp by default).
  */
 @Composable
-internal fun DedicationLine(
+fun DedicationLine(
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.labelMedium,
 ) {

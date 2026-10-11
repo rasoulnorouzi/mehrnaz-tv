@@ -24,8 +24,14 @@ internal class FakeAccountRepo(signedIn: Boolean = false) : AccountRepository {
     var logoutThrows: Throwable? = null
     var syncGate: CompletableDeferred<Unit>? = null
     var syncThrows: Throwable? = null
+
+    /** What [syncMyList] reports: true = synced (or nothing to do), false = a network or server error. */
+    var syncResult = true
     val logins = mutableListOf<Pair<String, String>>()
     var syncs = 0
+
+    /** How many of [syncs] asked to bypass the throttle. */
+    var forcedSyncs = 0
     var logouts = 0
 
     override val state: Flow<AccountState> = accountState
@@ -48,9 +54,11 @@ internal class FakeAccountRepo(signedIn: Boolean = false) : AccountRepository {
     override fun isInMyList(postId: Long): Flow<Boolean> = flowOf(false)
     override suspend fun setInMyList(title: TitleSummary, inList: Boolean) {}
 
-    override suspend fun syncMyList() {
+    override suspend fun syncMyList(force: Boolean): Boolean {
         syncs++
+        if (force) forcedSyncs++
         syncGate?.await()
         syncThrows?.let { throw it }
+        return syncResult
     }
 }

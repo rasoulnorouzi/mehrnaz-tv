@@ -61,7 +61,7 @@ internal data class ProfileUiState(
 internal const val MSG_CREDENTIALS_REQUIRED = "نام کاربری و رمز عبور را وارد کنید."
 internal const val MSG_WRONG_CREDENTIALS = "نام کاربری یا رمز عبور اشتباه است."
 internal const val MSG_LOGIN_FAILED = "ورود انجام نشد؛ دوباره تلاش کنید."
-internal const val MSG_SYNC_FAILED = "همگام‌سازی انجام نشد؛ دوباره تلاش کنید."
+internal const val MSG_SYNC_FAILED = "همگام‌سازی ناموفق بود"
 
 /** «همگام شد» (the screen adds the check mark) stays visible this long. */
 internal const val SYNC_DONE_VISIBLE_MS = 4_000L
@@ -181,8 +181,9 @@ class ProfileViewModel(
     // --- sync ----------------------------------------------------------------------------------------------------
 
     /**
-     * «همگام‌سازی دوباره»: syncs My List now and shows how it went ([SyncPhase.Done] clears itself after a few seconds).
-     * A press while a sync runs is ignored.
+     * «همگام‌سازی دوباره»: syncs My List now, bypassing the repository's throttle (`force = true`), and shows how it
+     * went: [SyncPhase.Done] (clears itself after a few seconds) when the repository reports success, otherwise
+     * [SyncPhase.Failed] (until the next try). A press while a sync runs is ignored.
      */
     internal fun syncNow() {
         if (syncPhase.value == SyncPhase.Syncing) return
@@ -190,8 +191,7 @@ class ProfileViewModel(
         syncPhase.value = SyncPhase.Syncing
         syncJob = viewModelScope.launch {
             val result = try {
-                account.syncMyList()
-                SyncPhase.Done
+                if (account.syncMyList(force = true)) SyncPhase.Done else SyncPhase.Failed
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

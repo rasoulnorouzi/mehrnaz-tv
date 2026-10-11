@@ -56,6 +56,7 @@ import app.bolbol.tv.core.designsystem.BolbolColors
 import app.bolbol.tv.core.designsystem.BolbolSpacing
 import app.bolbol.tv.core.designsystem.BolbolText
 import app.bolbol.tv.core.designsystem.ContentRow
+import app.bolbol.tv.core.designsystem.DedicationLine
 import app.bolbol.tv.core.designsystem.ErrorState
 import app.bolbol.tv.core.designsystem.HeroBackdrop
 import app.bolbol.tv.core.designsystem.LoadingState

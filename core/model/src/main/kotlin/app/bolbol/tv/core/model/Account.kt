@@ -35,6 +35,15 @@ interface AccountRepository {
 
     suspend fun setInMyList(title: TitleSummary, inList: Boolean)
 
-    /** Two-way merge with the site's watch-list when logged in; no-op otherwise. Never throws. */
-    suspend fun syncMyList()
+    /**
+     * Two-way merge with the site's watch-list when logged in; no-op otherwise. Never throws.
+     *
+     * An automatic call (the default) is throttled: it does nothing when the last complete sync was less than ten
+     * minutes ago and no local change is waiting. [force] = true bypasses that throttle (the Profile screen's
+     * «همگام‌سازی دوباره»).
+     *
+     * @return true when the lists were synced, or there was nothing to do (signed out, or throttled); false when a
+     * network or server error stopped the sync (or the session had expired and the user was signed out).
+     */
+    suspend fun syncMyList(force: Boolean = false): Boolean
 }

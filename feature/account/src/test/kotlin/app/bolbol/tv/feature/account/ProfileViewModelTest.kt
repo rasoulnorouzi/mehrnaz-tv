@@ -334,6 +334,39 @@ class ProfileViewModelTest {
     }
 
     @Test
+    fun `sync again forces the sync, the automatic ones do not`() = runTest {
+        val repo = FakeAccountRepo(signedIn = true)
+        val vm = viewModel(repo, this, flowOf(ALI))
+        assertEquals(1, repo.syncs) // the one when the screen opened
+        assertEquals(0, repo.forcedSyncs)
+
+        vm.syncNow()
+        assertEquals(2, repo.syncs)
+        assertEquals(1, repo.forcedSyncs)
+
+        repo.accountState.value = AccountState(false) // signing in again later syncs automatically, never forced
+        repo.accountState.value = AccountState(true, "ali")
+        assertEquals(3, repo.syncs)
+        assertEquals(1, repo.forcedSyncs)
+    }
+
+    @Test
+    fun `a sync the repository reports as failed shows the failure, not done`() = runTest {
+        val repo = FakeAccountRepo(signedIn = true)
+        val vm = viewModel(repo, this, flowOf(ALI))
+        repo.syncResult = false
+
+        vm.syncNow()
+        assertEquals(SyncPhase.Failed, vm.state.value.sync)
+        advanceTimeBy(SYNC_DONE_VISIBLE_MS * 3) // a failure does not clear itself
+        assertEquals(SyncPhase.Failed, vm.state.value.sync)
+
+        repo.syncResult = true
+        vm.syncNow()
+        assertEquals(SyncPhase.Done, vm.state.value.sync)
+    }
+
+    @Test
     fun `a press while syncing is ignored`() = runTest {
         val repo = FakeAccountRepo(signedIn = true)
         val vm = viewModel(repo, this, flowOf(ALI))

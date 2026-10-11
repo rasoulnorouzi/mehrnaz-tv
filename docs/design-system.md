@@ -33,7 +33,7 @@ Disney+/Prime (season tabs + episode list, Skip Intro, next-episode countdown), 
 
 ## Screens
 1. **Home**
-   - Top bar (as built): جستجو · خانه · فیلم · سریال · لیست من · تنظیمات (6 tabs; the bar remembers the last focused tab).
+   - Top bar (as built): جستجو · خانه · فیلم · سریال · لیست من · پروفایل · تنظیمات (7 tabs; the bar remembers the last focused tab). On its far end (left in RTL), outside the tabs, a non-focusable dedication line **"Made with ❤ for Mehi by Rasoul"** (`DedicationLine`: LTR, Label 12 sp, secondary text, vector heart #FF6B81); the line is measured first and the tabs take the remaining width, so they never overlap. The same line sits under the version in Settings → درباره.
    - Hero area (top 45 %) shows the focused item's backdrop + title + meta.
    - Rows: **ادامه تماشا (Continue Watching)** first, then the API sections (newest movies, top 250, Iranian, Turkish, …, newest series, suggestions).
    - Paints from cache instantly, then refreshes.
@@ -53,7 +53,9 @@ Disney+/Prime (season tabs + episode list, Skip Intro, next-episode countdown), 
    - Next-episode card at the last ~30 s / credits with a 10 s countdown.
 4. **Search:** keyboard (start side) + results grid (end side) + mic button + "type on your phone" QR.
 5. **Category / View all:** a 5-column grid of PosterCards, paged (next page within the last 2 rows), with quick-filter chips for the Movies/Series tabs: «همه» · «۲۵۰ برتر IMDb» (+ «ایرانی», «ترکی» for movies; country ids are per taxonomy). "View all" pages have no chips.
-6. **«لیست من» (Account):** login card (username/email + password, «نمایش رمز», «ورود»); fields accept typing directly from a hardware keyboard, Tab/Enter moves to the password, Enter logs in; OK on a field opens the TV keyboard. Logged in: «سلام، …», VIP days, «خروج», and the My List grid.
+6. **Profile and «لیست من»** (two top-bar tabs; login/logout lives only in Profile):
+   - **«پروفایل»:** *Signed out:* title «پروفایل» + «با ورود به حساب، لیست من و ادامهٔ تماشا با سایت و گوشی همگام می‌شود» at the start, the login card at the end (username/email + password, «نمایش رمز», «ورود»); fields accept typing directly from a hardware keyboard, Tab/Enter moves to the password, Enter logs in; OK on a field opens the TV keyboard. Focus starts on the username field. *Signed in:* a profile card (circular avatar with the first letter of the name on the accent colour, display name, «نام کاربری», «ایمیل» (LTR), VIP pill «اشتراک ویژه: ۲۳ روز مانده» / «بدون اشتراک ویژه»), buttons **«همگام‌سازی دوباره»** (forces a sync, ignoring the 10-minute throttle; then «همگام شد ✓» or «همگام‌سازی ناموفق بود») and **«خروج از حساب»**, and the line «لیست و تاریخچهٔ تماشا روی این تلویزیون می‌ماند». Focus starts on «همگام‌سازی دوباره», also right after a login. Logout asks in a small dialog «از حساب خارج می‌شوید؟» with «بله، خروج» / «انصراف» (**«انصراف» focused**, Back cancels); «بله» signs out and the login card returns. Local My List and watch progress stay on the device.
+   - **«لیست من»:** only the My List grid under a «لیست من» header with the count (5 columns; empty: «لیست شما خالی است»). While signed out a slim hint row «برای همگام‌سازی با سایت، از بخش پروفایل وارد شوید» with a «پروفایل» button sits under the header. Focus starts on the first poster (or the hint's button when the list is empty and signed out).
 7. **Settings:** login (credentials or pairing code), mirror selection, default audio/quality,
    subtitle size, show-performance toggle, clear cache, app version.
 8. **Errors:** offline, server unreachable (tries the next mirror automatically), stream failed (try

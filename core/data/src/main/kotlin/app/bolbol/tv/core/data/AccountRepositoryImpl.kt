@@ -48,7 +48,7 @@ internal class AccountRepositoryImpl(
     /** Fetches a title's summary when the server sent only an id (details call). Null when unavailable. */
     private val resolveSummary: suspend (Long) -> TitleSummary?,
     /** Runs the debounced push after local changes. */
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val clock: () -> Long = System::currentTimeMillis,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val pushDebounceMs: Long = PUSH_DEBOUNCE_MS,
@@ -95,17 +95,14 @@ internal class AccountRepositoryImpl(
         return when (val outcome = remote.login(user, password)) {
             is LoginOutcome.Success -> try {
                 withContext(io) {
-                    session.signIn(
-                        outcome.token,
-                        outcome.profile.displayName ?: user,
-                        outcome.profile.vipDaysLeft,
-                        loginName = user,
-                    )
+                    session.signIn(outcome.token, outcome.profile.toDetails(fallbackName = user))
                     // Every synced row becomes "to add": the first sync after a login is a union and deletes nothing.
                     dao.markSyncedAsPendingAdd()
                 }
                 lastFullSyncAtMs = 0
                 lastProfileAtMs = clock()
+                // The login answer is enough to show the profile at once; the profile call completes it behind the scenes.
+                scope.launch { refreshProfileQuietly() }
                 LoginResult.Success
             } catch (e: CancellationException) {
                 throw e
@@ -151,34 +148,39 @@ internal class AccountRepositoryImpl(
     }
 
     /**
-     * Two-way merge with the site's favourites; a no-op when signed out. Runs at most once per
-     * [MIN_SYNC_INTERVAL_MS] unless local changes are waiting, so calling it on every app start or screen open is cheap.
-     * Never throws.
+     * Two-way merge with the site's favourites; a no-op (true) when signed out. Unless [force], runs at most once per
+     * [MIN_SYNC_INTERVAL_MS] while no local changes are waiting, so calling it on every app start or screen open is
+     * cheap; [force] bypasses that throttle and also refreshes the profile (name, e-mail, VIP plan) at once. Never
+     * throws. Returns false when a network or server error stopped the sync, or when the session had expired (the
+     * user is then signed out).
      */
-    override suspend fun syncMyList() {
-        try {
-            sync()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            // Best effort by contract.
-        }
+    override suspend fun syncMyList(force: Boolean): Boolean = try {
+        sync(force)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        false // Best effort by contract.
     }
 
-    private suspend fun sync() {
-        if (!session.isLoggedIn) return
-        syncMutex.withLock {
-            if (!session.isLoggedIn) return
+    private suspend fun sync(force: Boolean): Boolean {
+        if (!session.isLoggedIn) return true
+        return syncMutex.withLock {
+            if (!session.isLoggedIn) return@withLock true
             val now = clock()
             val hasPending = withContext(io) { dao.pendingCount() } > 0
-            if (!hasPending && lastFullSyncAtMs != 0L && now - lastFullSyncAtMs < MIN_SYNC_INTERVAL_MS) return
+            if (!force && !hasPending && lastFullSyncAtMs != 0L && now - lastFullSyncAtMs < MIN_SYNC_INTERVAL_MS) {
+                return@withLock true
+            }
 
-            if (!refreshProfileIfStale(now)) return
+            if (!refreshProfileIfStale(now, force)) return@withLock false
 
             val server = when (val result = remote.favorites()) {
                 is RemoteResult.Ok -> result.value
-                RemoteResult.Unauthorized -> return expire()
-                RemoteResult.Failed -> return
+                RemoteResult.Unauthorized -> {
+                    expire()
+                    return@withLock false
+                }
+                RemoteResult.Failed -> return@withLock false
             }
             val plan = withContext(io) {
                 val plan = planMerge(dao.all(), server.items.map { it.id }, server.complete)
@@ -188,19 +190,27 @@ internal class AccountRepositoryImpl(
 
             // Push what is pending. The server toggles, so each id is toggled once, only after we saw its state above.
             var pushed = false
+            var failed = false
             pushes@ for ((id, expected) in plan.pushAdd.map { it to MyListEntity.PENDING_ADD } +
                 plan.pushRemove.map { it to MyListEntity.PENDING_REMOVE }) {
                 // The user may have changed this item since the plan was made.
                 if (withContext(io) { dao.get(id)?.pendingSync } != expected) continue
                 when (remote.toggleFavorite(id)) {
                     is RemoteResult.Ok -> pushed = true
-                    RemoteResult.Unauthorized -> return expire()
-                    RemoteResult.Failed -> break@pushes
+                    RemoteResult.Unauthorized -> {
+                        expire()
+                        return@withLock false
+                    }
+                    RemoteResult.Failed -> {
+                        failed = true
+                        break@pushes
+                    }
                 }
             }
-            if (pushed) confirm(plan)
+            if (pushed && !confirm(plan)) failed = true
 
             if (withContext(io) { dao.pendingCount() } == 0) lastFullSyncAtMs = clock()
+            !failed
         }
     }
 
@@ -218,23 +228,31 @@ internal class AccountRepositoryImpl(
         }
     }
 
-    /** Reads the server list again and settles the pushed items. Unconfirmed items stay pending for the next sync. */
-    private suspend fun confirm(plan: MergePlan) {
-        val after = (remote.favorites() as? RemoteResult.Ok)?.value ?: return
+    /**
+     * Reads the server list again and settles the pushed items. Unconfirmed items stay pending for the next sync.
+     * Returns false when the list could not be read again.
+     */
+    private suspend fun confirm(plan: MergePlan): Boolean {
+        val after = (remote.favorites() as? RemoteResult.Ok)?.value ?: return false
         val ids = after.items.mapTo(HashSet()) { it.id }
         withContext(io) {
             plan.pushAdd.filter { it in ids }.forEach { dao.clearPending(it, MyListEntity.PENDING_ADD) }
             if (after.complete) plan.pushRemove.filter { it !in ids }.forEach { dao.deleteIfPending(it, MyListEntity.PENDING_REMOVE) }
         }
+        return true
     }
 
-    /** Refreshes name and VIP days at most once an hour. Returns false when the session turned out to be expired. */
-    private suspend fun refreshProfileIfStale(now: Long): Boolean {
-        if (now - lastProfileAtMs < PROFILE_REFRESH_MS) return true
+    /**
+     * Refreshes the profile (name, username, e-mail, VIP plan) from `GET user/profile` when the last refresh is older
+     * than an hour, which includes the first sync after every app start; [force] refreshes it now. Returns false when
+     * the session turned out to be expired. A failed call is not an error here (the lists decide the sync's result).
+     */
+    private suspend fun refreshProfileIfStale(now: Long, force: Boolean = false): Boolean {
+        if (!force && now - lastProfileAtMs < PROFILE_REFRESH_MS) return true
         when (val result = remote.profile()) {
             is RemoteResult.Ok -> {
                 lastProfileAtMs = now
-                withContext(io) { session.updateProfile(result.value.displayName, result.value.vipDaysLeft) }
+                withContext(io) { session.updateProfile(result.value.toDetails()) }
             }
             RemoteResult.Unauthorized -> {
                 expire()
@@ -243,6 +261,22 @@ internal class AccountRepositoryImpl(
             RemoteResult.Failed -> Unit
         }
         return true
+    }
+
+    /**
+     * Right after a login: reads `GET user/profile` once and keeps what it says, in the background. Best effort: the
+     * login answer already carried a profile, so any failure (even a 401 for the token just issued) changes nothing.
+     */
+    private suspend fun refreshProfileQuietly() {
+        try {
+            val result = remote.profile() as? RemoteResult.Ok ?: return
+            lastProfileAtMs = clock()
+            withContext(io) { session.updateProfile(result.value.toDetails()) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Best effort.
+        }
     }
 
     /** A 401/403 with a token: the token is no longer valid. The user signs in again; the local list stays. */

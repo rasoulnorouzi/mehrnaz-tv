@@ -30,6 +30,7 @@ import app.bolbol.tv.core.designsystem.BolbolIcons
 import app.bolbol.tv.core.designsystem.BolbolSpacing
 import app.bolbol.tv.core.designsystem.BolbolText
 import app.bolbol.tv.core.designsystem.ChipGroup
+import app.bolbol.tv.core.designsystem.DedicationLine
 import app.bolbol.tv.core.designsystem.TvButton
 import app.bolbol.tv.core.designsystem.TvButtonStyle
 import app.bolbol.tv.core.model.PlaybackPrefs

@@ -13,7 +13,7 @@ interface AccountRemoteDataSource {
     /** One attempt, no retries (unknown lockout rules, docs/auth.md section 8.1). Never logs or stores the password. */
     suspend fun login(username: String, password: String): LoginOutcome
 
-    /** `GET user/profile`: display name and VIP days. */
+    /** `GET user/profile`: display name, username, e-mail and the VIP plan. */
     suspend fun profile(): RemoteResult<RemoteProfile>
 
     /** The server favourites (= "My List"): all pages, capped. */
@@ -47,8 +47,24 @@ sealed interface LoginOutcome {
     data class Failed(val message: String) : LoginOutcome
 }
 
-/** What the server says about the signed-in user. [vipDaysLeft] is null when there is no active VIP plan. */
-data class RemoteProfile(val displayName: String? = null, val vipDaysLeft: Int? = null)
+/**
+ * What the server says about the signed-in user (docs/auth.md §0, `Profile`); every field is null when the answer did
+ * not carry it. Never contains the token.
+ *
+ * @property vipDaysLeft days left of an active VIP plan, null when there is none
+ * @property vipExpire the plan's end date exactly as the server wrote it
+ * @property vipExpirePercent share of the plan already used, 0..100
+ * @property vipStatus the plan's status word as sent (for example "active")
+ */
+data class RemoteProfile(
+    val displayName: String? = null,
+    val vipDaysLeft: Int? = null,
+    val username: String? = null,
+    val email: String? = null,
+    val vipExpire: String? = null,
+    val vipExpirePercent: Int? = null,
+    val vipStatus: String? = null,
+)
 
 /** Outcome of an authenticated call. */
 sealed interface RemoteResult<out T> {

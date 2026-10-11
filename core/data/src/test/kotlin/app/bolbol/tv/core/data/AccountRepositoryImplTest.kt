@@ -72,16 +72,80 @@ class AccountRepositoryImplTest {
         assertFalse(f.storage.stored.toString().contains("secret pw"))
     }
 
+    private val fullRemoteProfile = RemoteProfile(
+        displayName = "Ali R",
+        vipDaysLeft = 23,
+        username = "ali_r",
+        email = "ali@example.com",
+        vipExpire = "2026-11-03",
+        vipExpirePercent = 74,
+        vipStatus = "active",
+    )
+
+    private val fullProfile = AccountProfileDetails(
+        username = "ali_r",
+        email = "ali@example.com",
+        displayName = "Ali R",
+        vipDaysLeft = 23,
+        vipExpire = "2026-11-03",
+        vipExpirePercent = 74,
+        vipStatus = "active",
+    )
+
     @Test
     fun `the profile follows the session and never carries the token`() = runTest {
         val f = Fixture(this)
         assertNull(f.repo.profile.first())
         f.repo.login("ali", "pw")
         val profile = f.repo.profile.first()!!
-        assertEquals(AccountProfileDetails("ali", null, "Ali", 12, null), profile)
+        assertEquals(AccountProfileDetails(null, null, "Ali", 12, null), profile) // only what the server said
         assertFalse(profile.toString().contains("tok"))
         f.repo.logout()
         assertNull(f.repo.profile.first())
+    }
+
+    @Test
+    fun `login keeps every profile field the answer carried, and persists them`() = runTest {
+        val f = Fixture(this)
+        f.remote.loginOutcome = LoginOutcome.Success("tok", fullRemoteProfile)
+        f.repo.login("whatever the user typed", "pw")
+        assertEquals(fullProfile, f.repo.profile.first())
+        assertEquals(fullProfile, f.storage.stored!!.toProfile())
+    }
+
+    @Test
+    fun `the profile call after login completes the profile in the background`() = runTest {
+        val f = Fixture(this)
+        f.remote.loginOutcome = LoginOutcome.Success("tok", RemoteProfile("Ali R", null))
+        f.remote.profile = RemoteResult.Ok(fullRemoteProfile)
+        f.repo.login("ali", "pw")
+        runCurrent()
+        assertEquals(1, f.remote.calls.count { it == "profile" })
+        assertEquals(fullProfile, f.repo.profile.first())
+        assertEquals("tok", f.session.token())
+    }
+
+    @Test
+    fun `a failed or refused profile call after login changes nothing`() = runTest {
+        val f = Fixture(this)
+        f.remote.loginOutcome = LoginOutcome.Success("tok", fullRemoteProfile)
+        for (answer in listOf(RemoteResult.Failed, RemoteResult.Unauthorized)) {
+            f.remote.profile = answer
+            f.repo.login("ali", "pw")
+            runCurrent()
+            assertEquals(fullProfile, f.repo.profile.first())
+            assertTrue(f.repo.state.first().loggedIn)
+        }
+    }
+
+    @Test
+    fun `the first sync after an app start refreshes the whole profile`() = runTest {
+        val f = Fixture(this, signedIn = true) // restored from disk: only token and name
+        f.remote.profile = RemoteResult.Ok(fullRemoteProfile)
+        assertEquals(AccountProfileDetails(null, null, "Ali", null, null), f.repo.profile.first())
+        f.repo.syncMyList()
+        assertEquals(fullProfile, f.repo.profile.first())
+        assertEquals(fullProfile, f.storage.stored!!.toProfile())
     }
 
     @Test
@@ -91,6 +155,8 @@ class AccountRepositoryImplTest {
         f.repo.login("ali@example.com", "pw")
         assertEquals(AccountState(true, "ali@example.com"), f.repo.state.first())
         assertNull(f.repo.vipDaysLeft.first())
+        // The typed text is a name to greet with, not a field: username and e-mail are only what the server says.
+        assertEquals(AccountProfileDetails(null, null, "ali@example.com", null, null), f.repo.profile.first())
     }
 
     @Test
@@ -414,6 +480,87 @@ class AccountRepositoryImplTest {
         f.now += AccountRepositoryImpl.MIN_SYNC_INTERVAL_MS + 1
         f.repo.syncMyList()
         assertEquals(before + 1, f.remote.favoritesReads)
+    }
+
+    @Test
+    fun `sync says true when it synced, when signed out and when throttled`() = runTest {
+        val signedOut = Fixture(this)
+        assertTrue(signedOut.repo.syncMyList())
+        assertTrue(signedOut.remote.calls.isEmpty())
+
+        val f = Fixture(this, signedIn = true)
+        f.remote.serverHas(1)
+        assertTrue(f.repo.syncMyList())
+        assertEquals(1, f.remote.favoritesReads)
+        f.now += 60_000
+        assertTrue(f.repo.syncMyList()) // throttled: nothing to do is fine
+        assertEquals(1, f.remote.favoritesReads)
+    }
+
+    @Test
+    fun `force bypasses the throttle and refreshes the profile`() = runTest {
+        val f = Fixture(this, signedIn = true)
+        f.remote.serverHas(1)
+        f.repo.syncMyList()
+        f.now += 60_000
+        f.repo.syncMyList()
+        assertEquals(1, f.remote.favoritesReads)
+        assertEquals(1, f.remote.calls.count { it == "profile" })
+
+        f.now += 60_000
+        assertTrue(f.repo.syncMyList(force = true))
+        assertEquals(2, f.remote.favoritesReads)
+        assertEquals(2, f.remote.calls.count { it == "profile" })
+    }
+
+    @Test
+    fun `force while signed out is still a harmless no-op`() = runTest {
+        val f = Fixture(this)
+        assertTrue(f.repo.syncMyList(force = true))
+        assertTrue(f.remote.calls.isEmpty())
+    }
+
+    @Test
+    fun `sync says false on a network or server error, and never throws`() = runTest {
+        val f = Fixture(this, signedIn = true)
+        f.remote.favoritesFailure = RemoteResult.Failed
+        assertFalse(f.repo.syncMyList())
+        assertFalse(f.repo.syncMyList(force = true))
+        assertTrue(f.repo.state.first().loggedIn)
+
+        f.remote.favoritesFailure = null
+        f.remote.throwOnFavorites = IllegalStateException("boom")
+        assertFalse(f.repo.syncMyList(force = true))
+
+        f.remote.throwOnFavorites = null
+        f.remote.serverHas(1)
+        assertTrue(f.repo.syncMyList(force = true)) // and recovers
+    }
+
+    @Test
+    fun `a failed push makes the sync false until a later one succeeds`() = runTest {
+        val f = Fixture(this, signedIn = true)
+        f.dao.put(myListRow(1, PENDING_ADD))
+        f.remote.toggleFailure = RemoteResult.Failed
+        assertFalse(f.repo.syncMyList())
+        assertEquals(PENDING_ADD, f.dao.pending(1))
+
+        f.remote.toggleFailure = null
+        assertTrue(f.repo.syncMyList(force = true))
+        assertEquals(PENDING_NONE, f.dao.pending(1))
+    }
+
+    @Test
+    fun `an expired session says false and signs the user out`() = runTest {
+        val f = Fixture(this, signedIn = true)
+        f.remote.favoritesFailure = RemoteResult.Unauthorized
+        assertFalse(f.repo.syncMyList())
+        assertFalse(f.repo.state.first().loggedIn)
+
+        val g = Fixture(this, signedIn = true)
+        g.remote.profile = RemoteResult.Unauthorized
+        assertFalse(g.repo.syncMyList(force = true))
+        assertFalse(g.repo.state.first().loggedIn)
     }
 
     @Test

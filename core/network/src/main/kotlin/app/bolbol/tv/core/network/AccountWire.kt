@@ -54,6 +54,18 @@ internal object AccountWire {
     /** Keys that may hold a human name of the signed-in user, in priority order (real one: `data.display_name`). */
     val NAME_KEYS: List<String> = listOf("display_name", "displayName", "name", "nickname", "user_nicename", "user_login", "username")
 
+    /** Keys that may hold the account's username (real one: `data.username`). */
+    val USERNAME_KEYS: List<String> = listOf("username", "user_login", "userName", "login")
+
+    /** Keys that may hold the account's e-mail address (real one: `data.email`). */
+    val EMAIL_KEYS: List<String> = listOf("email", "user_email", "e-mail", "mail")
+
+    /** Keys inside `vip` that may hold the plan's end date (real one: `vip.expire`). */
+    val VIP_EXPIRE_KEYS: List<String> = listOf("expire", "expires", "expire_date", "expiry", "expire_at")
+
+    /** Keys inside `vip` that may hold the share of the plan already used (real one: `vip.expire_percent`). */
+    val VIP_PERCENT_KEYS: List<String> = listOf("expire_percent", "expire_percentage", "percent")
+
     /** Keys of the object that holds a list, in priority order (real one: `data`). */
     val LIST_KEYS: List<String> = listOf("data", "items", "posts", "list", "results", "favorites", "favourites", "watch_list")
 
