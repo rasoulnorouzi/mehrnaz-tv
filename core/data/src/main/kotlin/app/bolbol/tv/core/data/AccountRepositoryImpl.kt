@@ -83,13 +83,24 @@ internal class AccountRepositoryImpl(
         emitAll(session.vipDaysLeft)
     }
 
+    /** The non-secret profile of the signed-in user (null when signed out), for the Profile screen. */
+    val profile: Flow<AccountProfileDetails?> = flow {
+        withContext(io) { session.ensureLoaded() }
+        emitAll(session.profile)
+    }
+
     override suspend fun login(username: String, password: String): LoginResult {
         val user = username.trim()
         if (user.isEmpty() || password.isEmpty()) return LoginResult.Failed(MSG_FIELDS_REQUIRED)
         return when (val outcome = remote.login(user, password)) {
             is LoginOutcome.Success -> try {
                 withContext(io) {
-                    session.signIn(outcome.token, outcome.profile.displayName ?: user, outcome.profile.vipDaysLeft)
+                    session.signIn(
+                        outcome.token,
+                        outcome.profile.displayName ?: user,
+                        outcome.profile.vipDaysLeft,
+                        loginName = user,
+                    )
                     // Every synced row becomes "to add": the first sync after a login is a union and deletes nothing.
                     dao.markSyncedAsPendingAdd()
                 }

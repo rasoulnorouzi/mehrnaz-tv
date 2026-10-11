@@ -36,5 +36,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object AccountRoute : NavKey
 
+/** «پروفایل»: sign in / out and the signed-in user's details. */
+@Serializable data object ProfileRoute : NavKey
+
 /** Not-yet-built sections (M2/M3) show a placeholder. */
 @Serializable data class ComingSoonRoute(val title: String) : NavKey

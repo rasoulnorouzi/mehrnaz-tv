@@ -77,15 +77,16 @@ import kotlinx.coroutines.launch
 private const val HERO_FRACTION = 0.44f
 
 /** The top bar's selected tab: خانه. */
-private const val HOME_TAB_INDEX = 1
+internal const val HOME_TAB_INDEX = 1
 
 /** What each top bar tab does, in the order of `R.array.home_tabs`; null = this screen. */
-private val TabDestinations: List<HomeDestination?> = listOf(
+internal val TabDestinations: List<HomeDestination?> = listOf(
     HomeDestination.SEARCH,
     null,
     HomeDestination.MOVIES,
     HomeDestination.SERIES,
     HomeDestination.MY_LIST,
+    HomeDestination.PROFILE,
     HomeDestination.SETTINGS,
 )
 
@@ -154,15 +155,22 @@ private fun HomeMessageLayout(onNavigate: (HomeDestination) -> Unit, content: @C
     }
 }
 
+/**
+ * The tabs at the start, the dedication line on the far end (left in RTL), both centred on the bar's 44 dp. The line
+ * is measured first and the tabs take the rest, so the two can never overlap.
+ */
 @Composable
 private fun HomeTopBar(onNavigate: (HomeDestination) -> Unit, modifier: Modifier = Modifier) {
     val labels = stringArrayResource(R.array.home_tabs).toList()
-    TopBar(
-        items = labels,
-        selectedIndex = HOME_TAB_INDEX,
-        onSelect = { index -> TabDestinations.getOrNull(index)?.let(onNavigate) },
-        modifier = modifier,
-    )
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        TopBar(
+            items = labels,
+            selectedIndex = HOME_TAB_INDEX,
+            onSelect = { index -> TabDestinations.getOrNull(index)?.let(onNavigate) },
+            modifier = Modifier.weight(1f),
+        )
+        DedicationLine(Modifier.padding(end = BolbolSpacing.SafeHorizontal))
+    }
 }
 
 /** A request to put focus on one card. [token] makes a repeated request for the same card a new one. */

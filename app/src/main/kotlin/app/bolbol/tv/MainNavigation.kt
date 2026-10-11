@@ -23,8 +23,11 @@ import app.bolbol.tv.core.model.WatchKey
 import app.bolbol.tv.core.lanremote.PhoneRemotePanel
 import app.bolbol.tv.feature.search.SearchScreen
 import app.bolbol.tv.feature.search.SearchViewModel
+import app.bolbol.tv.feature.account.AccountProfile
 import app.bolbol.tv.feature.account.AccountScreen
 import app.bolbol.tv.feature.account.AccountViewModel
+import app.bolbol.tv.feature.account.ProfileScreen
+import app.bolbol.tv.feature.account.ProfileViewModel
 import app.bolbol.tv.feature.settings.SettingsScreen
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -32,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import app.bolbol.tv.feature.settings.SettingsViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import app.bolbol.tv.feature.browse.BrowseScreen
 import app.bolbol.tv.feature.browse.BrowseViewModel
 import app.bolbol.tv.feature.details.DetailsScreen
@@ -84,6 +88,7 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                             HomeDestination.SERIES -> open(BrowseRoute("سریال‌ها", Category.SERIES.name))
                             HomeDestination.SEARCH -> open(SearchRoute)
                             HomeDestination.MY_LIST -> open(AccountRoute)
+                            HomeDestination.PROFILE -> open(ProfileRoute)
                             HomeDestination.SETTINGS -> open(SettingsRoute)
                         }
                     },
@@ -139,8 +144,23 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
             }
             entry<AccountRoute> {
                 AccountScreen(
-                    viewModel = viewModel(factory = AccountViewModel.factory(data.account, data.accountVipDaysLeft)),
+                    viewModel = viewModel(factory = AccountViewModel.factory(data.account)),
                     onOpenTitle = { open(DetailsRoute(it.id)) },
+                    onOpenProfile = { open(ProfileRoute) },
+                )
+            }
+            entry<ProfileRoute> {
+                ProfileScreen(
+                    viewModel = viewModel(
+                        factory = ProfileViewModel.factory(
+                            data.account,
+                            data.accountProfile.map { details ->
+                                details?.let {
+                                    AccountProfile(it.username, it.email, it.displayName, it.vipDaysLeft, it.vipExpire)
+                                }
+                            },
+                        ),
+                    ),
                 )
             }
             entry<SettingsRoute> {

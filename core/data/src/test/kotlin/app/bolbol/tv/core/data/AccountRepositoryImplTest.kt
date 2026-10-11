@@ -73,6 +73,18 @@ class AccountRepositoryImplTest {
     }
 
     @Test
+    fun `the profile follows the session and never carries the token`() = runTest {
+        val f = Fixture(this)
+        assertNull(f.repo.profile.first())
+        f.repo.login("ali", "pw")
+        val profile = f.repo.profile.first()!!
+        assertEquals(AccountProfileDetails("ali", null, "Ali", 12, null), profile)
+        assertFalse(profile.toString().contains("tok"))
+        f.repo.logout()
+        assertNull(f.repo.profile.first())
+    }
+
+    @Test
     fun `login falls back to the typed username when the server sends no name`() = runTest {
         val f = Fixture(this)
         f.remote.loginOutcome = LoginOutcome.Success("tok", RemoteProfile(null, null))

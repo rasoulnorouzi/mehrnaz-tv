@@ -183,6 +183,7 @@ internal fun AboutPage(versionName: String, modifier: Modifier = Modifier) {
             // Version names are data (Latin digits and letters), like release years.
             BolbolText(text = versionName, style = MaterialTheme.typography.bodyMedium)
         }
+        DedicationLine(style = MaterialTheme.typography.bodyMedium)
         BolbolText(
             text = "نسخهٔ شخصی، برای استفادهٔ خصوصی",
             style = MaterialTheme.typography.bodyMedium,
