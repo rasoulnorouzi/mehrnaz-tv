@@ -1,0 +1,227 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "87c29712b886e513cda1bbdf387ce447",
+    "entities": [
+      {
+        "tableName": "progress",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `postId` INTEGER NOT NULL, `season` INTEGER NOT NULL, `episode` INTEGER NOT NULL, `positionMs` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `updatedAtMs` INTEGER NOT NULL, `completed` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "postId",
+            "columnName": "postId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "season",
+            "columnName": "season",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "episode",
+            "columnName": "episode",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "positionMs",
+            "columnName": "positionMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "durationMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMs",
+            "columnName": "updatedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completed",
+            "columnName": "completed",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_progress_postId",
+            "unique": false,
+            "columnNames": [
+              "postId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_progress_postId` ON `${TABLE_NAME}` (`postId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "title_snapshot",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`postId` INTEGER NOT NULL, `type` TEXT, `title` TEXT NOT NULL, `faTitle` TEXT NOT NULL, `posterUrl` TEXT, `backdropUrl` TEXT, `year` INTEGER, `imdbRating` REAL, `hasDub` INTEGER NOT NULL, `hasSubtitle` INTEGER NOT NULL, `hiddenFromContinue` INTEGER NOT NULL, `lastWatchedAtMs` INTEGER NOT NULL, PRIMARY KEY(`postId`))",
+        "fields": [
+          {
+            "fieldPath": "postId",
+            "columnName": "postId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "faTitle",
+            "columnName": "faTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "posterUrl",
+            "columnName": "posterUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "backdropUrl",
+            "columnName": "backdropUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "imdbRating",
+            "columnName": "imdbRating",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "hasDub",
+            "columnName": "hasDub",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasSubtitle",
+            "columnName": "hasSubtitle",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hiddenFromContinue",
+            "columnName": "hiddenFromContinue",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastWatchedAtMs",
+            "columnName": "lastWatchedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "postId"
+          ]
+        }
+      },
+      {
+        "tableName": "prefs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`postId` INTEGER NOT NULL, `audio` TEXT, `quality` INTEGER, `subtitleScale` REAL NOT NULL, PRIMARY KEY(`postId`))",
+        "fields": [
+          {
+            "fieldPath": "postId",
+            "columnName": "postId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "audio",
+            "columnName": "audio",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "quality",
+            "columnName": "quality",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "subtitleScale",
+            "columnName": "subtitleScale",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "postId"
+          ]
+        }
+      },
+      {
+        "tableName": "home_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `json` TEXT NOT NULL, `fetchedAtMs` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "json",
+            "columnName": "json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAtMs",
+            "columnName": "fetchedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '87c29712b886e513cda1bbdf387ce447')"
+    ]
+  }
+}

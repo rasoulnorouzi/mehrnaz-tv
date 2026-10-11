@@ -21,6 +21,8 @@ kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
 dependencies {
     api(project(":core:model"))
+    // DataGraph.okHttpClient is public API (shared with Coil and Media3), so OkHttp must be visible to :app.
+    api(libs.okhttp)
     implementation(project(":core:network"))
     implementation(project(":core:database"))
     testImplementation(libs.junit)
