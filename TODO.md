@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-11 (M0 done on the emulator; TV-only items pending)
+Last updated: 2026-10-11 (M1 about 70 % done)
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -38,7 +38,10 @@ Last updated: 2026-10-11 (M0 done on the emulator; TV-only items pending)
 - [x] 2026-10-11 · M1.1 + 1.2 Data layer merged: network (mirror failover, lenient JSON), Room, repositories; 165 unit tests (DE)
 - [x] 2026-10-11 · Fix: image URLs rewritten to the image CDN (majnoonbazar.ir → seo2024.ir failover); the API's own hosts 404 for images (found on the emulator by M, fixed by DE)
 - [x] 2026-10-11 · M1.3 Design system merged: Vazirmatn, PosterCard, WideCard, ContentRow, HeroBackdrop, buttons, chips, TopBar, states, gallery; verified with screenshots, RTL row scrolling confirmed correct (UI + M)
-- [ ] 🔄 M1.4 + 1.7 Player core + player screen (PE, Opus), in progress
+- [x] 2026-10-11 · M1.4 + 1.7 Player core + player screen merged: tuned ExoPlayer, resume prompt, LTR seek bar with accelerating D-pad seek, stream picker, diagnostics overlay, progress saving; 39 tests (PE)
+- [x] 2026-10-11 · M1.10a Subtitle settings contract (M) + M1.10c storage of style and per-title sync offset; 53 tests (DE)
+- [x] 2026-10-11 · App wiring: Application graph, image loader on the shared client, Navigation 3, player route (M)
+- [ ] 🔄 M1.5 + 1.6 Home + Details screens (UI, Sonnet), in progress
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
@@ -50,17 +53,9 @@ Last updated: 2026-10-11 (M0 done on the emulator; TV-only items pending)
 - [ ] 0.6 📺 Measure the official app as the baseline → `perf/reports/official-baseline.md` (PA)
 
 ### M1: Watchable MVP
-- [ ] 1.1 Network layer: DTOs, lenient JSON, mirror failover, HTTP cache + tests (DE)
-- [ ] 1.2 Room database: progress, history, prefs, row cache (DE)
-- [ ] 1.3 Design system components + gallery screenshot (UI)
-- [ ] 1.4 Player core: ExoPlayer, LoadControl, VTT subtitles, progress saving, metrics (PE)
-- [ ] 1.5 Home screen: top bar, hero, rows, Continue Watching, instant paint from cache (UI)
-- [ ] 1.6 Movie details: Resume/Play, dub/sub + quality choice (UI)
-- [ ] 1.7 Player screen: overlay, fast D-pad seeking, resume prompt (PE + UI)
+- [ ] 1.11 Integrate home + details into the app; end-to-end test on the virtual TV: browse → details → play → resume → Continue Watching (M)
 - [ ] 1.10 **Subtitles as a first-class feature** (user requirement, spec `docs/subtitles.md`):
-  - [ ] 1.10a Contract: `SubtitleStyle` + offset prefs in core:model (M)
   - [ ] 1.10b Own subtitle engine: VTT parser, timing offset, cue sync, Persian bidi, `SubtitleText` (PE, Opus)
-  - [ ] 1.10c Storage of style + per-title offset (DE, Sonnet)
   - [ ] 1.10d In-player subtitle menu (on/off, size, ±0.5 s sync) + Settings → زیرنویس page with live preview (UI, Sonnet)
 - [ ] 1.8 Baseline Profile + release build (M); 📺 measure the gain on the TV
 - [ ] 1.9 Review gate: code review + QA pass (emulator) + 📺 perf report `perf/reports/M1.md` (M, QA, PA)
