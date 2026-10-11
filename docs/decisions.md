@@ -45,3 +45,21 @@ add a new entry that references it.
   allowlisting; tvprovider still works until about H2 2027 on Android TV home). Low priority: PatchWall may ignore it.
 - **2026-10-11 · Phone/QR remote via NanoHTTPD** (tiny), LAN-only, active only while search is open, random token.
 - **2026-10-11 · minSdk 29, targetSdk 36**: one known device; no need for older APIs.
+
+## Architecture (M1)
+**2026-10-11 · Manual dependency injection instead of Hilt.**
+- Why: one activity and a handful of repositories. A hand-written `AppGraph` in `:app` is trivially
+  small, starts faster (no generated component graph, no extra KSP pass), and avoids Hilt/AGP 9
+  compatibility risk. ViewModels get their dependencies through `viewModelFactory { initializer { … } }`.
+- Revisit if: the graph grows past ~15 bindings or needs scoping that becomes painful.
+
+**2026-10-11 · Navigation 3 (`androidx.navigation3` 1.2.0) in `:app`.** Feature modules expose screen
+composables with callbacks (`onOpenTitle(id)`, `onPlay(request)`); only `:app` knows the back stack.
+
+**2026-10-11 · Data layer split:** `:core:network` (Retrofit/DTOs/mappers/mirrors) and `:core:database`
+(Room) are internal. `:core:data` implements the `core:model` repository interfaces on top of both.
+Features see only `core:model` interfaces.
+
+**2026-10-11 · Player timeline stays left-to-right inside the RTL UI.** DPAD_RIGHT = forward +10 s,
+the seek bar fills left→right. This matches the remote's arrows and how media timelines work. The rest of
+the player chrome (titles, menus) is RTL.

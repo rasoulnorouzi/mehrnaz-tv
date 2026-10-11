@@ -33,7 +33,11 @@ Last updated: 2026-10-11 (M0 done on the emulator; TV-only items pending)
 - [x] 2026-10-11 · Requirement recorded: search keyboard in **both Persian and English** (U)
 
 ## 🔄 In progress / waiting
-- [ ] **Waiting on you (U):** approve starting **M1 (Watchable MVP)**
+- [x] 2026-10-11 · M1 approved by the user ("go for a real watch… do a final product")
+- [x] 2026-10-11 · M1.0 Shared contract `:core:model` (domain types, repository interfaces, stream picking; 4 tests pass) + buildable skeletons for all M1 modules (M)
+- [ ] 🔄 M1.1 + 1.2 Data layer: network, database, repositories (DE, Sonnet), in progress
+- [ ] 🔄 M1.3 Design system components + Vazirmatn font + gallery (UI, Sonnet), in progress
+- [ ] 🔄 M1.4 + 1.7 Player core + player screen (PE, Opus), in progress
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do

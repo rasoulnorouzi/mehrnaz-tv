@@ -31,3 +31,11 @@ rootProject.name = "BolbolTV"
 // Modules are added as their tasks start (see docs/plan.md). New module recipe: docs/modules.md
 include(":app")
 include(":core:designsystem")
+include(":core:model")
+include(":core:network")
+include(":core:database")
+include(":core:data")
+include(":core:player")
+include(":feature:home")
+include(":feature:details")
+include(":feature:playback")

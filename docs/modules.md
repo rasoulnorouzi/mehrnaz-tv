@@ -7,11 +7,17 @@ uses the same short build file, and versions come from `gradle/libs.versions.tom
 | Module | Namespace | Purpose |
 |---|---|---|
 | `:app` | `app.bolbol.tv` | Activity, navigation, DI wiring. Release = R8 + debug-signed (private sideload) |
-| `:core:designsystem` | `app.bolbol.tv.core.designsystem` | Theme (forces RTL), colours, type, spacing, `FocusCard`, `toPersianDigits()` |
+| `:core:designsystem` | `app.bolbol.tv.core.designsystem` | Theme (forces RTL), colours, type, spacing, components, `toPersianDigits()` |
+| `:core:model` | `app.bolbol.tv.core.model` | **The contract**: domain types + repository interfaces. Change only via the manager |
+| `:core:network` | `app.bolbol.tv.core.network` | Retrofit, DTOs, lenient JSON, mirror failover, mappers (internal) |
+| `:core:database` | `app.bolbol.tv.core.database` | Room: progress, title snapshots, prefs, home cache (internal) |
+| `:core:data` | `app.bolbol.tv.core.data` | Implements `CatalogRepository`, `WatchRepository`, `PrefsRepository` |
+| `:core:player` | `app.bolbol.tv.core.player` | ExoPlayer factory, LoadControl, progress tracking, playback metrics |
+| `:feature:home` | `app.bolbol.tv.feature.home` | Home screen |
+| `:feature:details` | `app.bolbol.tv.feature.details` | Movie/series details |
+| `:feature:playback` | `app.bolbol.tv.feature.playback` | Player screen + overlay |
 
-Planned (create when the task starts, see `docs/plan.md`): `:core:model`, `:core:network`,
-`:core:database`, `:core:player`, `:feature:home`, `:feature:details`, `:feature:playback`,
-`:feature:search`, `:feature:account`, `:feature:tvhome`, `:baselineprofile`, `:benchmark`.
+Planned: `:feature:search`, `:feature:account`, `:feature:tvhome`, `:baselineprofile`, `:benchmark`.
 
 ## Recipe: Android library module with Compose
 1. Add `include(":feature:xyz")` to `settings.gradle.kts`.
