@@ -404,8 +404,9 @@ Other open items:
 ## 11. Dubbed versions and `post/player-links` (found 2026-10-11, samples in `research/webapp/api/dub/`)
 - **`GET post/player-links?id={postId}`** (public) returns `{download_links, player_links}` for a movie or a whole series.
   **The official TV app always gets streams from here** (`?id=` for movies, `?id=&season=&episode=` for episodes, same body).
-- **`GET post/{id}` can return EMPTY `download_links`/`player_links` (`[]`) while player-links has them**
-  (e.g. series 623954 «Kill Jackie», `has_dubbed: "on"`). So details alone is not enough to play.
+- **Correction (verified by the data agent):** `post/{id}` for series 623954 is NOT empty; its series blocks are an
+  **object keyed by numeric strings** instead of the array seen in the LEGO sample, which the original mapper did not
+  accept (so such series would not have played). Both shapes are now decoded, and streams come from player-links first.
 - Series blocks in player-links are an **object keyed by numeric strings** (`"0","2","4","1","3","5"`), not an array. Use the map-or-array decoder.
 - **Dub blocks are separate blocks:** download `type: "dub"` / player `type_link: "dub"`; sub blocks have download `type: "sub"`
   and player `type_link: ""`. Match download and player blocks **by the same key**.
