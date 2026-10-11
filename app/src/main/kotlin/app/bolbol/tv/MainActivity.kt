@@ -21,5 +21,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        // The launch logo (windowBackground) only covers the gap before Compose's first frame.
+        // Drop it afterwards: Compose paints an opaque background, and a window background under a
+        // full-screen UI is pure overdraw on the TV's small GPU.
+        window.decorView.post { window.setBackgroundDrawable(null) }
     }
 }

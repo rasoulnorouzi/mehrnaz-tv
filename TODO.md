@@ -43,6 +43,7 @@ Last updated: 2026-10-11 (M1 about 70 % done)
 - [x] 2026-10-11 · App wiring: Application graph, image loader on the shared client, Navigation 3, player route (M)
 - [x] 2026-10-11 · Build queue `tools/gw.sh` + skeletons for search/browse/settings/tvhome/lanremote + shared `SubtitleText` renderer (M)
 - [x] 2026-10-11 · M2.5 Browse / category grids with paging + quick filters merged; 35 tests (UI)
+- [x] 2026-10-11 · M4.5 App icon (adaptive), TV banner «بلبل تی‌وی» (Vazirmatn, rendered via Chromium/HarfBuzz), launch screen; launch logo removed after first frame to avoid overdraw (UI + M)
 - **🔄 Running in parallel now (9 agents):**
   - [ ] 🔄 M1.5 + 1.6 Home + Details screens (UI, Sonnet)
   - [ ] 🔄 M1.10b Own subtitle engine + in-player subtitle menu + M2.2 auto-next episode (PE, Opus)
@@ -51,7 +52,6 @@ Last updated: 2026-10-11 (M1 about 70 % done)
   - [ ] 🔄 M3.5 Phone/QR remote (DE, Sonnet)
   - [ ] 🔄 M3.6 Android TV home "Watch Next" row (DE, Sonnet)
   - [ ] 🔄 M3.1 Login/account API investigation (R, Sonnet)
-  - [ ] 🔄 M4.5 App icon, TV banner, launch screen (UI, Sonnet)
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
@@ -92,7 +92,7 @@ Last updated: 2026-10-11 (M1 about 70 % done)
 - [ ] 4.2 Fix the top regressions until every budget passes (PE / UI)
 - [ ] 4.3 📺 Memory/leak pass over a 30-minute session (PA + PE)
 - [ ] 4.4 Error states: offline, mirror down, broken stream, expired login (UI)
-- [ ] 4.5 App icon, TV banner, splash, final visual polish (UI)
+- [ ] 4.5b Final visual polish pass (UI)
 - [ ] 4.6 📺 Final report: our app vs the official app (PA → M)
 
 ---
