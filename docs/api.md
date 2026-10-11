@@ -400,3 +400,15 @@ Other open items:
 - **Assumptions the client makes that are not yet verified live:** a 404 `{"success":false}` (or `success:false` with 200) from a list/search call means "no results / past the last page" and becomes an empty page; from `/post/{id}` it means not found. HTTP 5xx and non-JSON bodies on `/wp-json/` calls are treated as a broken mirror and trigger failover; any JSON answer (including 4xx) is accepted as a real API answer.
 - **Episode numbering:** the client uses the number in the download item title (`Episode N`) when every title of the block parses and they are distinct, otherwise the 1-based position. Dub vs sub of a series is read from `download_links[].type`; with no type anywhere, a block with subtitle URLs is subtitled, one without is treated as dubbed.
 - **Image hosts (fix, quirk 7 revisited):** the API's own hosts do not serve their upload files. `https://euploadi.com/wp-content/uploads/...` and the same path on `https://uuploadi.ir` answer 404 (HTML); the same path on `https://majnoonbazar.ir` (the site's active CDN) and `https://seo2024.ir` answers 200 `image/webp`. The client therefore rewrites every URL whose path starts with `/wp-content/uploads/` to the first host of `NetworkModule.DEFAULT_IMAGE_HOSTS` (`majnoonbazar.ir`, then `seo2024.ir`), and `ImageCdnInterceptor` retries the same path on the next host on an IOException, a non-2xx status or a non-image body. Trailer and stream hosts (`dl*.acenteri.ir`, `dl1.hostikadeh.ir`) are not images and are left alone.
+
+## 11. Dubbed versions and `post/player-links` (found 2026-10-11, samples in `research/webapp/api/dub/`)
+- **`GET post/player-links?id={postId}`** (public) returns `{download_links, player_links}` for a movie or a whole series.
+  **The official TV app always gets streams from here** (`?id=` for movies, `?id=&season=&episode=` for episodes, same body).
+- **`GET post/{id}` can return EMPTY `download_links`/`player_links` (`[]`) while player-links has them**
+  (e.g. series 623954 «Kill Jackie», `has_dubbed: "on"`). So details alone is not enough to play.
+- Series blocks in player-links are an **object keyed by numeric strings** (`"0","2","4","1","3","5"`), not an array. Use the map-or-array decoder.
+- **Dub blocks are separate blocks:** download `type: "dub"` / player `type_link: "dub"`; sub blocks have download `type: "sub"`
+  and player `type_link: ""`. Match download and player blocks **by the same key**.
+- **Dubbing lags:** the dub blocks can have fewer episodes (4 dubbed vs 8 subtitled in Season 1). Episodes are per-audio:
+  episode N may exist only as SUBTITLED.
+- Movies in player-links have the same 6-entry shape as in details (3 sub + 3 dub qualities).
