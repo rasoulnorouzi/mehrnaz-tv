@@ -27,11 +27,13 @@ class TimeFormatTest {
     @Test fun subtitleOffsetSeconds() {
         val lri = '\u2066'
         val pdi = '\u2069'
-        assertEquals("۰", formatSubtitleOffset(0))
+        assertEquals("۰٫۰", formatSubtitleOffset(0))
         assertEquals("$lri+۱٫۵$pdi", formatSubtitleOffset(1_500))
         assertEquals("$lri-۰٫۵$pdi", formatSubtitleOffset(-500))
-        assertEquals("$lri+۲$pdi", formatSubtitleOffset(2_000))
-        assertEquals("$lri-۱۰$pdi", formatSubtitleOffset(-10_000))
+        assertEquals("$lri+۲٫۰$pdi", formatSubtitleOffset(2_000))
+        assertEquals("$lri+۱۲٫۵$pdi", formatSubtitleOffset(12_500)) // the user's example
+        assertEquals("$lri-۵۰٫۰$pdi", formatSubtitleOffset(-50_000))
+        assertEquals("$lri+۱۲۰٫۰$pdi", formatSubtitleOffset(120_000))
     }
 
     @Test fun fourSubtitleSizesInOrder() {

@@ -332,8 +332,10 @@ class PlaybackController(
     }
 
     /**
-     * Sets this title's subtitle sync offset (clamped to ±10 s and rounded to 0.5 s steps, see
-     * [SubtitleOffset]), applies it at once and saves it per title. Returns the applied value.
+     * Sets this title's subtitle sync offset (clamped to ±120 s and rounded to 0.5 s steps, see
+     * [SubtitleOffset]), applies it at once and saves it per title. Saving is debounced
+     * ([OFFSET_SAVE_DEBOUNCE_MS]) so holding a step button doesn't write 8 rows a second.
+     * Returns the applied value.
      */
     fun setSubtitleOffset(offsetMs: Int): Int {
         val postId = request?.key?.postId
@@ -343,7 +345,10 @@ class PlaybackController(
         _subtitleOffsetMs.value = value
         subtitleSync.offsetMs = value
         offsetSaveJob?.cancel()
-        offsetSaveJob = scope.launch { safely("saveSubtitleOffset") { prefs.saveSubtitleOffsetMs(postId, value) } }
+        offsetSaveJob = scope.launch {
+            delay(OFFSET_SAVE_DEBOUNCE_MS)
+            safely("saveSubtitleOffset") { prefs.saveSubtitleOffsetMs(postId, value) }
+        }
         return value
     }
 
@@ -587,5 +592,6 @@ class PlaybackController(
         const val PERF_TAG = "BolbolPerf"
         private const val TAG = "BolbolPlayer"
         private const val NOT_MEASURING = -1L
+        private const val OFFSET_SAVE_DEBOUNCE_MS = 400L
     }
 }

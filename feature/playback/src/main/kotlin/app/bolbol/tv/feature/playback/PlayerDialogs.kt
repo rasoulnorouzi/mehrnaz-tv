@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,13 +22,23 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,6 +56,12 @@ import app.bolbol.tv.core.model.SubtitleStyle
 import app.bolbol.tv.core.player.PlaybackError
 import app.bolbol.tv.core.player.audioTypes
 import app.bolbol.tv.core.player.qualitiesFor
+import app.bolbol.tv.core.player.subtitles.HoldRepeat
+import app.bolbol.tv.core.player.subtitles.SubtitleOffset
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /** Subtitle size choices: label → SubtitleStyle.SIZE_STEPS (کوچک / معمولی / بزرگ / خیلی بزرگ). */
@@ -158,7 +175,7 @@ private fun PlaybackError.messageRes(): Int = when (kind) {
 /**
  * "تنظیمات پخش" side panel at the end edge: audio (دوبله / زیرنویس), quality (۱۰۸۰ / ۷۲۰ / ۴۸۰) and,
  * for subtitled streams, the subtitle quick menu (docs/subtitles.md): on/off, size (4 steps) and sync
- * («زودتر ۰٫۵ ثانیه» / «دیرتر ۰٫۵ ثانیه» / «تنظیم مجدد» with the current offset). Changes apply live;
+ * (±0.5 s and ±5 s steps with hold-to-repeat, «تنظیم مجدد», the current offset up to ±120 s). Changes apply live;
  * colour, box, position and weight live on the Settings page. Focus starts on the current audio.
  * Scrolls vertically when the sections don't fit (focus brings the row into view).
  */
@@ -172,7 +189,7 @@ internal fun StreamPickerPanel(
     onQuality: (Int) -> Unit,
     onSubtitlesEnabled: (Boolean) -> Unit,
     onSubtitleSize: (Float) -> Unit,
-    onSubtitleShift: (direction: Int) -> Unit,
+    onSubtitleShift: (deltaMs: Int) -> Unit,
     onSubtitleReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -225,7 +242,7 @@ private fun SubtitleSection(
     offsetMs: Int,
     onEnabled: (Boolean) -> Unit,
     onSize: (Float) -> Unit,
-    onShift: (direction: Int) -> Unit,
+    onShift: (deltaMs: Int) -> Unit,
     onReset: () -> Unit,
 ) {
     Spacer(Modifier.height(24.dp))
@@ -245,13 +262,90 @@ private fun SubtitleSection(
             )
         }
     }
+    // «همگام‌سازی: +۱۲٫۵ ثانیه», then a 2-column grid (earlier at the start/right, later at the end/left):
+    //   زودتر ۰٫۵ | دیرتر ۰٫۵
+    //   زودتر ۵   | دیرتر ۵
+    //   تنظیم مجدد
+    // Equal-width columns keep UP/DOWN moving straight between the rows. Holding OK repeats a step.
     val offsetText = stringResource(R.string.player_subtitle_seconds, formatSubtitleOffset(offsetMs))
-    PickerSection(stringResource(R.string.player_subtitle_sync, offsetText)) {
-        OptionButton(stringResource(R.string.player_subtitle_earlier), selected = false, onClick = { onShift(-1) })
-        OptionButton(stringResource(R.string.player_subtitle_later), selected = false, onClick = { onShift(+1) })
-        OptionButton(stringResource(R.string.player_subtitle_reset), selected = false, onClick = onReset)
+    Spacer(Modifier.height(20.dp))
+    Text(stringResource(R.string.player_subtitle_sync, offsetText), style = MaterialTheme.typography.labelMedium, color = BolbolColors.TextSecondary)
+    Spacer(Modifier.height(8.dp))
+    val small = SubtitleOffset.SMALL_STEP_MS
+    val large = SubtitleOffset.LARGE_STEP_MS
+    StepRow(
+        R.string.player_subtitle_earlier to -small,
+        R.string.player_subtitle_later to small,
+        onShift = onShift,
+    )
+    Spacer(Modifier.height(8.dp))
+    StepRow(
+        R.string.player_subtitle_earlier_large to -large,
+        R.string.player_subtitle_later_large to large,
+        onShift = onShift,
+    )
+    Spacer(Modifier.height(8.dp))
+    OptionButton(stringResource(R.string.player_subtitle_reset), selected = false, onClick = onReset)
+}
+
+@Composable
+private fun StepRow(first: Pair<Int, Int>, second: Pair<Int, Int>, onShift: (deltaMs: Int) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for ((label, delta) in listOf(first, second)) {
+            RepeatStepButton(stringResource(label), onStep = { onShift(delta) }, modifier = Modifier.weight(1f))
+        }
     }
 }
+
+/**
+ * A sync step button: OK steps once at key-down; **holding OK** repeats the step on our own timer
+ * ([HoldRepeat]: first repeat after 400 ms, then every 120 ms) until key-up or focus loss. The remote's
+ * own auto-repeat key-downs are ignored, so the speed is the same on every remote.
+ */
+@Composable
+private fun RepeatStepButton(label: String, onStep: () -> Unit, modifier: Modifier = Modifier) {
+    val scope = rememberCoroutineScope()
+    val currentOnStep by rememberUpdatedState(onStep)
+    val stepper = remember(scope) { HoldStepper(scope) { currentOnStep() } }
+    DisposableEffect(stepper) { onDispose { stepper.release() } }
+    OptionButton(
+        label = label,
+        selected = false,
+        onClick = { currentOnStep() }, // pointer clicks only: OK key events are consumed below
+        modifier = modifier
+            .onFocusChanged { if (!it.isFocused) stepper.release() }
+            .onPreviewKeyEvent { event ->
+                if (!event.key.isConfirmKey()) return@onPreviewKeyEvent false
+                when (event.type) {
+                    KeyEventType.KeyDown -> stepper.press()
+                    KeyEventType.KeyUp -> stepper.release()
+                }
+                true
+            },
+    )
+}
+
+private class HoldStepper(private val scope: CoroutineScope, private val step: () -> Unit) {
+    private var job: Job? = null
+
+    fun press() {
+        if (job != null) return // a remote auto-repeat key-down: our timer is already running
+        step() // synchronously, so a quick down+up (adb keyevent) still steps exactly once
+        job = scope.launch {
+            for (i in 1 until HoldRepeat.MAX_STEPS) {
+                delay(HoldRepeat.delayBefore(i))
+                step()
+            }
+        }
+    }
+
+    fun release() {
+        job?.cancel()
+        job = null
+    }
+}
+
+private fun Key.isConfirmKey() = this == Key.DirectionCenter || this == Key.Enter || this == Key.NumPadEnter
 
 @Composable
 private fun PickerSection(title: String, options: @Composable () -> Unit) {

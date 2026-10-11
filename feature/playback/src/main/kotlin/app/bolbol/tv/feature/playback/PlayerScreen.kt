@@ -251,7 +251,7 @@ fun PlayerScreen(
                 onQuality = viewModel::selectQuality,
                 onSubtitlesEnabled = viewModel::setSubtitlesEnabled,
                 onSubtitleSize = viewModel::setSubtitleSize,
-                onSubtitleShift = { direction -> showOffsetToast(viewModel.shiftSubtitles(direction)) },
+                onSubtitleShift = { deltaMs -> showOffsetToast(viewModel.shiftSubtitles(deltaMs)) },
                 onSubtitleReset = { showOffsetToast(viewModel.resetSubtitleOffset()) },
             )
         }
