@@ -296,16 +296,52 @@ class AccountParsingTest {
         assertEquals(TitleType.SERIES, episode.summary!!.type)
     }
 
+    /** `duration` is untrusted (QA-03): only a provable length in seconds (> position, 60 s..6 h) survives. */
     @Test
-    fun `progress durations tolerate minutes clock strings and nonsense`() {
+    fun `progress duration is accepted only when it provably is sane seconds`() {
         fun duration(raw: String, pos: Int = 3000): Long =
             progress("""{"data":[{"id":1,"current_time":$pos,"duration":$raw}]}""")!!.single().durationMs
-        assertEquals(7_200_000L, duration("7200"))
+        // plain numbers are seconds
+        assertEquals(5_100_000L, duration("5100"))
+        assertEquals(5_100_000L, duration("\"5100\""))
+        assertEquals(5_100_000L, duration("\"5100.0\""))
+        assertEquals(5_100_000L, duration("\"۵۱۰۰\"")) // Persian digits
         assertEquals(7_200_000L, duration("\"2:00:00\""))
-        assertEquals(7_200_000L, duration("120")) // 120 < position: minutes
-        assertEquals(0L, duration("5", pos = 3000)) // even as minutes it is shorter than the position
-        assertEquals(0L, duration("\"abc\""))
+        assertEquals(5_100_000L, duration("\"85:00\"")) // MM:SS
+        // an explicit unit word proves the unit
+        assertEquals(5_100_000L, duration("\"85 دقیقه\""))
+        assertEquals(5_100_000L, duration("\"۸۵ دقیقه\""))
+        assertEquals(5_100_000L, duration("\"85 min\""))
+        assertEquals(7_200_000L, duration("\"2 ساعت\""))
+        // unknown: zero, empty, null, text
         assertEquals(0L, duration("0"))
+        assertEquals(0L, duration("\"0\""))
+        assertEquals(0L, duration("\"\""))
+        assertEquals(0L, duration("null"))
+        assertEquals(0L, duration("\"abc\""))
+        assertEquals(0L, duration("\"نامشخص\""))
+        assertEquals(0L, duration("\"85 foo\""))
+        assertEquals(0L, duration("-5100"))
+        // a bare 85 is never guessed to be minutes: 85 s is shorter than the position
+        assertEquals(0L, duration("85"))
+        assertEquals(0L, duration("\"85\""))
+        // smaller than or equal to the position: impossible
+        assertEquals(0L, duration("1500", pos = 3000))
+        assertEquals(0L, duration("3000", pos = 3000))
+        assertEquals(0L, duration("\"20 دقیقه\"", pos = 3000))
+        // outside 60 s..6 h
+        assertEquals(0L, duration("59", pos = 10))
+        assertEquals(60_000L, duration("60", pos = 10))
+        assertEquals(21_600_000L, duration("21600"))
+        assertEquals(0L, duration("21601"))
+        assertEquals(0L, duration("5100000")) // milliseconds mistaken for seconds
+    }
+
+    @Test
+    fun `progress position is seconds and a missing duration leaves it unknown`() {
+        val item = progress("""{"data":[{"id":1,"current_time":"90"}]}""")!!.single()
+        assertEquals(90_000L, item.positionMs)
+        assertEquals(0L, item.durationMs)
     }
 
     @Test

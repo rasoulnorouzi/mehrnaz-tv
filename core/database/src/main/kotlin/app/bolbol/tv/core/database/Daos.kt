@@ -30,8 +30,17 @@ abstract class WatchDao {
         upsertProgress(progress)
     }
 
-    /** Marks an existing row completed with position = duration. Returns the number of rows changed (0 or 1). */
-    @Query("UPDATE progress SET completed = 1, positionMs = durationMs WHERE `key` = :key")
+    /**
+     * Marks an existing row completed with position = duration (an unknown duration keeps the position) and as a local
+     * row, since the user decided. Returns the number of rows changed (0 or 1).
+     */
+    @Query(
+        """
+        UPDATE progress
+        SET completed = 1, positionMs = CASE WHEN durationMs > 0 THEN durationMs ELSE positionMs END, source = 'local'
+        WHERE `key` = :key
+        """,
+    )
     abstract suspend fun markCompleted(key: String): Int
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -50,6 +59,25 @@ abstract class WatchDao {
     @Query("DELETE FROM progress WHERE `key` = :key")
     abstract suspend fun deleteProgress(key: String)
 
+    /**
+     * Repairs rows that an earlier watch-list pull imported with an untrusted server duration (QA-03). Only
+     * `source = 'remote'` rows are touched, i.e. nothing the local player or the user wrote. A remote row is reset to
+     * not completed with an unknown duration when its duration cannot be real (under 60 s or over 6 h), or when it is
+     * marked completed although the position is under 95 % of the duration. Idempotent; run it on every pull.
+     * Returns the number of rows repaired.
+     */
+    @Query(
+        """
+        UPDATE progress SET completed = 0, durationMs = 0
+        WHERE source = 'remote'
+          AND (
+            (durationMs > 0 AND (durationMs < 60000 OR durationMs > 21600000 OR durationMs < positionMs))
+            OR (completed = 1 AND (durationMs < 60000 OR positionMs * 100 < durationMs * 95))
+          )
+        """,
+    )
+    abstract suspend fun repairRemoteImports(): Int
+
     /** Removes a title from Continue Watching only; progress rows (watched ticks) stay. */
     @Query("UPDATE title_snapshot SET hiddenFromContinue = 1 WHERE postId = :postId")
     abstract suspend fun hideFromContinue(postId: Long)
@@ -67,7 +95,8 @@ abstract class WatchDao {
      * Continue Watching: one entry per title.
      *  1. For every title take its most recent progress row (highest updatedAtMs; ties broken by key so
      *     exactly one row qualifies).
-     *  2. Keep it only if that row is not completed and the title was not hidden.
+     *  2. Keep it only if that row is not completed and the title was not hidden. Rows with an unknown duration
+     *     (durationMs = 0, imported from the site's watch-list) are kept: they are real unfinished items.
      *  3. Join the snapshot to paint the row, newest first.
      * Snapshot columns are aliased with an `s_` prefix to match [ContinueWatchingRow].
      */

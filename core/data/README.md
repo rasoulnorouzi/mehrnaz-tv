@@ -44,7 +44,9 @@ Errors are always `CatalogException` (Offline, AllMirrorsDown, NotFound, BadResp
 - **Subtitles:** `subtitleStyle()` emits `SubtitleStyle()` until saved (table `subtitle_style`, one row); the per-title offset
   (`subtitle_offset`, no row = 0) is rounded to 0.5 s and clamped to +-10 s on save. Own tables, so playback prefs never overwrite them.
 - **Watch progress:** `saveProgress` upserts snapshot + progress in one transaction (un-hides the title); completed is
-  forced at >= 95 %. Continue Watching = latest progress row per title, not completed, not hidden, newest first.
+  forced at >= 95 % (never when the duration is unknown, `durationMs <= 0`). Continue Watching = latest progress row per
+  title, not completed, not hidden, newest first; rows with an unknown duration (imported from the site) are included.
+  `progress.source` is `local` (player / user) or `remote` (written by `pullProgress`).
 
 ## Mirrors and image CDN
 Default list: `https://euploadi.com/`, `https://uuploadi.ir/`, then the official TV app's `https://playgen.ir/` and
@@ -77,6 +79,12 @@ Optional: playback never needs it. `DataGraph.account` is the `AccountRepository
   incomplete read, each pending id toggled once after reading the state, confirmed by a second read). Throttled to once per
   10 min unless changes are pending; a local change schedules a push after 800 ms. Never throws.
 - **Server progress** `pushProgress` / `pullProgress` (see docs/auth.md 8.7). Wire up: player exit and app start.
+  `current_time` is seconds; the server's `duration` is **not trusted** (the official app never reads it): an imported row
+  gets `durationMs = 0` (unknown) unless the field parses to seconds (number, `H:MM:SS`, or a number with an explicit unit
+  such as `85 دقیقه`), is longer than the position and lies between 60 s and 6 h. Imports are saved with `source = remote`
+  and are **never completed**; the local player's real duration replaces the 0 at its next save, and a known local
+  duration always wins over the server's. Each pull first runs `repairRemoteImports()`: remote rows that are completed
+  under 95 % of their duration, or whose duration is under 60 s / over 6 h, go back to not completed, duration 0.
 - **Debug**: `adb shell setprop log.tag.BolbolAccount DEBUG` logs only the shape (keys and types) of account answers.
 
 ## Tests

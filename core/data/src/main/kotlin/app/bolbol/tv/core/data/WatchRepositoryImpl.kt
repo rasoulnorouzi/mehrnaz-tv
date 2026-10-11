@@ -32,7 +32,8 @@ internal class WatchRepositoryImpl(
     /**
      * Upserts the title snapshot (un-hiding the title and stamping lastWatchedAt) and the progress row in one
      * transaction. [PlaybackProgress.completed] is also forced to true at >= 95 % of the duration, so a
-     * player that never reports "completed" still finishes titles.
+     * player that never reports "completed" still finishes titles; an unknown duration (<= 0) never forces it.
+     * The row is a `source = local` row, and its real duration replaces an unknown one left by a watch-list import.
      */
     override suspend fun saveProgress(title: TitleSummary, progress: PlaybackProgress) {
         require(title.id == progress.key.postId) { "snapshot ${title.id} does not match key ${progress.key.asString()}" }
@@ -44,6 +45,31 @@ internal class WatchRepositoryImpl(
             )
         }
     }
+
+    /**
+     * Saves progress pulled from the site's watch-list, as a `source = remote` row. Imports are **never completed**:
+     * the server says nothing about a finished item and its duration is untrusted, so completion stays with the local
+     * player ([saveProgress]) and the user ([markWatched]). A duration that would put [PlaybackProgress.positionMs]
+     * at or past the completion mark is dropped to 0 (= unknown) instead of finishing the title. The real duration
+     * replaces an unknown one the next time the local player saves progress for the key.
+     */
+    suspend fun importRemote(title: TitleSummary, progress: PlaybackProgress) {
+        require(title.id == progress.key.postId) { "snapshot ${title.id} does not match key ${progress.key.asString()}" }
+        val durationMs = if (reachedCompletion(progress.positionMs, progress.durationMs)) 0 else progress.durationMs.coerceAtLeast(0)
+        withContext(io) {
+            dao.saveProgress(
+                snapshot = title.toSnapshot(hiddenFromContinue = false, lastWatchedAtMs = progress.updatedAtMs),
+                progress = progress.copy(durationMs = durationMs, completed = false).toEntity(ProgressEntity.SOURCE_REMOTE),
+            )
+        }
+    }
+
+    /**
+     * Resets remote-imported rows that an older pull left with an untrusted duration (marked completed, or a duration
+     * under 60 s / over 6 h) to "not completed, duration unknown" (QA-03). Never touches rows the local player or the
+     * user wrote. Idempotent. Returns the number of rows repaired.
+     */
+    suspend fun repairRemoteImports(): Int = withContext(io) { dao.repairRemoteImports() }
 
     /**
      * true: completed with position = duration (a never-played item gets a completed row with unknown duration);
@@ -78,6 +104,7 @@ internal class WatchRepositoryImpl(
         /** Percent of the duration after which an item counts as watched. */
         const val COMPLETION_PERCENT = 95
 
+        /** false when the duration is unknown (<= 0): without a duration nothing can have been "reached". */
         internal fun reachedCompletion(positionMs: Long, durationMs: Long): Boolean =
             durationMs > 0 && positionMs * 100 >= durationMs * COMPLETION_PERCENT
     }

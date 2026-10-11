@@ -3,6 +3,7 @@ package app.bolbol.tv.core.data
 import app.bolbol.tv.core.database.MyListEntity.Companion.PENDING_ADD
 import app.bolbol.tv.core.database.MyListEntity.Companion.PENDING_NONE
 import app.bolbol.tv.core.database.MyListEntity.Companion.PENDING_REMOVE
+import app.bolbol.tv.core.database.ProgressEntity
 import app.bolbol.tv.core.model.AccountState
 import app.bolbol.tv.core.model.LoginResult
 import app.bolbol.tv.core.model.PlaybackProgress
@@ -683,6 +684,7 @@ class AccountRepositoryImplTest {
         // server order is kept: the first item is the newest
         assertTrue(movie.updatedAtMs > episode.updatedAtMs)
         assertEquals(listOf(1L, 2L), f.watchDao.snapshots.value.keys.sorted())
+        assertEquals(setOf("remote"), f.watchDao.progressRows.value.values.map { it.source }.toSet())
     }
 
     @Test
@@ -712,14 +714,113 @@ class AccountRepositoryImplTest {
     }
 
     @Test
-    fun `pull keeps the local duration when the server has none and completes at 95 percent`() = runTest {
+    fun `pull keeps the local duration over the server one`() = runTest {
         val f = Fixture(this, signedIn = true)
         f.watch.saveProgress(summary(1), progress(WatchKey(1), 100_000, durationMs = 1_000_000))
-        f.remote.progress = RemoteResult.Ok(listOf(server(WatchKey(1), 960_000, durationMs = 0)))
+        f.watch.saveProgress(summary(2), progress(WatchKey(2), 100_000, durationMs = 1_000_000))
+        f.remote.progress = RemoteResult.Ok(
+            listOf(server(WatchKey(1), 500_000, durationMs = 0), server(WatchKey(2), 500_000, durationMs = 7_200_000)),
+        )
         f.repo.pullProgress()
+        assertEquals(1_000_000L, f.watch.progress(WatchKey(1))!!.durationMs)
+        assertEquals(1_000_000L, f.watch.progress(WatchKey(2))!!.durationMs)
+        assertEquals(500_000L, f.watch.progress(WatchKey(1))!!.positionMs)
+    }
+
+    @Test
+    fun `pulled progress is never completed even past 95 percent of a known duration`() = runTest {
+        val f = Fixture(this, signedIn = true)
+        f.watch.saveProgress(summary(1), progress(WatchKey(1), 100_000, durationMs = 1_000_000)) // real local duration
+        f.remote.progress = RemoteResult.Ok(
+            listOf(
+                server(WatchKey(1), 960_000, durationMs = 0), // beyond 95 % of the local duration
+                server(WatchKey(2), 5_000_000, durationMs = 5_100_000), // 98 % of the server's duration
+                server(WatchKey(3), 7_190_000, durationMs = 7_200_000),
+            ),
+        )
+        f.repo.pullProgress()
+        for (id in 1L..3L) {
+            val p = f.watch.progress(WatchKey(id))!!
+            assertFalse("title $id", p.completed)
+            assertEquals("title $id", 0L, p.durationMs) // unknown, not finished
+        }
+        assertEquals(960_000L, f.watch.progress(WatchKey(1))!!.positionMs)
+        assertEquals(setOf(false), f.watchDao.progressRows.value.values.map { it.completed }.toSet())
+    }
+
+    @Test
+    fun `pull does not trust a bogus server duration`() = runTest {
+        val f = Fixture(this, signedIn = true)
+        f.remote.progress = RemoteResult.Ok(
+            listOf(
+                server(WatchKey(1), 600_000, durationMs = 30_000), // under 60 s
+                server(WatchKey(2), 600_000, durationMs = 400_000), // shorter than the position
+                server(WatchKey(3), 600_000, durationMs = 600_000), // equal to the position
+                server(WatchKey(4), 600_000, durationMs = 5_100_000_000), // ms taken for seconds
+                server(WatchKey(5), 600_000, durationMs = -1),
+                server(WatchKey(6), 600_000, durationMs = 5_100_000), // fine
+            ),
+        )
+        f.repo.pullProgress()
+        for (id in 1L..5L) {
+            val p = f.watch.progress(WatchKey(id))!!
+            assertEquals("title $id", 0L, p.durationMs)
+            assertEquals("title $id", 600_000L, p.positionMs)
+            assertFalse("title $id", p.completed)
+        }
+        assertEquals(5_100_000L, f.watch.progress(WatchKey(6))!!.durationMs)
+    }
+
+    @Test
+    fun `playing a pulled title later replaces the unknown duration with the real one`() = runTest {
+        val f = Fixture(this, signedIn = true)
+        f.remote.progress = RemoteResult.Ok(listOf(server(WatchKey(1), 3_000_000, durationMs = 0)))
+        f.repo.pullProgress()
+        assertEquals(0L, f.watch.progress(WatchKey(1))!!.durationMs)
+        assertEquals("remote", f.watchDao.progressRows.value.getValue("1:0:0").source)
+
+        f.watch.saveProgress(summary(1), progress(WatchKey(1), 3_200_000, durationMs = 5_400_000, updatedAtMs = 50))
         val p = f.watch.progress(WatchKey(1))!!
-        assertEquals(1_000_000L, p.durationMs)
-        assertTrue("watched to the end elsewhere", p.completed)
+        assertEquals(5_400_000L, p.durationMs)
+        assertEquals(3_200_000L, p.positionMs)
+        assertEquals("local", f.watchDao.progressRows.value.getValue("1:0:0").source)
+
+        // a later pull with an unknown server duration keeps the real one
+        f.remote.progress = RemoteResult.Ok(listOf(server(WatchKey(1), 4_000_000, durationMs = 0)))
+        f.repo.pullProgress()
+        assertEquals(5_400_000L, f.watch.progress(WatchKey(1))!!.durationMs)
+        assertFalse(f.watch.progress(WatchKey(1))!!.completed)
+    }
+
+    private fun Fixture.plant(id: Long, position: Long, duration: Long, completed: Boolean, source: String) {
+        val key = WatchKey(id)
+        watchDao.progressRows.value = watchDao.progressRows.value +
+            (key.asString() to ProgressEntity(key.asString(), id, 0, 0, position, duration, 5, completed, source))
+    }
+
+    @Test
+    fun `every pull repairs rows an older pull imported with a bogus duration`() = runTest {
+        val f = Fixture(this, signedIn = true)
+        f.plant(1, 29_000, 30_000, completed = true, source = "remote") // old pull: a 30 s "duration" finished it
+        f.plant(2, 1_000_000, 5_000_000, completed = true, source = "remote")
+        f.plant(3, 29_000, 30_000, completed = true, source = "local") // the player finished it: stays
+        // the server cannot be read: the repair still runs (and the failed pull changes nothing else)
+        f.remote.progress = RemoteResult.Failed
+        f.repo.pullProgress()
+
+        for (id in 1L..2L) {
+            val p = f.watch.progress(WatchKey(id))!!
+            assertFalse("title $id", p.completed)
+            assertEquals("title $id", 0L, p.durationMs)
+        }
+        assertTrue(f.watch.progress(WatchKey(3))!!.completed)
+        assertEquals(30_000L, f.watch.progress(WatchKey(3))!!.durationMs)
+
+        // signed out: nothing is touched
+        val signedOut = Fixture(this)
+        signedOut.plant(9, 29_000, 30_000, completed = true, source = "remote")
+        signedOut.repo.pullProgress()
+        assertTrue(signedOut.watch.progress(WatchKey(9))!!.completed)
     }
 
     @Test

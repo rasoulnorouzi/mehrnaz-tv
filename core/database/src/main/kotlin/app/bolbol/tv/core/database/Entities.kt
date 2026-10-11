@@ -15,6 +15,9 @@ import androidx.room.PrimaryKey
  * Playback position for one movie or episode.
  * [key] is the WatchKey string "postId:season:episode" (movies: "353371:0:0").
  * Stream URLs are deliberately not stored: they change with CDN hosts.
+ * [durationMs] 0 means unknown (rows imported from the site's watch-list, whose `duration` is not trusted); the
+ * player's real duration replaces it at the next save. [source] tells who wrote the row: [SOURCE_LOCAL] (the player or
+ * the user) or [SOURCE_REMOTE] (imported by the watch-list pull and not played here since).
  */
 @Entity(tableName = "progress", indices = [Index("postId")])
 data class ProgressEntity(
@@ -26,7 +29,13 @@ data class ProgressEntity(
     val durationMs: Long,
     val updatedAtMs: Long,
     val completed: Boolean,
-)
+    val source: String = SOURCE_LOCAL,
+) {
+    companion object {
+        const val SOURCE_LOCAL = "local"
+        const val SOURCE_REMOTE = "remote"
+    }
+}
 
 /**
  * Last known TitleSummary of a watched title, so Continue Watching paints offline.

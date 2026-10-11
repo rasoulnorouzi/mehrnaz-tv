@@ -20,7 +20,7 @@ import app.bolbol.tv.core.model.WatchKey
 
 /* Room entity <-> :core:model conversions. Enums are stored by name; unknown names read back as null. */
 
-internal fun PlaybackProgress.toEntity(): ProgressEntity = ProgressEntity(
+internal fun PlaybackProgress.toEntity(source: String = ProgressEntity.SOURCE_LOCAL): ProgressEntity = ProgressEntity(
     key = key.asString(),
     postId = key.postId,
     season = key.season,
@@ -29,6 +29,7 @@ internal fun PlaybackProgress.toEntity(): ProgressEntity = ProgressEntity(
     durationMs = durationMs,
     updatedAtMs = updatedAtMs,
     completed = completed,
+    source = source,
 )
 
 internal fun ProgressEntity.toModel(): PlaybackProgress = PlaybackProgress(
