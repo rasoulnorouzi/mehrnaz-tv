@@ -8,9 +8,13 @@ subtitle spec: `docs/subtitles.md`.
 ## Public API (package `app.bolbol.tv.core.player`)
 | Name | What |
 |---|---|
-| `PlayerFactory(context, callFactory, userAgent?)` `.create()` / `.subtitleLoader` | Builds the ExoPlayer: OkHttp data source (shared client), decoder fallback, explicit `DefaultLoadControl`, movie audio attributes + focus, noisy-audio pause, `WAKE_MODE_NETWORK`, ±10 s increments, `TRACK_TYPE_TEXT` disabled. `subtitleLoader` shares the same client. |
+| `PlayerFactory(context, callFactory, userAgent?)` `.create()` / `.subtitleLoader` | Builds the ExoPlayer: OkHttp data source on `MediaHttp.mediaClient` (the shared client's pool, no disk cache, 6 s/10 s timeouts) with a `MediaTransferTracker`, `MediaLoadErrorPolicy`, `KeyframeStartMediaSourceFactory`, decoder fallback, explicit `DefaultLoadControl`, movie audio attributes + focus, noisy-audio pause, `WAKE_MODE_NETWORK`, ±10 s increments, `TRACK_TYPE_TEXT` disabled. `subtitleLoader` uses the shared (cached) client. |
 | `PlayerTuning` | Every number below, with KDoc on why. |
-| `PlaybackController(player, watch, prefs, scope, subtitleLoader?, clock)` | One per screen. `start(request, stream, startMs, playWhenReady)`, `switchStream(stream, rememberGlobally)`, `retry()`, `play/pause/togglePlayPause()`, `seekTo/seekBy()`, `setScrubbing()`, `setSubtitleOffset(ms)`, `setSubtitleStyle(style)`, `markCompleted()`, `onStart/onStop/onTrimMemory()`, `release()`. Flows: `status`, `position`, `subtitleLines`, `subtitleStyle`, `subtitleOffsetMs`, `events` (one-shot `PlayerEvent.SubtitleLoadFailed`), `diagnostics`, `error`. |
+| `PlaybackController(player, watch, prefs, scope, subtitleLoader?, clock)` | One per screen. `start(request, stream, startMs, playWhenReady)`, `switchStream(stream, rememberGlobally)`, `retry()`, `play/pause/togglePlayPause()`, `seekTo/seekBy()`, `setScrubbing()`, `prewarmOtherStreams()`, `setSubtitleOffset(ms)`, `setSubtitleStyle(style)`, `markCompleted()`, `onStart/onStop/onTrimMemory()`, `release()`. Flows: `status`, `position`, `subtitleLines`, `subtitleStyle`, `subtitleOffsetMs`, `events` (one-shot `PlayerEvent.SubtitleLoadFailed`), `diagnostics`, `error`, `switchingQuality`. |
+| `StreamSwitchPolicy` | Pure switch watchdog (v1.1-2): no first frame 8 s after `switchStream` and no bytes for 2 s → `Reprepare` once (idle connections dropped) → `GiveUp` (error panel); bytes still arriving → `Wait`; 20 s hard limit. `SwitchTimeline.logLine()` = the `BolbolSwitch` breakdown. |
+| `KeyframeStart` / `KeyframeSnap` | Tag for `MediaItem.setTag`: the item starts at the keyframe before its start position (`PREVIOUS_SYNC`, first track selection only, ≤ 15 s back). Used by `switchStream` (and the watchdog re-prepare). |
+| `MediaHttp`, `MediaRetry`, `MediaLoadErrorPolicy` | Media client derivation; retry delays 0.2/0.5/1/2 s, 4xx fatal except 408/429. |
+| `ConnectionPrewarmer` / `PrewarmPlan` | One `Range: bytes=0-0` request per other CDN host of the title (highest quality first, current host skipped, ≤ 1 per host per minute), async on OkHttp's dispatcher. Runs after the first frame of `start()`. |
 | `ResumePolicy.decide(saved, requestedStartMs)` → `ResumeDecision` | `StartFromBeginning` / `AskUser(pos)` / `ResumeAt(pos)`. Ask if pos ≥ 30 s, not completed, ≥ 60 s left; explicit start wins. |
 | `ProgressSavePolicy` | Pure throttle: every 10 s while playing + forced on pause/stop/error/ended/switch/trim/release; never before duration is known or below 5 s; `completed` at ≥ 95 % or ended; identical saves skipped. |
 | `AutoNextPolicy.step(state, input, elapsedMs)` → `AutoNextState` | Next-episode card (M2.2): `Waiting` → `Counting(remainingMs, startedAtEnd)` in the last 30 s (episodes ≥ 60 s) or at the end → `PlayNext` after a 10 s countdown (runs while playing or ended; paused/held freezes it) or when the video ends while counting. `dismiss()` → `Dismissed` (comes back once at the end) / `DismissedAtEnd`. Seeking out of the window re-arms. |
@@ -45,6 +49,10 @@ Logcat `BolbolPlayer`: `subtitles: 1328 cues in 85ms` / `subtitle load failed: �
 | resume ask ≥ 30 s in, ≥ 60 s left | No prompt after a quick peek or when only the credits are left. |
 | subtitle tick 100 ms (`SubtitleSync.TICK_MS`) | A cue shows ≤ 0.1 s late; one binary search per tick, recomposition only per cue. |
 | auto-next window 30 s, countdown 10 s | `AutoNextPolicy`; the VM polls 1 Hz outside the countdown, 5 Hz during it. |
+| media connect 6 s / read 10 s, no disk cache | A stalled CDN connection fails fast and is retried on a fresh one; video bytes are never teed into the API cache. |
+| switch watchdog 8 s, stall 2 s, hard limit 20 s, 1 re-prepare | `StreamSwitchPolicy`; slow-but-moving switches are not killed. |
+| switch keyframe snap ≤ 15 s | Keyframes are 1-10 s apart in the site's x264 files (perf/reports/v1.1-quality-switch.md). |
+| pre-warm ≤ 1 request per host per 60 s | CDN DNS TTL 75-120 s, nginx keep-alive ~1 min. |
 
 ## Wiring in `:app` (manual DI)
 ```kotlin
@@ -71,6 +79,10 @@ The manifest here adds `WAKE_LOCK` (needed by `setWakeMode`).
   (start() → first rendered frame; measured even when started paused behind the resume prompt),
   `stream_switch=…ms` after quality/audio changes, and on exit
   `summary rebuffers=0 meanRebufferMs=-1 meanSeekMs=… joinMs=… dropped=… decoder=…` (-1 = none).
+- **Quality switch** (`adb logcat -s BolbolSwitch`): one line per switch,
+  `switch 720p/SUBTITLED->1080p/SUBTITLED host=… result=ok firstByte=…ms moov=…ms rangeByte=…ms firstFrame=…ms ready=…ms snap=-1.6s requests=2 mb=4.9 errors=0 reprepares=0`
+  (times from the switch; `result` = ok / gave_up / error_KIND / replaced / stopped / released), plus `prewarm host=… http=206 in …ms`
+  and watchdog `re-preparing` lines. The overlay's `swtch` line shows the last switch. How to read it: perf/reports/v1.1-quality-switch.md §4.
 - **Debug harness:** `adb shell am start -n app.bolbol.tv/app.bolbol.tv.feature.playback.debug.PlayerTestActivity`
   (needs `:app` to depend on `:feature:playback`). `--ez next true` fakes a next episode for the auto-next
   card. Extras and logs: see `PlayerTestActivity` KDoc; progress/prefs writes are logged with tag `BolbolTest`.
