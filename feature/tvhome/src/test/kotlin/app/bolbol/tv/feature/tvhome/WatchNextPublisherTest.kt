@@ -61,7 +61,7 @@ class WatchNextPublisherTest {
     private val errors = mutableListOf<String>()
 
     private fun TestScope.publisher(store: WatchNextStore) =
-        WatchNextPublisher(store, "app.bolbol.tv", StandardTestDispatcher(testScheduler)) { m, _ -> errors += m }
+        WatchNextPublisher(store, "app.mehrnaz.tv", StandardTestDispatcher(testScheduler)) { m, _ -> errors += m }
 
     @Test
     fun `publish inserts then is idempotent and skips unchanged input`() = runTest {

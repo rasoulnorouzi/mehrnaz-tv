@@ -6,7 +6,7 @@ uses the same short build file, and versions come from `gradle/libs.versions.tom
 ## Current modules
 | Module | Namespace | Purpose |
 |---|---|---|
-| `:app` | `app.bolbol.tv` | Activity, navigation, DI wiring. Release = R8 + debug-signed (private sideload) |
+| `:app` | `app.bolbol.tv` | Activity, navigation, DI wiring. Release = R8 + debug-signed (private sideload). Installed package (`applicationId`) is `app.mehrnaz.tv`; only the namespace keeps the old code name |
 | `:core:designsystem` | `app.bolbol.tv.core.designsystem` | Theme (forces RTL), colours, type, spacing, components, `toPersianDigits()` |
 | `:core:model` | `app.bolbol.tv.core.model` | **The contract**: domain types + repository interfaces. Change only via the manager |
 | `:core:network` | `app.bolbol.tv.core.network` | Retrofit, DTOs, lenient JSON, mirror failover, mappers (internal) |

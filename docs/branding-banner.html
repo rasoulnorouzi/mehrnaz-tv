@@ -1,0 +1,75 @@
+<!doctype html>
+<!--
+  Source of docs/branding-banner.png (the Android TV banner, app/src/main/res/drawable-xhdpi/banner.png).
+  1 CSS px = 1 dp. Render at device scale factor 2 (xhdpi) so the PNG is 640x360 px; run from the repo root:
+
+    chromium --headless --no-sandbox --disable-gpu --hide-scrollbars --allow-file-access-from-files \
+      --force-device-scale-factor=2 --window-size=320,180 \
+      --screenshot=docs/branding-banner.png file://$PWD/docs/branding-banner.html
+
+  The Persian wordmark is shaped by Chromium/HarfBuzz from the app's own Vazirmatn Bold. The sun mark is the same
+  geometry as app/src/main/res/drawable/ic_launcher_foreground.xml (here the rays get a warm gradient).
+-->
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Mehrnaz banner</title>
+<style>
+  @font-face {
+    font-family: "VazirmatnB";
+    src: url("../core/designsystem/src/main/res/font/vazirmatn_bold.ttf");
+    font-weight: 700;
+  }
+  @font-face {
+    font-family: "VazirmatnM";
+    src: url("../core/designsystem/src/main/res/font/vazirmatn_medium.ttf");
+    font-weight: 500;
+  }
+  html, body { margin: 0; padding: 0; background: #0B0D12; }
+  .tile {
+    position: relative; width: 320px; height: 180px; overflow: hidden;
+    background: #0B0D12;
+    direction: ltr; /* layout is explicit: sun on the left, text block on the right */
+  }
+  .glow {
+    position: absolute; left: -40px; top: -10px; width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, rgba(255,201,60,0.15) 0%, rgba(255,159,67,0.05) 45%, rgba(255,159,67,0) 70%);
+  }
+  .mark { position: absolute; left: -15px; top: -5px; width: 190px; height: 190px; }
+  .text {
+    position: absolute; right: 24px; top: 50%; transform: translateY(-52%);
+    display: flex; flex-direction: column; align-items: flex-end;
+  }
+  .fa {
+    font-family: "VazirmatnB"; font-weight: 700; font-size: 54px; line-height: 1.25; color: #FFFFFF;
+    white-space: nowrap; direction: rtl; text-align: right;
+  }
+  .en {
+    margin-top: 1px; font-family: "VazirmatnM"; font-weight: 500; font-size: 11px; line-height: 1.2;
+    letter-spacing: 4px; margin-right: -4px; /* trailing letter-spacing would push the word off the right edge */
+    color: #A9B0BD; direction: ltr; text-align: right;
+  }
+  .bar { margin-top: 8px; width: 40px; height: 3px; border-radius: 2px; background: #FFC93C; }
+</style>
+</head>
+<body>
+<div class="tile">
+  <div class="glow"></div>
+  <svg class="mark" viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="rays" gradientUnits="userSpaceOnUse" cx="54" cy="54" r="33">
+        <stop offset="0.65" stop-color="#FFC93C"/>
+        <stop offset="1" stop-color="#FF9F43"/>
+      </radialGradient>
+    </defs>
+    <path fill="url(#rays)" d="M56.39,29.71 L56.39,26.03 A2.39,2.39 0 0,0 51.61,26.03 L51.61,29.71 A2.39,2.39 0 0,0 56.39,29.71 Z M68.22,34.16 L68.58,33.52 A2.39,2.39 0 0,0 64.44,31.13 L64.07,31.77 A2.39,2.39 0 0,0 68.22,34.16 Z M76.23,43.93 L76.87,43.56 A2.39,2.39 0 0,0 74.48,39.42 L73.84,39.78 A2.39,2.39 0 0,0 76.23,43.93 Z M78.29,56.39 L81.97,56.39 A2.39,2.39 0 0,0 81.97,51.61 L78.29,51.61 A2.39,2.39 0 0,0 78.29,56.39 Z M73.84,68.22 L74.48,68.58 A2.39,2.39 0 0,0 76.87,64.44 L76.23,64.07 A2.39,2.39 0 0,0 73.84,68.22 Z M64.07,76.23 L64.44,76.87 A2.39,2.39 0 0,0 68.58,74.48 L68.22,73.84 A2.39,2.39 0 0,0 64.07,76.23 Z M51.61,78.29 L51.61,81.97 A2.39,2.39 0 0,0 56.39,81.97 L56.39,78.29 A2.39,2.39 0 0,0 51.61,78.29 Z M39.78,73.84 L39.42,74.48 A2.39,2.39 0 0,0 43.56,76.87 L43.93,76.23 A2.39,2.39 0 0,0 39.78,73.84 Z M31.77,64.07 L31.13,64.44 A2.39,2.39 0 0,0 33.52,68.58 L34.16,68.22 A2.39,2.39 0 0,0 31.77,64.07 Z M29.71,51.61 L26.03,51.61 A2.39,2.39 0 0,0 26.03,56.39 L29.71,56.39 A2.39,2.39 0 0,0 29.71,51.61 Z M34.16,39.78 L33.52,39.42 A2.39,2.39 0 0,0 31.13,43.56 L31.77,43.93 A2.39,2.39 0 0,0 34.16,39.78 Z M43.93,31.77 L43.56,31.13 A2.39,2.39 0 0,0 39.42,33.52 L39.78,34.16 A2.39,2.39 0 0,0 43.93,31.77 Z"/>
+    <path fill="#FFC93C" fill-rule="evenodd" d="M36.34,54 A17.66,17.66 0 1,0 71.66,54 A17.66,17.66 0 1,0 36.34,54 Z M48.98,49.11 A2.14,2.14 0 0,1 52.17,47.25 L60.83,52.14 A2.14,2.14 0 0,1 60.83,55.86 L52.17,60.75 A2.14,2.14 0 0,1 48.98,58.89 Z"/>
+  </svg>
+  <div class="text">
+    <div class="fa">مهرناز</div>
+    <div class="en">Mehrnaz</div>
+    <div class="bar"></div>
+  </div>
+</div>
+</body>
+</html>

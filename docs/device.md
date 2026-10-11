@@ -24,6 +24,10 @@ anything not yet confirmed on the device. Confirm with `adb shell getprop` in M0
 5. If refused: Mi TVs may need one USB-A↔USB-A cable session for `adb tcpip 5555`, which may reset on reboot.
    Fallback: install a "Wireless ADB" toggle helper or re-run after reboots (record the outcome here).
 
+## The app on the device
+- Package (`applicationId`): `app.mehrnaz.tv`; launcher label «مهرناز»; launch component `app.mehrnaz.tv/app.bolbol.tv.MainActivity` (code namespace unchanged). `tools/tv.sh` uses these as its `PKG` / `ACTIVITY` defaults.
+- Deep link check: `adb shell am start -a android.intent.action.VIEW -d "mehrnaz://play/353371/0/0" app.mehrnaz.tv`.
+
 ## Implications for the app
 - 2 GB RAM: keep total PSS ≤ 250 MB; low-memory killer is aggressive, so persist progress often.
 - API 29: no `Modifier.blur`, no `frameOverrunMs`, can't generate Baseline Profiles on-device.

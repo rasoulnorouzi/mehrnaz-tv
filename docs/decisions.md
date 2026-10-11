@@ -45,6 +45,7 @@ add a new entry that references it.
   allowlisting; tvprovider still works until about H2 2027 on Android TV home). Low priority: PatchWall may ignore it.
 - **2026-10-11 · Phone/QR remote via NanoHTTPD** (tiny), LAN-only, active only while search is open, random token.
 - **2026-10-11 · minSdk 29, targetSdk 36**: one known device; no need for older APIs.
+- **2026-10-11 · Rebrand «بلبل تی‌وی» → «مهرناز» (Mehrnaz)** before the first release, so the app does not look like the website's own app (user request). New sun-with-play-triangle logo («مهر» = love and sun; accent `#FFC93C`), banner, adaptive icon and launch screen; `applicationId` `app.mehrnaz.tv`; deep-link scheme `mehrnaz://`. Kotlin packages/namespaces stay `app.bolbol.tv.*` (invisible to the user, large rename). The login card says «ورود به حساب کاربری سایت» (it is the user's account on the website). The subtitle credit-cue filters keep matching the site's name: they detect subtitle content, not our branding.
 
 ## Architecture (M1)
 **2026-10-11 · Manual dependency injection instead of Hilt.**

@@ -65,7 +65,7 @@ class RemoteRequestHandlerTest {
     @Test
     fun pageIsPersianAndSelfContained() {
         val html = handler.handle(request("GET", "/", token)).bodyText()
-        assertTrue(html.contains("تایپ برای بلبل تی&zwnj;وی"))
+        assertTrue(html.contains("تایپ برای مهرناز"))
         assertTrue(html.contains("ارسال شد ✓"))
         // No external resources of any kind.
         assertFalse(html.contains("http"))
