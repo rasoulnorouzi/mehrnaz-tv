@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
+Last updated: 2026-10-11 (**v1.0.0 released**; remaining items need the real TV)
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -71,9 +71,8 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - [x] 2026-10-11 · QA pass of the release build (R8 clean, 9/12 pass, 7 bugs) → `qa/2026-10-11-full-pass.md` (QA)
 - [x] 2026-10-11 · TV is **Android 11** (user). Created `MiTV_API30` emulator; fresh install of the signed release APK ✅, appears in the TV app list as «مهرناز» with banner ✅ (M)
 - [x] 2026-10-11 · Release pipeline: permanent key (~/.bolboltv, off-repo), `tools/release.sh` (zipalign + v1/v2/v3), APK checks ✅ (M)
-- **🔄 Fix wave (3 agents):** QA-01/03/04/05/06/07 UI (Sonnet) · QA-03 synced-progress duration (Sonnet) · QA-02 player Back order (Sonnet)
-- [ ] Next: fix wave from the QA report (agents per module) → re-test
-- [ ] **Release v1.0.0** (user request): dedicated signing key (kept off GitHub), APK checks (minSdk 29, leanback, no native libs, signature), fresh-install test on the Android 10 virtual TV, GitHub release with the APK, send the APK + Mi TV install steps to the user (M)
+- [x] 2026-10-11 · Fix wave merged: QA-01 My List focus, QA-02 player Back (first Back closes panel ✅ verified), QA-03 synced progress «ادامه از …» (data + home + details), QA-04 hero fallback, QA-05 view-all focus, QA-06 top scrim, QA-07 bidi (UI/DE/PE + M)
+- [x] 2026-10-11 · **v1.0.0 RELEASED**: final signed APK (5.2 MB, app.mehrnaz.tv), fresh install + home + playback verified on the Android 11 emulator, GitHub release https://github.com/rasoulnorouzi/bolboljan-androidtv/releases/tag/v1.0.0, APK sent to the user (M)
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do

@@ -4,9 +4,10 @@ Living memory for this project. Update it at the end of every session or milesto
 Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 
 ## ▶ Current status
-- **Milestone:** M0 done on the emulator (TV-only items 0.4/0.5b/0.6 wait for the TV). M1 next, pending the user's go-ahead.
-- **Next task:** M1.1 network layer (DE) + M1.3 design system (UI) + M1.4 player core (PE), in parallel on disjoint modules.
-- **Blockers:** none. **No TV access for now**: develop on the emulator; 📺 tasks wait.
+- **v1.0.0 released 2026-10-11** (GitHub release on the private repo; APK `dist/mehrnaz-tv-v1.0.0.apk` sent to the user).
+- **Next:** user installs on the real Mi TV (Android 11) → collect feedback → 📺 items (perf measurements vs the official app,
+  Watch Next on PatchWall). Any update: bump versionCode/versionName, DB migrations (no in-place schema edits), `tools/release.sh`.
+- **Keep in mind:** the signing key is in `~/.bolboltv/` (back it up); losing it means the user must uninstall to update.
 
 ## User profile & preferences
 - Persian speaker; communicates in English (voice-typed, so expect transcription noise:
@@ -51,6 +52,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
   an agent team. No corrections so far.
 
 ## Progress log
+- 2026-10-11: v1.0.0 released (Mehrnaz). QA pass + fix wave done; dubbing and quality switching verified on the Android 11 emulator; release APK v2+v3 signed with the permanent key.
 - 2026-10-11: The official app's auth is confirmed: login form `username`/`password` → `data.token`; `Authorization: Bearer`; favorite-list (toggle `post_id`); watch-list with `current_time` in seconds (multipart). This enables cross-device progress sync. Mirrors playgen.ir and arzanycenter.ir also work.
 - 2026-10-11: MILESTONE: end-to-end on the emulator. Home (real data) → details → 720p playback with Persian subs → resume «ادامه از ۱:۰۷» + Continue Watching row. CDN throughput from the dev machine is about 45 Mbit/s with 0.4 s to first byte; emulator TTFF of 15.5 s is the software decoder, not the network.
 - 2026-10-11: Lesson: `gradlew --stop` kills ALL daemons machine-wide (it broke the manager's build). Banned; use tools/gw.sh (flock slots + --no-daemon) and the daemon idle timeout.
