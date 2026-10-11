@@ -57,6 +57,11 @@ class HomeViewModel(
         focused = FocusTarget(rowId, titleId)
     }
 
+    /** The row's trailing «مشاهده همه» card got focus: Back from its grid returns to it, not to a poster. */
+    fun onViewAllFocused(rowId: String) {
+        focused = FocusTarget(rowId, VIEW_ALL_FOCUS_ID)
+    }
+
     fun retry() {
         loadFeed()
     }

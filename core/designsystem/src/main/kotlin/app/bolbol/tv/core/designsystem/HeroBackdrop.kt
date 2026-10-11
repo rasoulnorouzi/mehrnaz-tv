@@ -37,6 +37,12 @@ private const val BACKDROP_FADE_MS = 250
 private enum class SlotState { Empty, Loading, Ready, Failed }
 
 /**
+ * What the hero shows when there is no image (nothing to load, or a failed load): a soft vertical gradient from the
+ * raised surface colour to the background. Static, built once; the scrims below draw on top of it.
+ */
+private val HeroFallbackBrush: Brush = Brush.verticalGradient(listOf(BolbolColors.SurfaceHigh, BolbolColors.Background))
+
+/**
  * Full-width backdrop for the home hero and the details header.
  *
  * - One Coil request per URL, sized 1280 x 720 at most, Crop, no blur, no parallax.
@@ -45,7 +51,8 @@ private enum class SlotState { Empty, Loading, Ready, Failed }
  *   The bottom fades into [BolbolColors.Background], so content below the hero joins seamlessly.
  * - When [imageUrl] changes the new image is loaded **off screen first**, then crossfaded in once
  *   (250 ms) over the old one, so there is never a blank flash. A failed load keeps the old
- *   image. A null/blank URL fades the image out to the plain background.
+ *   image. A null/blank URL fades the image out to a static gradient (callers pass a fallback such as the poster
+ *   first, e.g. `backdropUrl ?: posterUrl`).
  * - Feed it a debounced URL while the user scrolls through a row:
  *   `HeroBackdrop(rememberDebouncedValue(focusedUrl))`.
  *
@@ -106,7 +113,7 @@ fun HeroBackdrop(
         }
     }
 
-    Box(modifier.background(BolbolColors.Background)) {
+    Box(modifier.background(HeroFallbackBrush)) {
         for (slot in 0..1) {
             val url = urls[slot]
             if (url != null) {

@@ -156,7 +156,7 @@ internal fun DeveloperPage(
     Column(modifier.fillMaxSize()) {
         ToggleRow(
             title = "نمایش اطلاعات عملکرد",
-            description = "FPS، مصرف حافظه و آمار پخش‌کننده را روی صفحه نشان می‌دهد.",
+            description = PERFORMANCE_DESCRIPTION,
             checked = showPerformance,
             onCheckedChange = onShowPerformance,
             modifier = Modifier

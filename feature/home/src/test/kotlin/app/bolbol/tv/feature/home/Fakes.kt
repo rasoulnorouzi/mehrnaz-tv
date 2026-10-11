@@ -14,8 +14,13 @@ import app.bolbol.tv.core.model.WatchRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
-internal fun title(id: Long, fa: String = "عنوان $id") = TitleSummary(
-    id = id, type = null, title = "Title $id", faTitle = fa, posterUrl = null, backdropUrl = null,
+internal fun title(
+    id: Long,
+    fa: String = "عنوان $id",
+    posterUrl: String? = null,
+    backdropUrl: String? = null,
+) = TitleSummary(
+    id = id, type = null, title = "Title $id", faTitle = fa, posterUrl = posterUrl, backdropUrl = backdropUrl,
     year = 2024, imdbRating = 7.0f, hasDub = true, hasSubtitle = false,
 )
 
@@ -24,9 +29,15 @@ internal fun section(id: String, vararg ids: Long, viewAll: ListQuery? = null) =
 
 internal fun feed(vararg sections: HomeSection, fromCache: Boolean = false) = HomeFeed(sections.toList(), fromCache)
 
-internal fun resumable(id: Long, season: Int = 0, episode: Int = 0) = ContinueWatchingItem(
+internal fun resumable(
+    id: Long,
+    season: Int = 0,
+    episode: Int = 0,
+    positionMs: Long = 600_000,
+    durationMs: Long = 3_000_000,
+) = ContinueWatchingItem(
     title = title(id),
-    progress = PlaybackProgress(WatchKey(id, season, episode), 600_000, 3_000_000, updatedAtMs = id, completed = false),
+    progress = PlaybackProgress(WatchKey(id, season, episode), positionMs, durationMs, updatedAtMs = id, completed = false),
 )
 
 internal class FakeCatalog(private val source: () -> Flow<HomeFeed>) : CatalogRepository {

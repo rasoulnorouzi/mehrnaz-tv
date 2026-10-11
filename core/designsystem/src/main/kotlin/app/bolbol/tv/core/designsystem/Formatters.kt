@@ -1,5 +1,7 @@
 package app.bolbol.tv.core.designsystem
 
+import app.bolbol.tv.core.model.PlaybackProgress
+
 /*
  * Number and time formatting for UI text.
  *
@@ -50,6 +52,37 @@ fun formatRemainingFa(ms: Long): String {
     if (ms <= 0L) return "تمام شد"
     val totalMinutes = ((ms + 59_999L) / 60_000L).coerceAtLeast(1L)
     return "${formatMinutesFa(totalMinutes)} مانده"
+}
+
+/** «ادامه از ۱۲:۳۴»: where a title with an unknown length will resume (the saved position, Persian digits). */
+fun formatResumeFromFa(positionMs: Long): String =
+    if (positionMs < 1_000L) "ادامه" else "ادامه از ${formatDurationFa(positionMs)}"
+
+/**
+ * The progress label of a started title (Continue Watching card, episode row):
+ *  - [completed]: «تمام شد», and **only** then;
+ *  - length unknown ([durationMs] <= 0, e.g. progress synced from the website, which has no reliable duration):
+ *    «ادامه از ۱۲:۳۴», the saved position;
+ *  - else the time left («۲۴ دقیقه مانده»), at least «۱ دقیقه مانده» for an unfinished title.
+ */
+fun formatProgressLabelFa(positionMs: Long, durationMs: Long, completed: Boolean = false): String = when {
+    completed -> "تمام شد"
+    durationMs <= 0L -> formatResumeFromFa(positionMs)
+    else -> formatRemainingFa((durationMs - positionMs).coerceAtLeast(1L))
+}
+
+/**
+ * Second line of a Continue Watching card: «قسمت ۳ · ۲۴ دقیقه مانده» for an episode (the season is shown from season 2
+ * on, «فصل ۲ · قسمت ۳ · …»), just the [formatProgressLabelFa] label for a movie.
+ */
+fun formatContinueSubtitleFa(progress: PlaybackProgress): String {
+    val label = formatProgressLabelFa(progress.positionMs, progress.durationMs, progress.completed)
+    val key = progress.key
+    return if (key.isEpisode) {
+        formatEpisodeFa(key.season, key.episode, includeSeason = key.season > 1) + " · " + label
+    } else {
+        label
+    }
 }
 
 /** Runtime for meta lines: "۴۵ دقیقه", "۱ ساعت و ۴۲ دقیقه", "۲ ساعت". */

@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
@@ -36,9 +37,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -65,9 +69,8 @@ import app.bolbol.tv.core.designsystem.PosterCard
 import app.bolbol.tv.core.designsystem.PosterCardDefaults
 import app.bolbol.tv.core.designsystem.TopBar
 import app.bolbol.tv.core.designsystem.WideCard
-import app.bolbol.tv.core.designsystem.formatEpisodeFa
+import app.bolbol.tv.core.designsystem.formatContinueSubtitleFa
 import app.bolbol.tv.core.designsystem.formatImdb
-import app.bolbol.tv.core.designsystem.formatRemainingFa
 import app.bolbol.tv.core.designsystem.rememberDebouncedValue
 import app.bolbol.tv.core.model.ContinueWatchingItem
 import app.bolbol.tv.core.model.ListQuery
@@ -127,6 +130,7 @@ fun HomeScreen(
                         rows = current.rows,
                         initial = initial,
                         onCardFocused = { rowId, titleId -> viewModel.onCardFocused(rowId, titleId) },
+                        onViewAllFocused = { rowId -> viewModel.onViewAllFocused(rowId) },
                         onOpenTitle = onOpenTitle,
                         onResume = onResume,
                         onViewAll = onViewAll,
@@ -232,6 +236,7 @@ private fun HomeContent(
     rows: List<HomeRow>,
     initial: InitialFocus,
     onCardFocused: (rowId: String, titleId: Long) -> Unit,
+    onViewAllFocused: (rowId: String) -> Unit,
     onOpenTitle: (TitleSummary) -> Unit,
     onResume: (ContinueWatchingItem) -> Unit,
     onViewAll: (ListQuery, String) -> Unit,
@@ -240,13 +245,14 @@ private fun HomeContent(
     onNavigate: (HomeDestination) -> Unit,
 ) {
     // Written on every focus change, read only by HeroSection: rows never recompose because of it.
-    val heroTitle = remember { mutableStateOf<TitleSummary?>(initial.title) }
+    val heroTitle = remember { mutableStateOf<HeroInfo?>(HeroInfo(initial.title, initial.caption)) }
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initial.rowIndex)
     val scope = rememberCoroutineScope()
     val currentRows by rememberUpdatedState(rows)
     val currentOnCardFocused by rememberUpdatedState(onCardFocused)
+    val currentOnViewAllFocused by rememberUpdatedState(onViewAllFocused)
     val tracker = remember { FocusedRowTracker(initial.rowId) }
-    val gate = remember { FocusGate(FocusTarget(initial.rowId, initial.title.id)) }
+    val gate = remember { FocusGate(initial.target) }
     var menu by remember { mutableStateOf<OpenMenu?>(null) }
 
     val scrollToRow = remember(listState, scope, tracker) {
@@ -259,16 +265,18 @@ private fun HomeContent(
         }
     }
     val onFocused = remember(scrollToRow, gate) {
-        { rowId: String, title: TitleSummary ->
-            heroTitle.value = title
+        { rowId: String, title: TitleSummary, caption: String? ->
+            heroTitle.value = HeroInfo(title, caption)
             currentOnCardFocused(rowId, title.id)
             gate.onUserFocus()
             scrollToRow(rowId)
         }
     }
-    // The "view all" card is not a title: the hero keeps the row's last title, only the scroll follows.
-    val onViewAllFocused = remember(scrollToRow, gate) {
+    // The "view all" card is not a title: the hero keeps the row's last title, the scroll follows, and the ViewModel
+    // remembers the card so Back from its grid lands on it again.
+    val onViewAllCardFocused = remember(scrollToRow, gate) {
         { rowId: String ->
+            currentOnViewAllFocused(rowId)
             gate.onUserFocus()
             scrollToRow(rowId)
         }
@@ -278,6 +286,7 @@ private fun HomeContent(
         Column(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxWidth().fillMaxHeight(HERO_FRACTION)) {
                 HeroSection(heroTitle, Modifier.fillMaxSize())
+                TopBarScrim(Modifier.align(Alignment.TopStart))
                 HomeTopBar(onNavigate, Modifier.padding(top = BolbolSpacing.SafeVertical))
             }
             CompositionLocalProvider(LocalBringIntoViewSpec provides NoAutoScrollSpec) {
@@ -300,7 +309,7 @@ private fun HomeContent(
                             initial = initial,
                             gate = gate,
                             onFocused = onFocused,
-                            onViewAllFocused = onViewAllFocused,
+                            onViewAllFocused = onViewAllCardFocused,
                             onOpenTitle = onOpenTitle,
                             onResume = onResume,
                             onViewAll = onViewAll,
@@ -348,7 +357,7 @@ private fun HomeRowItem(
     row: HomeRow,
     initial: InitialFocus,
     gate: FocusGate,
-    onFocused: (rowId: String, title: TitleSummary) -> Unit,
+    onFocused: (rowId: String, title: TitleSummary, caption: String?) -> Unit,
     onViewAllFocused: (rowId: String) -> Unit,
     onOpenTitle: (TitleSummary) -> Unit,
     onResume: (ContinueWatchingItem) -> Unit,
@@ -378,7 +387,7 @@ private fun HomeRowItem(
                 modifier = Modifier
                     .longPressOrMenu { trigger -> onOpenMenu(item, trigger) }
                     .then(if (owner) Modifier.focusRequester(gate.requester) else Modifier),
-                onFocused = { onFocused(row.id, item.title) },
+                onFocused = { onFocused(row.id, item.title, formatContinueSubtitleFa(item.progress)) },
             )
         }
 
@@ -393,15 +402,22 @@ private fun HomeRowItem(
                     item = item,
                     onClick = { onOpenTitle(item) },
                     modifier = if (owner) Modifier.focusRequester(gate.requester) else Modifier,
-                    onFocused = { onFocused(row.id, item) },
+                    onFocused = { onFocused(row.id, item, null) },
                 )
             }
             val viewAll = row.viewAll
             if (viewAll != null) {
                 item(key = VIEW_ALL_KEY, contentType = CONTENT_TYPE_VIEW_ALL) {
+                    // Back from the grid: focus returns to this card (the ViewModel remembers it).
+                    val owner = gate.owns(row.id, VIEW_ALL_FOCUS_ID)
+                    if (owner) {
+                        val request = gate.request
+                        LaunchedEffect(request) { gate.perform(request) }
+                    }
                     ViewAllCard(
                         onClick = { onViewAll(viewAll, row.title) },
                         onFocused = { onViewAllFocused(row.id) },
+                        modifier = if (owner) Modifier.focusRequester(gate.requester) else Modifier,
                     )
                 }
             }
@@ -415,8 +431,9 @@ private const val CONTENT_TYPE_VIEW_ALL = "view_all_card"
 private const val VIEW_ALL_KEY = "view_all"
 
 /**
- * [WideCard] for a Continue Watching entry, same texts as `WideCard(item)` but with a progress bar
- * that is always visible once the title was started ([visibleProgress]).
+ * [WideCard] for a Continue Watching entry: the title, a second line from [formatContinueSubtitleFa] («قسمت ۲ · ۲۴ دقیقه
+ * مانده», or «قسمت ۲ · ادامه از ۱۲:۳۴» when the length is unknown) and a progress bar that is always visible once the
+ * title was started ([continueBarFraction]).
  */
 @Composable
 private fun ContinueCard(
@@ -426,22 +443,14 @@ private fun ContinueCard(
     onFocused: (() -> Unit)? = null,
 ) {
     val progress = item.progress
-    val key = progress.key
-    val subtitle = remember(key, progress.positionMs, progress.durationMs) {
-        val remaining = formatRemainingFa(progress.remainingMs)
-        if (key.isEpisode) {
-            formatEpisodeFa(key.season, key.episode, includeSeason = key.season > 1) + " · " + remaining
-        } else {
-            remaining
-        }
-    }
+    val subtitle = remember(progress) { formatContinueSubtitleFa(progress) }
     WideCard(
         title = item.title.faTitle.ifBlank { item.title.title },
         imageUrl = item.title.backdropUrl ?: item.title.posterUrl,
         onClick = onClick,
         modifier = modifier,
         subtitle = subtitle,
-        progress = visibleProgress(progress.fraction),
+        progress = continueBarFraction(progress),
         onFocused = onFocused,
     )
 }
@@ -501,18 +510,23 @@ private fun ViewAllCard(onClick: () -> Unit, onFocused: () -> Unit, modifier: Mo
     }
 }
 
+/** What the hero shows: the focused title and, for a Continue Watching card, where the viewer stopped. */
+@Immutable
+private data class HeroInfo(val title: TitleSummary, val caption: String? = null)
+
 /**
  * Backdrop + title + meta of the focused card. The title and the backdrop both go through the same
  * 300 ms debounce, so fast D-pad scrolling changes the hero once. The area is a fixed fraction of
- * the screen, so nothing below it moves when the text changes.
+ * the screen, so nothing below it moves when the text changes. A title without a backdrop (Continue Watching
+ * snapshots) shows its poster, cropped under the same scrim; without any image the hero is a static gradient.
  */
 @Composable
-private fun HeroSection(focusedTitle: State<TitleSummary?>, modifier: Modifier = Modifier) {
-    val shown = rememberDebouncedValue(focusedTitle.value)
-    HeroBackdrop(imageUrl = shown?.backdropUrl, modifier = modifier) {
+private fun HeroSection(focused: State<HeroInfo?>, modifier: Modifier = Modifier) {
+    val shown = rememberDebouncedValue(focused.value)
+    HeroBackdrop(imageUrl = shown?.title?.heroImageUrl(), modifier = modifier) {
         if (shown != null) {
             HeroText(
-                title = shown,
+                info = shown,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(start = BolbolSpacing.SafeHorizontal, end = BolbolSpacing.SafeHorizontal, bottom = 14.dp),
@@ -521,13 +535,38 @@ private fun HeroSection(focusedTitle: State<TitleSummary?>, modifier: Modifier =
     }
 }
 
+/** Height of [TopBarScrim]: the 27 dp safe margin, the 44 dp bar and a soft tail. */
+private val TopScrimHeight = 140.dp
+
+/**
+ * A static black-to-transparent ramp behind the top bar (tabs and dedication line), so their labels keep their
+ * contrast over bright backdrops. Built once in `drawWithCache`, never recomputed per frame; does not take focus.
+ */
 @Composable
-private fun HeroText(title: TitleSummary, modifier: Modifier = Modifier) {
-    val imdb = title.imdbRating?.takeIf { it > 0f }
-    val metaParts = listOf(
-        title.year?.toString().orEmpty(),
-        if (imdb != null) stringResource(R.string.home_imdb, formatImdb(imdb)) else "",
+private fun TopBarScrim(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(TopScrimHeight)
+            .drawWithCache {
+                val ramp = Brush.verticalGradient(
+                    0f to Color.Black.copy(alpha = 0.82f),
+                    0.55f to Color.Black.copy(alpha = 0.42f),
+                    1f to Color.Transparent,
+                    startY = 0f,
+                    endY = size.height,
+                )
+                onDrawBehind { drawRect(ramp) }
+            },
     )
+}
+
+@Composable
+private fun HeroText(info: HeroInfo, modifier: Modifier = Modifier) {
+    val title = info.title
+    val imdb = title.imdbRating?.takeIf { it > 0f }
+    val imdbText = if (imdb != null) stringResource(R.string.home_imdb, formatImdb(imdb)) else ""
+    val metaParts = listOf(title.year?.toString().orEmpty(), imdbText, info.caption.orEmpty())
     Column(
         modifier = modifier.widthIn(max = 560.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
