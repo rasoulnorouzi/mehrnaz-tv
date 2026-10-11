@@ -11,5 +11,10 @@ object BolbolSpacing {
     val ItemGap = 16.dp
     val CardRadius = 8.dp
     val FocusBorder = 2.dp
+
+    /** Focus scale of cards (posters, wide cards). */
     const val FOCUS_SCALE = 1.08f
+
+    /** Focus scale of small controls (buttons, chips, tabs). */
+    const val FOCUS_SCALE_SMALL = 1.05f
 }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Debug-only component gallery. Merged into the :app debug build only (never into release).
+    No launcher category; start it with
+      adb shell am start -n app.bolbol.tv/app.bolbol.tv.core.designsystem.gallery.GalleryActivity
+    and pick a screen with an int extra named page: 0 = home, 1 = cards and controls, 2 = states
+    (append the flag for int extras, then: page 1).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name="app.bolbol.tv.core.designsystem.gallery.GalleryActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:exported="true"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.Bolbol.Gallery" />
+    </application>
+</manifest>

@@ -13,4 +13,11 @@ object BolbolColors {
     val OnAccent = Color(0xFF14161C)
     val FocusRing = Color(0xFFFFFFFF)
     val Error = Color(0xFFFF5A5F)
+
+    // Additions used by components (solid colours only, no alpha stacks).
+    /** 1 dp outline of secondary buttons / unfocused outlined elements. */
+    val Outline = Color(0xFF3A4252)
+
+    /** Unfilled part of a progress bar. */
+    val ProgressTrack = Color(0xFF2B3140)
 }
