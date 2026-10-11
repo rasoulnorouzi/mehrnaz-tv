@@ -105,15 +105,24 @@ internal class PlayerChrome {
 
 /**
  * Remote-control handling for the player, installed as the root's onPreviewKeyEvent so it sees
- * every key before the focused child. Dialogs (resume, error) own their keys; BACK goes through
- * BackHandler.
+ * every key before the focused child. Dialogs (resume, error) own their other keys.
+ *
+ * BACK is handled here, first, for every phase and focus position. Why: Compose turns a BACK key-down
+ * that nobody consumed into "move focus to the parent focus target" (FocusDirection.Exit) and consumes
+ * it. The root `focusable()` is the parent of every button in the panel, the controls and the dialogs,
+ * so with focus on one of them the first BACK only moved focus to the root and never reached
+ * `BackHandler`. We take both halves of the press ourselves (action on key-up, see [BackPressTracker])
+ * and run [onBack]; the screen's `BackHandler` calls the same [onBack] for a BACK that arrives without
+ * a key event.
  *
  * The timeline is LTR (docs/decisions.md): DPAD_RIGHT = forward, regardless of the RTL layout.
  */
 internal class PlayerKeyHandler(
     private val chrome: PlayerChrome,
     private val viewModel: PlayerViewModel,
+    private val onBack: () -> Unit,
 ) {
+    private val backPress = BackPressTracker()
     private val repeater = SeekKeyRepeater()
     private var seekKeyActive = false
     private var swallowCenterUp = false
@@ -125,6 +134,16 @@ internal class PlayerKeyHandler(
         val up = event.type == KeyEventType.KeyUp
         if (!down && !up) return false
         if (down) chrome.onInteraction()
+
+        if (event.key == Key.Back) {
+            if (down) {
+                backPress.onKeyDown() // also swallows the auto-repeats of a held key
+                return true
+            }
+            if (!backPress.onKeyUp()) return false // not our press: the system path handles it
+            onBack()
+            return true
+        }
 
         val controller = viewModel.controller
         val active = viewModel.screen.value.phase == PlayerPhase.Playing && controller.error.value == null
@@ -177,7 +196,7 @@ internal class PlayerKeyHandler(
 
         if (chrome.panelOpen) return false
 
-        // Next-episode card: OK plays the next episode now (BACK dismisses it via BackHandler).
+        // Next-episode card: OK plays the next episode now (BACK dismisses it, see backAction).
         if (chrome.autoNextVisible && !chrome.overlayVisible && key.isCenter()) {
             if (down && native.repeatCount == 0) {
                 viewModel.playNextNow()

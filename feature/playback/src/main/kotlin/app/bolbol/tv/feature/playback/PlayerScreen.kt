@@ -54,7 +54,8 @@ private const val LOW_MEMORY_LEVEL = 80
  * Remote: OK/ENTER/PLAY_PAUSE toggle · LEFT/RIGHT ∓/±10 s (accelerating when held, LTR
  * timeline) · FF/REW ±30 s · UP/DOWN show the controls · MENU or "تنظیمات پخش" opens the side
  * panel (audio, quality, subtitle on/off, size and sync) · BACK closes the panel → hides the
- * controls → dismisses the next-episode card → exits (progress is saved).
+ * controls → dismisses the next-episode card → exits (progress is saved); from the resume dialog or
+ * the error panel it exits at once (see [backAction]).
  *
  * Next episode (M2.2): when the request has [app.bolbol.tv.core.model.PlaybackRequest.next], a
  * "قسمت بعد" card with a 10 s countdown appears in the last 30 s (or at the end); OK plays the next
@@ -94,7 +95,6 @@ fun PlayerScreen(
     val next = viewModel.request.next
 
     val chrome = remember { PlayerChrome() }
-    val keys = remember(chrome, viewModel) { PlayerKeyHandler(chrome, viewModel) }
     val currentOnExit by rememberUpdatedState(onExit)
     val currentOnPlayNext by rememberUpdatedState(onPlayNext)
     val exit = remember(viewModel) {
@@ -103,19 +103,38 @@ fun PlayerScreen(
             currentOnExit()
         }
     }
+    // The one BACK handler: panel → controls → (next-episode card) → exit. It reads live state, because
+    // it is called from key events and the back dispatcher, not from composition.
+    val handleBack = remember(chrome, viewModel, exit) {
+        {
+            val phase = viewModel.screen.value.phase
+            val errorShown = viewModel.controller.error.value != null
+            val showing = phase == PlayerPhase.Playing && !errorShown
+            val action = backAction(
+                panelOpen = showing && chrome.panelOpen,
+                overlayVisible = showing && chrome.overlayVisible,
+                resumeDialog = phase is PlayerPhase.AskResume,
+                errorShown = errorShown,
+                nextCardVisible = showing && chrome.autoNextVisible,
+            )
+            when (action) {
+                BackAction.ClosePanel -> chrome.closePanel()
+                BackAction.HideOverlay -> chrome.hideOverlay()
+                BackAction.DismissNextCard -> viewModel.dismissAutoNext()
+                BackAction.Exit -> exit()
+            }
+        }
+    }
+    val keys = remember(chrome, viewModel, handleBack) { PlayerKeyHandler(chrome, viewModel, onBack = handleBack) }
 
     val cardVisible = autoNextCounting && playing && !hasError && !chrome.overlayVisible && !chrome.panelOpen
     SideEffect { chrome.autoNextVisible = cardVisible }
 
-    BackHandler {
-        when {
-            !playing || hasError -> exit()
-            chrome.panelOpen -> chrome.closePanel()
-            chrome.overlayVisible -> chrome.hideOverlay()
-            cardVisible -> viewModel.dismissAutoNext()
-            else -> exit()
-        }
-    }
+    // A remote's BACK is a key event and is consumed by `keys` above (PlayerKeyHandler explains why this
+    // can't be left to BackHandler alone). This runs for a BACK that has no key event, or when no
+    // element of this screen has focus; it also keeps Navigation 3's own back (which would pop the
+    // player without the panel/controls steps) from ever seeing a BACK while the player is up.
+    BackHandler(onBack = handleBack)
 
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onStop() }
     LifecycleEventEffect(Lifecycle.Event.ON_START) {
