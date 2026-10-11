@@ -104,6 +104,35 @@ data class HomeCacheEntity(
     }
 }
 
+/**
+ * One title of "My List" (لیست من) with the TitleSummary fields needed to paint a poster offline.
+ * The list is local-first; [pendingSync] tells the best-effort sync with the site's favourites what is still to do:
+ * [PENDING_NONE] in sync, [PENDING_ADD] added locally and not confirmed on the server, [PENDING_REMOVE] removed locally
+ * and kept as a hidden tombstone until the server confirms. Tombstones are never shown.
+ */
+@Entity(tableName = "my_list", indices = [Index("addedAtMs")])
+data class MyListEntity(
+    @PrimaryKey val postId: Long,
+    /** TitleType name or null. */
+    val type: String?,
+    val title: String,
+    val faTitle: String,
+    val posterUrl: String?,
+    val backdropUrl: String?,
+    val year: Int?,
+    val imdbRating: Float?,
+    val hasDub: Boolean,
+    val hasSubtitle: Boolean,
+    val addedAtMs: Long,
+    val pendingSync: Int,
+) {
+    companion object {
+        const val PENDING_NONE = 0
+        const val PENDING_ADD = 1
+        const val PENDING_REMOVE = 2
+    }
+}
+
 /** Result row of the Continue Watching join: the latest progress row of a title plus its snapshot. */
 data class ContinueWatchingRow(
     @Embedded val progress: ProgressEntity,
