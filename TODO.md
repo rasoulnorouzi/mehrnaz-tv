@@ -65,7 +65,9 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - **🔄 Running now (2 agents):**
   - [ ] 🔄 QA: full device pass of the release build on TV_API34 (search, UI, pages, bookmarking/My List, player, settings, back behaviour) → `qa/2026-10-11-full-pass.md` (QA, Sonnet)
   - [ ] 🔄 User request: **«پروفایل» tab** (login / profile info / VIP / logout with confirmation) + **"Made with ❤ for Mehi by Rasoul"** on Home and About (UI, Sonnet)
+  - [ ] 🔄 User request: **subtitle sync open-ended**: ±120 s range, 0.5 s and 5 s steps, hold OK to repeat, value shown like «+۱۲٫۵ ثانیه» (PE, Opus)
 - [ ] Next: fix wave from the QA report (agents per module) → re-test
+- [ ] **Release v1.0.0** (user request): dedicated signing key (kept off GitHub), APK checks (minSdk 29, leanback, no native libs, signature), fresh-install test on the Android 10 virtual TV, GitHub release with the APK, send the APK + Mi TV install steps to the user (M)
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
