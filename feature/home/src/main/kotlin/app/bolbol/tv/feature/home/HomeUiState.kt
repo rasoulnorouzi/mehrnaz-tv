@@ -8,7 +8,7 @@ import app.bolbol.tv.core.model.ListQuery
 import app.bolbol.tv.core.model.TitleSummary
 
 /** Where the top bar sends the user. Home itself is the selected tab and needs no destination. */
-enum class HomeDestination { SEARCH, MOVIES, SERIES, MY_LIST, SETTINGS }
+enum class HomeDestination { SEARCH, MOVIES, SERIES, MY_LIST, PROFILE, SETTINGS }
 
 /** Why the feed could not be loaded; the screen maps it to a Persian message. */
 enum class HomeError { OFFLINE, SERVER_DOWN, GENERIC }

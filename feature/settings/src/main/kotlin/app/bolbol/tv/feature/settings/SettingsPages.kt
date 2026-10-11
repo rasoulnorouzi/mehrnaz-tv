@@ -30,6 +30,7 @@ import app.bolbol.tv.core.designsystem.BolbolIcons
 import app.bolbol.tv.core.designsystem.BolbolSpacing
 import app.bolbol.tv.core.designsystem.BolbolText
 import app.bolbol.tv.core.designsystem.ChipGroup
+import app.bolbol.tv.core.designsystem.DedicationLine
 import app.bolbol.tv.core.designsystem.TvButton
 import app.bolbol.tv.core.designsystem.TvButtonStyle
 import app.bolbol.tv.core.model.PlaybackPrefs
@@ -183,6 +184,7 @@ internal fun AboutPage(versionName: String, modifier: Modifier = Modifier) {
             // Version names are data (Latin digits and letters), like release years.
             BolbolText(text = versionName, style = MaterialTheme.typography.bodyMedium)
         }
+        DedicationLine(style = MaterialTheme.typography.bodyMedium)
         BolbolText(
             text = "نسخهٔ شخصی، برای استفادهٔ خصوصی",
             style = MaterialTheme.typography.bodyMedium,

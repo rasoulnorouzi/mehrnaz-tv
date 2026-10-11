@@ -35,6 +35,7 @@ internal object AccountParsing {
     private const val MAX_NODES = 400
     private const val MAX_LIST_DEPTH = 4
     private const val MAX_NAME_LENGTH = 64
+    private const val MAX_EMAIL_LENGTH = 128
     private const val MAX_SHAPE_DEPTH = 4
     private const val MAX_SHAPE_KEYS = 14
 
@@ -86,17 +87,38 @@ internal object AccountParsing {
     }
 
     /**
-     * Display name (`display_name`, else `username`...) and active VIP days (`vip.days_left`) of a login or
-     * `user/profile` answer. [token] is excluded from the name candidates.
+     * The non-secret fields of a login or `user/profile` answer: display name (`display_name`, else `username`...),
+     * `username`, `email` and the VIP plan (`vip.days_left`, `expire`, `expire_percent`, `status`). Strings and numbers
+     * are both accepted; the first object (shallowest first) that has a field wins. [token] is excluded from every text
+     * candidate, so a token under a name-like key can never end up in the profile.
      */
     fun parseProfile(root: JsonElement, token: String? = null): RemoteProfile {
+        fun text(keys: List<String>, maxLength: Int): String? = breadthFirst(root) { obj ->
+            keys.firstNotNullOfOrNull { key -> obj.stringOrNumber(key)?.takeIf { it != token && it.length <= maxLength } }
+        }
         val name = breadthFirst(root) { obj ->
             AccountWire.NAME_KEYS.firstNotNullOfOrNull { key ->
                 obj.stringValue(key)?.takeIf { it != token && it.length <= MAX_NAME_LENGTH }
             }
         }
         val vip = breadthFirst(root) { obj -> obj.entryIgnoreCase("vip") as? JsonObject }
-        return RemoteProfile(displayName = name, vipDaysLeft = vip?.let(::vipDaysLeft))
+        return RemoteProfile(
+            displayName = name,
+            vipDaysLeft = vip?.let(::vipDaysLeft),
+            username = text(AccountWire.USERNAME_KEYS, MAX_NAME_LENGTH),
+            email = text(AccountWire.EMAIL_KEYS, MAX_EMAIL_LENGTH),
+            vipExpire = vip?.let { v -> AccountWire.VIP_EXPIRE_KEYS.firstNotNullOfOrNull { v.stringOrNumber(it) } },
+            vipExpirePercent = vip?.let(::vipExpirePercent),
+            vipStatus = vip?.stringOrNumber("status"),
+        )
+    }
+
+    /** The share of the plan already used, 0..100, from a number or numeric string (Persian digits and "%" too). */
+    internal fun vipExpirePercent(vip: JsonObject): Int? {
+        val raw = AccountWire.VIP_PERCENT_KEYS.firstNotNullOfOrNull { vip.stringOrNumber(it) }
+            ?.normalizeDigits()?.trim()?.removeSuffix("%")?.trim()
+            ?: return null
+        return (raw.toIntOrNull() ?: raw.toDoubleOrNull()?.toInt())?.coerceIn(0, 100)
     }
 
     /**

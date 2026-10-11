@@ -74,6 +74,12 @@ class DataGraph(
     val accountVipDaysLeft: Flow<Int?> get() = accountImpl.vipDaysLeft
 
     /**
+     * Non-secret profile of the signed-in user (null when signed out): username / e-mail / display name / VIP plan, kept
+     * with the session so it survives restarts. Never carries the token. Map it to `ProfileViewModel.factory`'s flow.
+     */
+    val accountProfile: Flow<AccountProfileDetails?> get() = accountImpl.profile
+
+    /**
      * Sends [progress] to the server's continue-watching list (call on player exit). No-op when signed out;
      * never throws.
      */

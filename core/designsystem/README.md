@@ -36,6 +36,7 @@ no blur/shadow/infinite animation, images sized to the layout. Interactive parts
 | `MetaLine(parts, modifier, color, maxLines)` | Joins non-blank parts with " · ". |
 | `BolbolText(text, modifier, style, color, maxLines, textAlign)` | `Text` that is safe for Persian + Latin titles (RTL paragraph + bidi wrap, so "Dune (2024)" and "Mission!" render right). Use it for any title string. |
 | `LoadingState()` / `ErrorState(message, onRetry)` / `EmptyState(message)` | Full-area states. Loading is static (no animation). Error requests focus on "تلاش دوباره". |
+| `DedicationLine(modifier, style = labelMedium)` | "Made with ❤ for Mehi by Rasoul": one LTR line in secondary text, vector heart (#FF6B81), not focusable. Home top bar (far end) and Settings → درباره. |
 
 ## Text and numbers
 - Fonts: `VazirmatnFamily`, `BolbolTypography` (Display 36 / Headline 24 / Title 18 / Body 14 / Label 12; letter spacing 0).

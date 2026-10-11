@@ -76,6 +76,74 @@ class AccountParsingTest {
     }
 
     @Test
+    fun `the confirmed profile gives every non-secret field`() {
+        val p = AccountParsing.parseProfile(
+            json(
+                """{"success":true,"data":{"id":7,"username":"ali_r","email":"ali@example.com","display_name":"Ali R","token":"tok-123",
+                   "vip":{"days_left":23,"expire":"2026-11-03","expire_percent":"74","status":"active"},"show":{}},"message":"ok"}""",
+            ),
+            token = "tok-123",
+        )
+        assertEquals(
+            RemoteProfile(
+                displayName = "Ali R",
+                vipDaysLeft = 23,
+                username = "ali_r",
+                email = "ali@example.com",
+                vipExpire = "2026-11-03",
+                vipExpirePercent = 74,
+                vipStatus = "active",
+            ),
+            p,
+        )
+        assertFalse(p.toString().contains("tok-123"))
+    }
+
+    @Test
+    fun `profile fields accept numbers, odd keys and Persian digits`() {
+        val p = AccountParsing.parseProfile(
+            json(
+                """{"data":{"user_login":12345,"user_email":"a@b.c","display_name":"Ali",
+                   "vip":{"days_left":"۲۳","expires":1793750400,"expire_percent":74.6,"status":1}}}""",
+            ),
+        )
+        assertEquals("12345", p.username)
+        assertEquals("a@b.c", p.email)
+        assertEquals(23, p.vipDaysLeft)
+        assertEquals("1793750400", p.vipExpire)
+        assertEquals(74, p.vipExpirePercent)
+        assertEquals("1", p.vipStatus)
+
+        assertEquals(100, AccountParsing.parseProfile(json("""{"data":{"vip":{"expire_percent":"250"}}}""")).vipExpirePercent)
+        assertEquals(50, AccountParsing.parseProfile(json("""{"data":{"vip":{"expire_percent":"۵۰%"}}}""")).vipExpirePercent)
+        assertNull(AccountParsing.parseProfile(json("""{"data":{"vip":{"expire_percent":"soon"}}}""")).vipExpirePercent)
+    }
+
+    @Test
+    fun `missing or blank profile fields stay null and the token is never a field`() {
+        val empty = AccountParsing.parseProfile(json("""{"data":{}}"""))
+        assertEquals(RemoteProfile(), empty)
+
+        val blank = AccountParsing.parseProfile(json("""{"data":{"username":"  ","email":"","vip":{"expire":"","status":""}}}"""))
+        assertEquals(RemoteProfile(), blank)
+
+        val leak = AccountParsing.parseProfile(json("""{"data":{"username":"tok","email":"tok"}}"""), token = "tok")
+        assertNull(leak.username)
+        assertNull(leak.email)
+    }
+
+    @Test
+    fun `an inactive plan keeps its dates and status but has no days left`() {
+        val p = AccountParsing.parseProfile(
+            json("""{"data":{"vip":{"days_left":0,"expire":"2026-01-01","expire_percent":100,"status":"expired"}}}"""),
+        )
+        assertNull(p.vipDaysLeft)
+        assertEquals("2026-01-01", p.vipExpire)
+        assertEquals(100, p.vipExpirePercent)
+        assertEquals("expired", p.vipStatus)
+    }
+
+    @Test
     fun `profile falls back to username and never uses the token as a name`() {
         assertEquals("ali", AccountParsing.parseProfile(json("""{"data":{"username":"ali"}}""")).displayName)
         assertNull(AccountParsing.parseProfile(json("""{"data":{"name":"tok"}}"""), token = "tok").displayName)
