@@ -36,6 +36,23 @@ internal fun formatSubtitleOffset(offsetMs: Int): String {
     return "$LTR_ISOLATE$sign$number$POP_ISOLATE"
 }
 
+/**
+ * Playback speed as a multiplier with Persian digits: 1.5 -> "۱٫۵×", 2 -> "۲×", 0.75 -> "۰٫۷۵×", 0.5 -> "۰٫۵×".
+ * Wrapped in an LTR isolate (U+2066 ... U+2069) so the × stays on the number's right inside RTL text. Normal
+ * speed (1×) is shown as «عادی» in the UI; this still returns "۱×" for it.
+ */
+internal fun formatSpeedMultiplier(speed: Float): String {
+    val hundredths = Math.round(speed * 100f)
+    val whole = hundredths / 100
+    val frac = hundredths % 100
+    val number = when {
+        frac == 0 -> "$whole"
+        frac % 10 == 0 -> "$whole$PERSIAN_DECIMAL${frac / 10}"
+        else -> "$whole$PERSIAN_DECIMAL${frac.toString().padStart(2, '0')}"
+    }
+    return "$LTR_ISOLATE${number.toPersianDigits()}×$POP_ISOLATE"
+}
+
 private const val PERSIAN_DECIMAL = '٫'
 private const val LTR_ISOLATE = '\u2066'
 private const val POP_ISOLATE = '\u2069'

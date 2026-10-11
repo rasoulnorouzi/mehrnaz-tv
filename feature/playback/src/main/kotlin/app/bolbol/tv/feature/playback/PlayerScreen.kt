@@ -38,6 +38,7 @@ import app.bolbol.tv.core.designsystem.formatEpisodeFa
 import app.bolbol.tv.core.model.WatchKey
 import app.bolbol.tv.core.player.AutoNextState
 import app.bolbol.tv.core.player.PlaybackDiagnostics
+import app.bolbol.tv.core.player.PlaybackSpeeds
 import app.bolbol.tv.core.player.PlayerEvent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
@@ -91,6 +92,7 @@ fun PlayerScreen(
     val subtitleStyle by controller.subtitleStyle.collectAsStateWithLifecycle()
     val subtitleOffsetMs by controller.subtitleOffsetMs.collectAsStateWithLifecycle()
     val switchingQuality by controller.switchingQuality.collectAsStateWithLifecycle()
+    val speed by controller.speed.collectAsStateWithLifecycle()
     // Not delegated: the countdown changes 5×/s, so only derived values are read here.
     val autoNextState = viewModel.autoNext.collectAsStateWithLifecycle()
     val autoNextCounting by remember { derivedStateOf { autoNextState.value is AutoNextState.Counting } }
@@ -272,6 +274,7 @@ fun PlayerScreen(
                 status = status,
                 position = controller.position,
                 chrome = chrome,
+                speed = speed,
                 onTogglePlay = controller::togglePlayPause,
                 onOpenSettings = { chrome.openPanel(PlayerPanel.Settings) },
                 episodeButtons = viewModel.episodeButtons,
@@ -296,9 +299,19 @@ fun PlayerScreen(
             val showOffsetToast = { ms: Int ->
                 chrome.showToast(context.getString(R.string.player_subtitle_offset_toast, formatSubtitleOffset(ms)))
             }
+            val showSpeedToast = { value: Float ->
+                val label = if (PlaybackSpeeds.isNormal(value)) {
+                    context.getString(R.string.player_speed_normal)
+                } else {
+                    formatSpeedMultiplier(value)
+                }
+                chrome.showToast(context.getString(R.string.player_speed_toast, label))
+            }
             StreamPickerPanel(
                 streams = viewModel.request.streams,
                 current = status.stream,
+                speed = speed,
+                onSpeed = { value -> showSpeedToast(viewModel.setSpeed(value)) },
                 subtitleStyle = subtitleStyle,
                 subtitleOffsetMs = subtitleOffsetMs,
                 onAudio = viewModel::selectAudio,

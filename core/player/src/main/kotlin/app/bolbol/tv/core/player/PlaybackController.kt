@@ -90,6 +90,7 @@ class PlaybackController(
     private val scope: CoroutineScope,
     private val subtitleLoader: SubtitleLoader?,
     private val clock: PlaybackClock = PlaybackClock.System,
+    private val speedMemory: PlaybackSpeedMemory = PlaybackSpeedMemory.Session,
 ) {
     private val _status = MutableStateFlow(PlayerStatus())
     val status: StateFlow<PlayerStatus> = _status.asStateFlow()
@@ -111,6 +112,12 @@ class PlaybackController(
 
     /** This title's sync offset in ms (positive = subtitles later), read on [start]. */
     val subtitleOffsetMs: StateFlow<Int> = _subtitleOffsetMs.asStateFlow()
+
+    /**
+     * Playback speed (v1.2-1), shared by every controller of the app session through [speedMemory]
+     * (not persisted). Change it with [setSpeed]; it is re-applied on every prepare.
+     */
+    val speed: StateFlow<Float> = speedMemory.speed
 
     private val eventChannel = Channel<PlayerEvent>(Channel.BUFFERED)
 
@@ -295,6 +302,7 @@ class PlaybackController(
         beginTtff(isSwitch = false)
         player.setMediaItem(stream.toMediaItem(request), start)
         player.playWhenReady = playWhenReady
+        applySpeed()
         player.prepare()
         loadSubtitleOffset(request.key.postId)
         loadSubtitles(stream)
@@ -323,6 +331,7 @@ class PlaybackController(
         // Keyframe start (KeyframeStart): the first picture needs no hidden decoding of up to 10 s of frames.
         player.setMediaItem(stream.toMediaItem(request, keyframeStart = true), position)
         player.playWhenReady = play
+        applySpeed()
         player.prepare()
         loadSubtitles(stream)
         publishStatus()
@@ -334,7 +343,21 @@ class PlaybackController(
         if (released || request == null) return
         _error.value = null
         player.playWhenReady = true
+        applySpeed()
         player.prepare()
+    }
+
+    /**
+     * Sets the playback speed (snapped to [PlaybackSpeeds.CHOICES]) for this and every later player of
+     * the app session, and applies it at once (also while paused). Pitch stays natural (Media3's
+     * default `setPlaybackSpeed`). Returns the applied speed.
+     */
+    fun setSpeed(speed: Float): Float {
+        val value = speedMemory.set(speed)
+        if (released) return value
+        applySpeed()
+        subtitleSync.update()
+        return value
     }
 
     fun play() {
@@ -342,7 +365,7 @@ class PlaybackController(
         when {
             _error.value != null -> retry()
             player.playbackState == Player.STATE_ENDED -> { player.seekTo(0); player.play() }
-            player.playbackState == Player.STATE_IDLE -> { player.prepare(); player.play() }
+            player.playbackState == Player.STATE_IDLE -> { applySpeed(); player.prepare(); player.play() }
             else -> player.play()
         }
     }
@@ -445,7 +468,10 @@ class PlaybackController(
     fun onStart(): Boolean {
         if (released || !stoppedByLifecycle) return false
         stoppedByLifecycle = false
-        if (_error.value == null) player.prepare()
+        if (_error.value == null) {
+            applySpeed()
+            player.prepare()
+        }
         return true
     }
 
@@ -476,6 +502,15 @@ class PlaybackController(
     }
 
     // ---- internals ------------------------------------------------------------------------
+
+    /**
+     * ExoPlayer keeps its playback parameters across media items, but we set the speed again before each
+     * prepare so a new player, a re-prepare after [onStop] or a watchdog retry can never fall back to 1×.
+     */
+    private fun applySpeed() {
+        val speed = speedMemory.speed.value
+        if (player.playbackParameters.speed != speed) player.setPlaybackSpeed(speed)
+    }
 
     private fun beginTtff(isSwitch: Boolean) {
         ttffStartMs = clock.elapsedRealtimeMs()
@@ -530,6 +565,7 @@ class PlaybackController(
         Log.i(SWITCH_TAG, "no first frame, no bytes ${clock.elapsedRealtimeMs() - t.startedAtMs}ms after switch: re-preparing ${stream.tag()}")
         network?.dropIdleConnections()
         player.setMediaItem(stream.toMediaItem(request, keyframeStart = true), t.requestedPositionMs)
+        applySpeed()
         player.prepare()
     }
 
@@ -725,6 +761,7 @@ class PlaybackController(
             meanSeekMs = stats.meanSingleSeekTimeMs.orUnknown(),
             meanJoinMs = stats.meanJoinTimeMs.orUnknown(),
             bandwidthEstimate = bandwidthEstimate,
+            speed = speedMemory.speed.value,
         )
     }
 

@@ -31,6 +31,8 @@ data class PlaybackDiagnostics(
     val bandwidthEstimate: Long = -1,
     /** Last quality/audio switch: target and time to its first frame, e.g. "1080p/SUBTITLED 2610 ms (moov 1830)". */
     val lastSwitch: String? = null,
+    /** Playback speed (v1.2-1); the overlay shows it only when it isn't 1×. */
+    val speed: Float = PlaybackSpeeds.NORMAL,
 ) {
     /** Short monospace lines for the overlay (Latin digits on purpose: this is data). */
     fun lines(): List<String> = listOf(
@@ -42,7 +44,10 @@ data class PlaybackDiagnostics(
         "rebuf $rebufferCount  mean ${ms(meanRebufferMs)}",
         "seek  mean ${ms(meanSeekMs)}  join ${ms(meanJoinMs)}",
         "bw    " + if (bandwidthEstimate > 0) kbps(bandwidthEstimate) else "-",
-    ) + listOfNotNull(lastSwitch?.let { "swtch $it" })
+    ) + listOfNotNull(
+        lastSwitch?.let { "swtch $it" },
+        if (PlaybackSpeeds.isNormal(speed)) null else "speed ${speed}x",
+    )
 
     private fun kbps(bits: Long): String = "${bits / 1000} kbps"
 

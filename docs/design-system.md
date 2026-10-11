@@ -67,6 +67,12 @@ Disney+/Prime (season tabs + episode list, Skip Intro, next-episode countdown), 
      OK on it closes the panel; OK on another episode switches to it. Opens from the button or with **DOWN on
      the controls' button row** (so DOWN, DOWN from the bare video). The next-episode countdown is frozen while
      it is open.
+   - **«تنظیمات پخش» panel** (v1.2-1 added speed): «صدا» · «کیفیت» · **«سرعت پخش»** · «زیرنویس» sections, all with the
+     same chips (accent fill + dot when selected). The speed chips are equal-width in two rows of three, slowest
+     first (RTL: «۰٫۵×» at the start/right): «۰٫۵× · ۰٫۷۵× · عادی» / «۱٫۲۵× · ۱٫۵× · ۲×». Voice pitch stays natural. Each
+     pick shows the toast «سرعت پخش: ۱٫۵×» (or «عادی»), and the controls' status text becomes «۷۲۰ · زیرنویس · ۱٫۵×»
+     (nothing extra at normal speed). The speed lasts for the app session (next episode, auto-next, quality/audio
+     switches keep it) but is not saved: «عادی» again after the app restarts.
    - **BACK order:** side panel (settings or episodes; focus returns to the button that opened it) → controls →
      next-episode card → exit. From the resume dialog or the error panel BACK exits at once.
 4. **Search:** keyboard (start side) + results grid (end side) + mic button + "type on your phone" QR.

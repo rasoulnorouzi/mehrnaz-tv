@@ -15,6 +15,11 @@
     <string name="player_audio_subtitled">زیرنویس</string>
     <string name="player_quality">کیفیت</string>
 
+    <!-- Playback speed section of the settings panel (v1.2-1). -->
+    <string name="player_speed">سرعت پخش</string>
+    <string name="player_speed_normal">عادی</string>
+    <string name="player_speed_toast">سرعت پخش: %1$s</string>
+
     <!-- Subtitle section of the settings panel (docs/subtitles.md §Settings). -->
     <string name="player_subtitles">زیرنویس</string>
     <string name="player_subtitles_on">روشن</string>
