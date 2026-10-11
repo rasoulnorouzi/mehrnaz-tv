@@ -1,5 +1,7 @@
 package app.bolbol.tv.feature.details
 
+import app.bolbol.tv.core.designsystem.formatProgressLabelFa
+
 import androidx.compose.runtime.Immutable
 import app.bolbol.tv.core.model.AudioType
 import app.bolbol.tv.core.model.CatalogException
@@ -58,6 +60,8 @@ data class EpisodeItem(
     val startPositionMs: Long,
     /** False for announced episodes without any stream. */
     val playable: Boolean,
+    /** «ادامه از ۱۲:۳۴» (duration unknown, e.g. synced from the website) or «۲۴ دقیقه مانده»; null if not started. */
+    val progressLabel: String? = null,
 ) {
     val number: Int get() = key.episode
 }
@@ -199,6 +203,7 @@ private fun Episode.toItem(titleId: Long, progress: Map<Pair<Int, Int>, Playback
         completed = saved?.completed == true,
         startPositionMs = resume,
         playable = streams.isNotEmpty(),
+        progressLabel = if (resume > 0) formatProgressLabelFa(saved!!.positionMs, saved.durationMs, saved.completed) else null,
     )
 }
 

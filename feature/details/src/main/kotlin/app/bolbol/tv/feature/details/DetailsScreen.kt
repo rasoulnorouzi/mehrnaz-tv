@@ -640,9 +640,9 @@ private fun EpisodeRow(
                             maxLines = 1,
                         )
                     }
-                    if (item.remainingMs > 0) {
+                    if (item.progressLabel != null) {
                         BolbolText(
-                            text = formatRemainingFa(item.remainingMs),
+                            text = item.progressLabel,
                             style = MaterialTheme.typography.labelMedium,
                             color = BolbolColors.TextSecondary,
                             maxLines = 1,
