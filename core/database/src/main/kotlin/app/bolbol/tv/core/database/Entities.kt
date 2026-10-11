@@ -63,6 +63,35 @@ data class PrefsEntity(
     }
 }
 
+/**
+ * The user's global subtitle look (docs/subtitles.md), single row with id 1. Enums are stored by name; an unknown
+ * name reads back as the default, so a newer/older build never crashes on it.
+ */
+@Entity(tableName = "subtitle_style")
+data class SubtitleStyleEntity(
+    @PrimaryKey val id: Int = SINGLE_ROW_ID,
+    val enabled: Boolean,
+    val sizeScale: Float,
+    /** SubtitleColor name. */
+    val color: String,
+    /** SubtitleBackground name. */
+    val background: String,
+    val bold: Boolean,
+    /** SubtitlePosition name. */
+    val position: String,
+) {
+    companion object {
+        const val SINGLE_ROW_ID = 1
+    }
+}
+
+/** Per-title subtitle timing offset in ms (positive = subtitles later). A missing row means 0. */
+@Entity(tableName = "subtitle_offset")
+data class SubtitleOffsetEntity(
+    @PrimaryKey val postId: Long,
+    val offsetMs: Int,
+)
+
 /** Single-row cache (id = 1) of the raw `post/all` JSON, so the home screen paints before the network answers. */
 @Entity(tableName = "home_cache")
 data class HomeCacheEntity(

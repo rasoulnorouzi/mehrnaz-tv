@@ -4,6 +4,8 @@ import app.bolbol.tv.core.database.ContinueWatchingRow
 import app.bolbol.tv.core.database.PrefsDao
 import app.bolbol.tv.core.database.PrefsEntity
 import app.bolbol.tv.core.database.ProgressEntity
+import app.bolbol.tv.core.database.SubtitleOffsetEntity
+import app.bolbol.tv.core.database.SubtitleStyleEntity
 import app.bolbol.tv.core.database.TitleSnapshotEntity
 import app.bolbol.tv.core.database.WatchDao
 import app.bolbol.tv.core.model.CatalogException
@@ -141,5 +143,27 @@ internal class FakePrefsDao : PrefsDao {
     override suspend fun get(postId: Long): PrefsEntity? = rows.value[postId]
     override suspend fun upsert(prefs: PrefsEntity) {
         rows.value = rows.value + (prefs.postId to prefs)
+    }
+
+    private val style = MutableStateFlow<SubtitleStyleEntity?>(null)
+    val offsets = MutableStateFlow<Map<Long, Int>>(emptyMap())
+
+    override fun observeSubtitleStyle(): Flow<SubtitleStyleEntity?> = style
+    override suspend fun upsertSubtitleStyle(style: SubtitleStyleEntity) {
+        this.style.value = style
+    }
+
+    override suspend fun subtitleOffsetMs(postId: Long): Int? = offsets.value[postId]
+    override suspend fun upsertSubtitleOffset(offset: SubtitleOffsetEntity) {
+        offsets.value = offsets.value + (offset.postId to offset.offsetMs)
+    }
+
+    override suspend fun deleteSubtitleOffset(postId: Long) {
+        offsets.value = offsets.value - postId
+    }
+
+    /** For tests that plant raw rows (e.g. unknown enum names). */
+    fun plantStyle(entity: SubtitleStyleEntity) {
+        style.value = entity
     }
 }
