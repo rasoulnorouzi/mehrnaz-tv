@@ -35,7 +35,11 @@ Errors are always `CatalogException` (Offline, AllMirrorsDown, NotFound, BadResp
   server JSON in Room (`home_cache`, one row) and emits fresh rows (`fromCache = false`). Network failure with a
   cache: the flow just completes. Without a cache: it throws. Unparsable cache, empty fresh payload and cache
   write failures are all handled without losing the good cache. Every collection refetches.
-- **Details:** in-memory LRU of 32 titles, 10 min TTL, failures not cached. Lists/search are not cached; blank search sends nothing.
+- **Details:** `post/{id}` and `post/player-links?id=` are fetched in parallel; streams/seasons come from player-links when it
+  succeeds with links of the title's kind, else from the detail's own links (a failing player-links never fails the details).
+  Seasons carry sub and dub streams per episode (`Episode.streams`, all qualities); dub blocks may cover fewer episodes.
+  The merged result sits in an in-memory LRU of 32 titles, 10 min TTL, failures not cached. Lists/search are not cached;
+  blank search sends nothing.
 - **HTTP:** 50 MB OkHttp disk cache in `cacheDir/http` (mainly images and videos); connect 10 s, read 20 s.
 - **Subtitles:** `subtitleStyle()` emits `SubtitleStyle()` until saved (table `subtitle_style`, one row); the per-title offset
   (`subtitle_offset`, no row = 0) is rounded to 0.5 s and clamped to +-10 s on save. Own tables, so playback prefs never overwrite them.

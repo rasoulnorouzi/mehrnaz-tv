@@ -2,6 +2,7 @@ package app.bolbol.tv.core.network
 
 import app.bolbol.tv.core.network.dto.DetailEnvelopeDto
 import app.bolbol.tv.core.network.dto.PagedEnvelopeDto
+import app.bolbol.tv.core.network.dto.PlayerLinksEnvelopeDto
 import okhttp3.ResponseBody
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -36,4 +37,11 @@ internal interface BolboljanService {
 
     @GET("post/{id}")
     suspend fun detail(@Path("id") id: Long): DetailEnvelopeDto
+
+    /**
+     * Download and player links of a movie or a whole series. The official app takes streams from here because
+     * [detail] can carry empty link arrays (docs/api.md section 11).
+     */
+    @GET("post/player-links")
+    suspend fun playerLinks(@Query("id") id: Long): PlayerLinksEnvelopeDto
 }

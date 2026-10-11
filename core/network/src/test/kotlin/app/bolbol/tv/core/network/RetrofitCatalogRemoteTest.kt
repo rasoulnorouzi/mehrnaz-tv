@@ -1,20 +1,25 @@
 package app.bolbol.tv.core.network
 
+import app.bolbol.tv.core.model.AudioType
 import app.bolbol.tv.core.model.CatalogException
 import app.bolbol.tv.core.model.Category
 import app.bolbol.tv.core.model.ListQuery
 import app.bolbol.tv.core.model.TitleType
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
+import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** The whole network stack (Retrofit + converter + mirror interceptor + mappers) against MockWebServer. */
 class RetrofitCatalogRemoteTest {
@@ -67,28 +72,96 @@ class RetrofitCatalogRemoteTest {
         assertEquals(1, second.requestCount)
     }
 
+    // --- details: `post/{id}` and `post/player-links?id=` are requested together ------------------------------
+
+    private val apiRoot = "/wp-json/mapi/v1/post"
+
+    /** Serves fixed answers by path (the two details calls arrive in parallel, so enqueue order is meaningless). */
+    private fun serve(server: MockWebServer, vararg routes: Pair<String, () -> MockResponse>) {
+        val table = routes.toMap()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse =
+                table[request.requestUrl!!.encodedPath]?.invoke() ?: json("""{"success":false}""", code = 404)
+        }
+    }
+
+    private fun sample(name: String, code: Int = 200): () -> MockResponse = { json(Samples.text(name), code) }
+
     @Test
     fun detailsMapsTheMovieSample() = runTest {
-        first.enqueue(json(Samples.text("movie_353371.json")))
+        serve(first, "$apiRoot/353371" to sample("movie_353371.json"), "$apiRoot/player-links" to sample("player-links_movie_353371.json"))
         val details = remote.details(353371)
         assertEquals(TitleType.MOVIE, details.type)
         assertEquals(6, details.streams.size)
-        assertEquals("/wp-json/mapi/v1/post/353371", first.takeRequest().requestUrl!!.encodedPath)
+        assertEquals(3, details.streams.count { it.audio == AudioType.SUBTITLED && it.subtitleUrl != null })
+        assertEquals(3, details.streams.count { it.audio == AudioType.DUBBED && it.subtitleUrl == null })
+        val paths = List(first.requestCount) { first.takeRequest().requestUrl!! }
+        assertEquals(setOf("$apiRoot/353371", "$apiRoot/player-links"), paths.map { it.encodedPath }.toSet())
+        assertEquals("353371", paths.single { it.encodedPath.endsWith("player-links") }.queryParameter("id"))
     }
 
     @Test
     fun detailsMapsTheSeriesSample() = runTest {
-        first.enqueue(json(Samples.text("serie_624236.json")))
-        val details = remote.details(624236)
+        serve(first, "$apiRoot/624236" to sample("serie_624236.json"))
+        val details = remote.details(624236) // player-links 404: the embedded links are used
         assertEquals(TitleType.SERIES, details.type)
         assertEquals(2, details.seasons.single().episodes.size)
     }
 
     @Test
+    fun streamsComeFromPlayerLinksWhenTheDetailHasEmptyLinks() = runTest {
+        serve(first, "$apiRoot/623954" to { json(Samples.detailWithoutLinks("serie_623954_detail_empty_links.json")) }, "$apiRoot/player-links" to sample("player-links_serie_623954.json"))
+        val details = remote.details(623954)
+        assertEquals(TitleType.SERIES, details.type)
+        assertEquals("Kill Jackie", details.summary.title)
+        val episodes = details.seasons.single().episodes
+        assertEquals(8, episodes.size)
+        assertEquals(6, episodes[0].streams.size)
+        assertEquals(3, episodes[7].streams.size)
+        assertTrue(details.summary.hasDub && details.summary.hasSubtitle)
+    }
+
+    @Test
+    fun streamsFallBackToTheEmbeddedLinksWhenPlayerLinksFails() = runTest {
+        val detail = "$apiRoot/623954" to sample("serie_623954_detail_empty_links.json")
+        // The HTML 500 case fails over to the second mirror (and keeps using it), so it must serve the detail too.
+        serve(second, detail, "$apiRoot/player-links" to sample("post_player-links.json", 404))
+        for (failure in listOf<() -> MockResponse>(sample("post_player-links.json", 404), { html(500) }, { json("""{"success":true,"data":[]}""") }, { json("not json") })) {
+            serve(first, detail, "$apiRoot/player-links" to failure)
+            val details = remote.details(623954)
+            assertEquals(8, details.seasons.single().episodes.size)
+        }
+    }
+
+    @Test
+    fun aFailingPlayerLinksCallNeverFailsTheDetails() = runTest {
+        serve(first, "$apiRoot/353371" to sample("movie_353371.json"), "$apiRoot/player-links" to { json("""{"success":true,"data":{"player_links":"oops"}}""") })
+        assertEquals(6, remote.details(353371).streams.size)
+    }
+
+    @Test
+    fun theTwoCallsAreInFlightAtTheSameTime() = runTest {
+        val bothArrived = CountDownLatch(2)
+        val sawBoth = AtomicBoolean(false)
+        first.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                bothArrived.countDown()
+                if (bothArrived.await(1500, TimeUnit.MILLISECONDS)) sawBoth.set(true)
+                return when (request.requestUrl!!.encodedPath) {
+                    "$apiRoot/353371" -> sample("movie_353371.json")()
+                    else -> sample("player-links_movie_353371.json")()
+                }
+            }
+        }
+        remote.details(353371)
+        assertTrue("the detail and player-links requests must overlap", sawBoth.get())
+    }
+
+    @Test
     fun details404IsNotFoundAndDoesNotFailOver() = runTest {
-        first.enqueue(json(Samples.text("post_player-links.json"), code = 404))
+        serve(first, "$apiRoot/player-links" to sample("player-links_movie_353371.json"))
         try {
-            remote.details(1)
+            remote.details(1) // `post/1` answers 404 even though player-links has links
             fail("expected NotFound")
         } catch (e: CatalogException.NotFound) {
             // expected
@@ -98,7 +171,7 @@ class RetrofitCatalogRemoteTest {
 
     @Test
     fun detailsWithSuccessFalseOn200IsNotFound() = runTest {
-        first.enqueue(json("""{"success":false,"message":"x"}"""))
+        serve(first, "$apiRoot/1" to { json("""{"success":false,"message":"x"}""") })
         try {
             remote.details(1)
             fail("expected NotFound")
@@ -109,7 +182,7 @@ class RetrofitCatalogRemoteTest {
 
     @Test
     fun detailsWithGarbageBodyIsBadResponse() = runTest {
-        first.enqueue(json("""{"success":true,"data":"surprise"}"""))
+        serve(first, "$apiRoot/1" to { json("""{"success":true,"data":"surprise"}""") })
         try {
             remote.details(1)
             fail("expected BadResponse")

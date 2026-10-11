@@ -7,9 +7,12 @@ import app.bolbol.tv.core.network.dto.ApiErrorDto
 import app.bolbol.tv.core.network.dto.DetailEnvelopeDto
 import app.bolbol.tv.core.network.dto.HomeEnvelopeDto
 import app.bolbol.tv.core.network.dto.PagedEnvelopeDto
+import app.bolbol.tv.core.network.dto.PlayerLinksEnvelopeDto
 import app.bolbol.tv.core.network.mapper.toDetails
 import app.bolbol.tv.core.network.mapper.toHomeSections
 import app.bolbol.tv.core.network.mapper.toPage
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -106,6 +109,27 @@ class SampleParsingTest {
     }
 
     @Test
+    fun dubbedSeriesSamplesParseAndMap() {
+        val detail = BolboljanJson.decodeFromString(DetailEnvelopeDto.serializer(), Samples.text("serie_623954_detail_empty_links.json"))
+        assertTrue(detail.success)
+        assertEquals(623954L, detail.data!!.toDetails().summary.id)
+
+        val series = BolboljanJson.decodeFromString(PlayerLinksEnvelopeDto.serializer(), Samples.text("player-links_serie_623954.json"))
+        assertTrue(series.success)
+        assertEquals(6, series.data.playerLinks.size)
+        assertEquals(6, series.data.downloadLinks.size)
+
+        val movie = BolboljanJson.decodeFromString(PlayerLinksEnvelopeDto.serializer(), Samples.text("player-links_movie_353371.json"))
+        assertTrue(movie.success)
+        assertEquals(6, movie.data.playerLinks.size)
+        assertEquals(6, movie.data.downloadLinks.size)
+
+        // The per-season endpoint is not used by the app; it only has to stay valid JSON with the documented keys.
+        val season = Json.parseToJsonElement(Samples.text("serie_623954_season_1.json")).jsonObject
+        assertEquals(setOf("download_links", "player_links"), season.getValue("data").jsonObject.keys)
+    }
+
+    @Test
     fun errorSamplesDecodeAsApiErrors() {
         for (name in listOf("post_player-links.json", "post_search_s_friends.json")) {
             val error = BolboljanJson.decodeFromString(ApiErrorDto.serializer(), Samples.text(name))
@@ -154,4 +178,5 @@ internal object NoService : BolboljanService {
     override suspend fun list(category: String, page: Int, country: Int?, genres: Int?, imdbTop250: Int?) = error("unused")
     override suspend fun search(text: String, page: Int) = error("unused")
     override suspend fun detail(id: Long) = error("unused")
+    override suspend fun playerLinks(id: Long) = error("unused")
 }
