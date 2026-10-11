@@ -90,6 +90,7 @@ fun PlayerScreen(
     val error by controller.error.collectAsStateWithLifecycle()
     val subtitleStyle by controller.subtitleStyle.collectAsStateWithLifecycle()
     val subtitleOffsetMs by controller.subtitleOffsetMs.collectAsStateWithLifecycle()
+    val switchingQuality by controller.switchingQuality.collectAsStateWithLifecycle()
     // Not delegated: the countdown changes 5×/s, so only derived values are read here.
     val autoNextState = viewModel.autoNext.collectAsStateWithLifecycle()
     val autoNextCounting by remember { derivedStateOf { autoNextState.value is AutoNextState.Counting } }
@@ -243,7 +244,11 @@ fun PlayerScreen(
             besidePanel = chrome.panelOpen,
         )
 
-        if (playing && status.isBuffering && !hasError) {
+        // v1.1-2: during a quality/audio switch the last frame stays on screen with a small label
+        // instead of a bare spinner.
+        if (playing && switchingQuality && !hasError) {
+            QualitySwitchIndicator(Modifier.align(Alignment.Center), label = stringResource(R.string.player_switching_quality))
+        } else if (playing && status.isBuffering && !hasError) {
             BufferingSpinner(Modifier.align(Alignment.Center))
         }
         if (cardVisible && next != null) {
@@ -282,6 +287,8 @@ fun PlayerScreen(
             )
         }
         if (playing && chrome.panel == PlayerPanel.Settings && !hasError) {
+            // Warm DNS/TLS to the other qualities' hosts while the viewer reads the menu (v1.1-2).
+            LaunchedEffect(Unit) { controller.prewarmOtherStreams() }
             val showOffsetToast = { ms: Int ->
                 chrome.showToast(context.getString(R.string.player_subtitle_offset_toast, formatSubtitleOffset(ms)))
             }

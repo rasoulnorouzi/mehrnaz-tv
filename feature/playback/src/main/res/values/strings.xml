@@ -52,4 +52,5 @@
     <string name="player_error_decoder">این تلویزیون نمی&#8204;تواند این کیفیت را پخش کند.</string>
     <string name="player_error_other">پخش با خطا متوقف شد.</string>
     <string name="player_no_streams">لینک پخشی برای این عنوان پیدا نشد.</string>
+    <string name="player_switching_quality">در حال تغییر کیفیت…</string>
 </resources>
