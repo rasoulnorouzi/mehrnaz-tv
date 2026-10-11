@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="background">#0B0D12</color>
-    <!-- Window background matches the Compose background so there is no white flash on start. -->
+    <!--
+      windowBackground is the launch screen (drawable/launch_background.xml): the app background
+      colour + the centred logo mark. It is dark, so there is no white flash and no blank screen
+      before the first Compose frame.
+    -->
     <style name="Theme.BolbolTV" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/background</item>
+        <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="android:colorBackground">@color/background</item>
         <item name="android:navigationBarColor">@color/background</item>
         <item name="android:statusBarColor">@color/background</item>

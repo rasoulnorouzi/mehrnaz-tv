@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Launch screen = the activity theme's windowBackground (shown by the system before the first
+  Compose frame): app background colour + the centred logo mark. No SplashScreen API (API 29).
+  The mark vector is a 108dp canvas whose bird spans ~60% of it, so 260dp gives a ~135dp bird.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:opacity="opaque">
+    <item android:drawable="@color/background" />
+    <item
+        android:width="260dp"
+        android:height="260dp"
+        android:drawable="@drawable/ic_launcher_foreground"
+        android:gravity="center" />
+</layer-list>
