@@ -4,8 +4,8 @@ Living memory for this project. Update it at the end of every session or milesto
 Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 
 ## ▶ Current status
-- **v1.0.0 released 2026-10-11** (GitHub release on the private repo; APK `dist/mehrnaz-tv-v1.0.0.apk` sent to the user).
-- **Next:** v1.1 (planned in TODO: prev/next episode buttons, quality-switch stall, 3 subtitle colours, in-player episodes panel, CW «go to title page»), only when the user asks to start → 📺 items (perf measurements vs the official app,
+- **v1.1.0 released 2026-10-11** (versionCode 2; GitHub release; APK `dist/mehrnaz-tv-v1.1.0.apk` sent to the user). v1.0.0 before it.
+- **Next:** whatever the user reports from the TV; 📺 items (quality-switch measurement on the TV, perf vs the official app,
   Watch Next on PatchWall). Any update: bump versionCode/versionName, DB migrations (no in-place schema edits), `tools/release.sh`.
 - **Keep in mind:** the signing key is in `~/.bolboltv/` (back it up); losing it means the user must uninstall to update.
 
@@ -33,6 +33,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-11: "The video lag resolves after a few seconds, don't bother too much; improve only if there's room." v1.1-2 fix already shipped; no more work on it unless the TV shows a problem.
 - 2026-10-11: (fa) Remove the «زودتر/دیرتر ۵ ثانیه» subtitle-sync buttons; 0.5 s steps are enough (v1.1-6). Supersedes the earlier "5 s steps" wish.
 - 2026-10-11: "Go ahead for implementation and production, assign tasks to agents": v1.1 started with 4 parallel agents.
 - 2026-10-11: Plan-only additions to v1.1 (do not implement until asked): an **in-player episodes/seasons button** for series
@@ -60,6 +61,12 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
   an agent team. No corrections so far.
 
 ## Progress log
+- 2026-10-11: v1.1.0 released. 5 agents in worktrees (Opus: player episodes nav, quality switch; Sonnet: colours, CW menu, sync
+  buttons); merges were conflict-free because each brief listed disjoint files (MainNavigation split by entry block).
+  Lessons: (1) do the shared `core:model` contract change BEFORE spawning, so agents build against it; (2) test the update path
+  by installing the signed release OVER the previous release with real history (resume survived); (3) QA on real series found a
+  pre-existing data bug: the site sends `She\s` for "She's" in file URLs (404) → `mediaUrlOrNull` repair; (4) home focus starts
+  on the Continue Watching row: one DPAD_DOWN skips it, so take the home screenshot before pressing keys.
 - 2026-10-11: v1.0.0 released (Mehrnaz). QA pass + fix wave done; dubbing and quality switching verified on the Android 11 emulator; release APK v2+v3 signed with the permanent key.
 - 2026-10-11: The official app's auth is confirmed: login form `username`/`password` → `data.token`; `Authorization: Bearer`; favorite-list (toggle `post_id`); watch-list with `current_time` in seconds (multipart). This enables cross-device progress sync. Mirrors playgen.ir and arzanycenter.ir also work.
 - 2026-10-11: MILESTONE: end-to-end on the emulator. Home (real data) → details → 720p playback with Persian subs → resume «ادامه از ۱:۰۷» + Continue Watching row. CDN throughput from the dev machine is about 45 Mbit/s with 0.4 s to first byte; emulator TTFF of 15.5 s is the software decoder, not the network.

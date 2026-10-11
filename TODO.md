@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-11 (**v1.1 in progress**: the user said "go ahead for implementation and production")
+Last updated: 2026-10-11 (**v1.1.0 released**: prev/next, episodes panel, CW «go to page», faster quality switch, 3 colours, 0.5 s sync only)
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -33,14 +33,18 @@ Last updated: 2026-10-11 (**v1.1 in progress**: the user said "go ahead for impl
 - [x] 2026-10-11 · Requirement recorded: search keyboard in **both Persian and English** (U)
 
 ## 🔄 In progress / waiting
-- [ ] 2026-10-11 · **v1.1 started** (user: "go ahead for implementation and production"). Contract change by M: `PlaybackRequest.previous` +
-  `PlaybackRequest.seasons` (+ `previousEpisodeKey`, `seasonsInOrder`, 3 new tests). Four agents in parallel worktrees:
-  - v1.1-1 + v1.1-4 prev/next + in-player episodes panel (PE, Opus): feature/playback, app PlayerEntry/MainNavigation (player entry)
-  - v1.1-2 quality-switch stall (PE, Opus): core/player (+ BolbolApp media client if needed)
-  - v1.1-3 three subtitle colours (DE + UI, Sonnet): core/model enum, designsystem, settings
-  - v1.1-5 CW «رفتن به صفحهٔ …» (UI, Sonnet): feature/home, feature/details, app Routes/MainNavigation (home + details entries)
-  - v1.1-6 (user request 2026-10-11, fa): remove the «زودتر/دیرتر ۵ ثانیه» sync buttons; 0.5 s steps are enough (UI, Sonnet)
-  - then M: merge, emulator QA with screenshots, version 1.1.0 (code 2), signed release, GitHub release, APK to the user
+- [x] 2026-10-11 · **v1.1.0 RELEASED** (user: "go ahead for implementation and production"): 5 agents in parallel worktrees
+  (2 Opus, 3 Sonnet), all merged and reviewed by M; signed APK installed **over v1.0.0** on the Android 11 emulator with history
+  kept; GitHub release v1.1.0, APK sent to the user (M)
+  - v1.1-1 + v1.1-4 «قسمت قبل/بعد» (+ ⏮/⏭) and the in-player «قسمت‌ها» panel (PE). Screens: shots/2026-10-11/v110-controls, -k2
+  - v1.1-2 quality switch: keyframe start, separate media client (6 s/10 s timeouts, fast retry), 8 s watchdog, host pre-warm,
+    «در حال تغییر کیفیت…» over the last frame (PE + M wiring). Emulator 720→1080: first frame 2.25 s. Report perf/reports/v1.1-quality-switch.md.
+    User 2026-10-11: "the lag resolves after a few seconds, don't bother too much" → no further work unless the TV shows a problem.
+  - v1.1-3 colours فیروزه‌ای / سبز روشن / صورتی (stored by name: no DB migration needed, schema v1 unchanged) (DE + UI)
+  - v1.1-5 CW menu «رفتن به صفحهٔ فیلم/سریال», series opens with that episode focused (UI)
+  - v1.1-6 subtitle sync 0.5 s steps only (user request) (UI)
+  - Found in QA (M): episode URLs with an apostrophe came as `She\s` (404) → repaired in core/network (`mediaUrlOrNull`), ⏮/⏭
+    also work on the resume prompt / error panel, switch label centred beside the open panel
 - [x] 2026-10-11 · M1 approved by the user ("go for a real watch… do a final product")
 - [x] 2026-10-11 · M1.0 Shared contract `:core:model` (domain types, repository interfaces, stream picking; 4 tests pass) + buildable skeletons for all M1 modules (M)
 - [x] 2026-10-11 · M1.1 + 1.2 Data layer merged: network (mirror failover, lenient JSON), Room, repositories; 165 unit tests (DE)
@@ -86,37 +90,10 @@ Last updated: 2026-10-11 (**v1.1 in progress**: the user said "go ahead for impl
 
 ## 📋 To do
 
-### v1.1: user feedback after installing on the real Mi TV (2026-10-11), in progress (see 🔄)
-- [ ] v1.1-1 **Player: «قسمت قبل» / «قسمت بعد» buttons** (previous / next episode) in the player controls for series
-  (hidden for movies; disabled at the first/last episode; also on the remote's MEDIA_NEXT / MEDIA_PREVIOUS keys;
-  the current episode's progress is saved before switching; same single-player replace as auto-next) (PE + UI)
-- [ ] v1.1-2 **Quality switch lag:** switching to a HIGHER quality sometimes stalls for a long time; going lower and
-  back up fixes it. Plan (measure first, then fix):
-  1. Reproduce on the TV with «نمایش اطلاعات عملکرد» on; record `BolbolPerf stream_switch=…ms`, decoder, buffer and
-     bandwidth for 480→720→1080 and 1080→480→1080 (📺, PA).
-  2. Likely causes to check: new CDN host per quality (cold DNS/TLS; 1080 and 720 sit on different hosts), MP4 `moov`
-     atom at the END of the file (extra range request before playback), EXACT seek decoding from the previous keyframe,
-     hardware decoder re-initialisation on a resolution change (MT9611), too-small start buffer for a high bitrate.
-  3. Candidate fixes: pre-warm the other qualities' hosts when the menu opens (HEAD/connection pre-connect);
-     `SeekParameters.CLOSEST_SYNC` for the switch; keep showing the last frame with a small «در حال تغییر کیفیت…» label
-     instead of a black stall; a timeout fallback (no first frame within ~8 s → retry once, then offer the lower quality);
-     cache the MP4 header boxes (small Media3 `SimpleCache` for the first/last MB); tune LoadControl for 1080p (PE).
-  4. Accept when the 720→1080 switch shows a picture within 3 s on the TV over home Wi-Fi.
-- [ ] v1.1-3 **Subtitle colours: 3 more** (now: سفید، زرد). Add, e.g.: «فیروزه‌ای» cyan `#7FDBFF`, «سبز روشن» light green
-  `#A6F28F`, «صورتی» soft pink `#FFB3D1` (final choice after a preview on the TV). In the Settings live preview and
-  the player menu; stored in SubtitleStyle (**needs a DB migration**: v1 is released, rule 11) (UI + DE)
-
-- [ ] v1.1-4 **In-player «قسمت‌ها» (episodes) button** for series (user request 2026-10-11): a button in the player controls
-  (and a remote shortcut, e.g. DPAD_DOWN twice from the controls) opens a side panel **while the video keeps playing**:
-  season chips on top («فصل ۱ · فصل ۲ …») and the episode list of the chosen season with progress bars, ✓ watched and a
-  «دوبله» badge where a dubbed version exists; the current episode is highlighted and focused. Choosing an episode saves the
-  current progress and switches in place (same single-player replace as auto-next); Back closes the panel. Shares the
-  season/episode data already loaded for the player (no extra request when cached) (PE + UI)
-- [ ] v1.1-5 **Continue Watching long-press menu: «رفتن به صفحهٔ فیلم» / «رفتن به صفحهٔ سریال»** (user request 2026-10-11):
-  a new first-level option in the existing popup (long-press OK / MENU on a «ادامه تماشا» card) that opens the title's
-  details page; for a series the details page opens with that episode's season selected and the episode focused (UI)
-- [ ] v1.1-6 **Subtitle sync: remove the 5 s buttons** (user request 2026-10-11: «زودتر/دیرتر ۵ ثانیه» go, the 0.5 s steps with
-  hold-to-repeat are enough) (UI)
+### v1.x ideas / follow-ups
+- [ ] 📺 Measure the quality switch on the real TV (`adb logcat -s BolbolPerf BolbolSwitch`, goal firstFrame ≤ 3 s) (PA)
+- [ ] Remove the now-unused `SubtitleOffset.LARGE_STEP_MS` (+ its test) in core/player (C)
+- [ ] Regenerate the Baseline Profile so the new player panels are covered (M)
 
 ### M0: Foundations
 - [ ] 0.4 📺 Connect to the TV over Wi-Fi ADB + install scrcpy; fill in "Verified on device" in `docs/device.md` (U + M)
