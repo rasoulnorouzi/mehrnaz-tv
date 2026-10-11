@@ -22,6 +22,21 @@ add a new entry that references it.
   typeface, explicit RTL alignment. Strip the site-credit first cue. Test cues that start with Latin text/digits.
 - Revisit if: sources switch to MKV/HEVC/AC-3 (then add the FFmpeg audio extension) or ASS subtitles appear.
 
+**2026-10-11 · Quality switch (v1.1-2): keyframe start, own media client, watchdog, pre-warm.** Evidence in
+`perf/reports/v1.1-quality-switch.md`: a movie's qualities sit on different CDN hosts (1080p+480p vs 720p; cold DNS
+1.7 s), every file's `moov` is 2-4.5 MB at the front, keyframes are 1-10 s apart, and `setMediaItem(item, pos)` ignores
+`SeekParameters` (hidden decode from the previous keyframe).
+- Switches start at the keyframe before the old position (`KeyframeStart` wrapper period, `PREVIOUS_SYNC` for the
+  start only; ≤ 15 s back). Replays ≤ 10 s rather than skipping anything. `start()` is unchanged.
+- Video uses `MediaHttp.mediaClient` = the shared client's `newBuilder()` (same pool) **without the disk cache** (the
+  first, Range-less 200 response was being teed into the API cache) and with **connect 6 s / read 10 s**; Media3's retry
+  policy with 0.2/0.5/1/2 s delays and fatal 4xx (except 408/429). Subtitles keep the cached shared client.
+- Watchdog (`StreamSwitchPolicy`): no first frame 8 s after a switch and no bytes for 2 s → re-prepare once on fresh
+  connections; again (or 20 s total) → error panel with «کیفیت پایین‌تر».
+- Pre-warm: one `Range: bytes=0-0` request per other host after the first frame of `start()` (≤ 1/host/min).
+- `switchingQuality` flow + `QualitySwitchIndicator` keep the last frame with «در حال تغییر کیفیت…».
+- LoadControl unchanged (40 s of 1080p ≈ 20 MB, under the 60 MB cap). Revisit after the TV measurement (`BolbolSwitch` log).
+
 ## UI toolkit
 **2026-10-11 · Jetpack Compose for TV (`androidx.tv:tv-material` 1.1.0, Foundation lazy lists).**
 - Why: Google recommends it, and Leanback is deprecated ("use Compose for TV instead"). It has
