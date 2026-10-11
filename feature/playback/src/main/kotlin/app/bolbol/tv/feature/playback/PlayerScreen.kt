@@ -211,6 +211,7 @@ fun PlayerScreen(
             lines = controller.subtitleLines,
             style = subtitleStyle,
             aboveControls = chrome.overlayVisible && !chrome.panelOpen,
+            besidePanel = chrome.panelOpen,
         )
 
         if (playing && status.isBuffering && !hasError) {

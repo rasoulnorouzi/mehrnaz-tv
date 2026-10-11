@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,8 +50,11 @@ internal fun SubtitleLayer(
     style: SubtitleStyle,
     aboveControls: Boolean,
     modifier: Modifier = Modifier,
+    besidePanel: Boolean = false,
 ) {
     val current by lines.collectAsStateWithLifecycle()
-    val area = if (aboveControls) Modifier.fillMaxWidth().fillMaxHeight(1f - CONTROLS_HEIGHT_FRACTION) else Modifier.fillMaxSize()
+    val base = if (aboveControls) Modifier.fillMaxWidth().fillMaxHeight(1f - CONTROLS_HEIGHT_FRACTION) else Modifier.fillMaxSize()
+    // With the settings panel open (end side in RTL), centre subtitles in the still-visible video area.
+    val area = if (besidePanel) base.padding(end = PANEL_WIDTH) else base
     SubtitleText(lines = current, style = style, modifier = modifier.then(area))
 }

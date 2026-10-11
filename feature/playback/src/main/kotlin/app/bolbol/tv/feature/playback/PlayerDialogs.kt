@@ -271,7 +271,7 @@ private fun OptionRow(options: @Composable () -> Unit) {
     ) { options() }
 }
 
-private val PANEL_WIDTH = 400.dp
+internal val PANEL_WIDTH = 400.dp
 
 
 @Composable

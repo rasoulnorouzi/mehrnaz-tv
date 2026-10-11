@@ -105,7 +105,14 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                 )
             }
             entry<PlayerRoute> { route ->
-                PlayerEntry(app, route, onExit = back)
+                PlayerEntry(
+                    app, route, onExit = back,
+                    // Auto-next: replace (not push) the player entry so exactly one ExoPlayer exists
+                    // and Back returns to details, not to the previous episode.
+                    onPlayNext = { next ->
+                        backStack[backStack.lastIndex] = PlayerRoute(next.postId, next.season, next.episode, 0)
+                    },
+                )
             }
             entry<SearchRoute> {
                 // Text typed on a phone (QR remote) flows into the search query.
