@@ -2,7 +2,10 @@ package app.bolbol.tv.feature.playback
 
 /** What one BACK press does in the player. */
 internal enum class BackAction {
-    /** The settings side panel is open: close it (the controls come back with focus on «تنظیمات پخش»). */
+    /**
+     * A side panel («تنظیمات پخش» or «قسمت‌ها») is open: close it; the controls come back with focus on the
+     * button that opened it ([PlayerPanel.opener]).
+     */
     ClosePanel,
 
     /** The controls are showing over the video: hide them. */
