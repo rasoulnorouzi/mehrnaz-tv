@@ -23,6 +23,8 @@ dependencies {
     implementation(project(":core:model"))
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // rememberLauncherForActivityResult (voice search through RecognizerIntent).
+    implementation(libs.androidx.activity.compose)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }
