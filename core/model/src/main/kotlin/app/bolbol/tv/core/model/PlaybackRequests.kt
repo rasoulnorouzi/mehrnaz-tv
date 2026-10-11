@@ -17,6 +17,20 @@ fun TitleDetails.nextEpisodeKey(key: WatchKey): WatchKey? {
     return WatchKey(id(), next.season, next.number)
 }
 
+/** The episode before [key] across season boundaries, or null for the first episode / movies. */
+fun TitleDetails.previousEpisodeKey(key: WatchKey): WatchKey? {
+    if (!key.isEpisode) return null
+    val all = episodesInOrder()
+    val index = all.indexOfFirst { it.season == key.season && it.number == key.episode }
+    if (index <= 0) return null
+    val previous = all[index - 1]
+    return WatchKey(id(), previous.season, previous.number)
+}
+
+/** Seasons and their episodes sorted by number (the order the player's episode panel shows). */
+fun TitleDetails.seasonsInOrder(): List<Season> =
+    seasons.sortedBy { it.number }.map { season -> season.copy(episodes = season.episodes.sortedBy { it.number }) }
+
 /**
  * Builds what the player needs for [key] (a movie: season = episode = 0).
  * Returns null when the key doesn't exist in these details or has no streams.
@@ -40,6 +54,8 @@ fun TitleDetails.playbackRequest(key: WatchKey, startPositionMs: Long? = null): 
         streams = streams,
         startPositionMs = startPositionMs,
         next = nextEpisodeKey(key),
+        previous = previousEpisodeKey(key),
+        seasons = if (key.isEpisode) seasonsInOrder() else emptyList(),
     )
 }
 

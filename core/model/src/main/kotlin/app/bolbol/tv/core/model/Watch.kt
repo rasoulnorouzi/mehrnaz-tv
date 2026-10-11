@@ -61,4 +61,11 @@ data class PlaybackRequest(
     val startPositionMs: Long?,
     /** Next episode to auto-play, null for movies or the last episode. */
     val next: WatchKey?,
+    /** Episode before this one (across seasons), null for movies or the first episode (v1.1-1). */
+    val previous: WatchKey? = null,
+    /**
+     * The whole series in watch order (seasons and their episodes sorted), for the in-player
+     * «قسمت‌ها» panel (v1.1-4). Empty for movies.
+     */
+    val seasons: List<Season> = emptyList(),
 )

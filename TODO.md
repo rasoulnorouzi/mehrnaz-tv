@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-11 (**v1.0.0 released and installed on the real TV by the user**; v1.1 planned)
+Last updated: 2026-10-11 (**v1.1 in progress**: the user said "go ahead for implementation and production")
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -33,6 +33,13 @@ Last updated: 2026-10-11 (**v1.0.0 released and installed on the real TV by the 
 - [x] 2026-10-11 · Requirement recorded: search keyboard in **both Persian and English** (U)
 
 ## 🔄 In progress / waiting
+- [ ] 2026-10-11 · **v1.1 started** (user: "go ahead for implementation and production"). Contract change by M: `PlaybackRequest.previous` +
+  `PlaybackRequest.seasons` (+ `previousEpisodeKey`, `seasonsInOrder`, 3 new tests). Four agents in parallel worktrees:
+  - v1.1-1 + v1.1-4 prev/next + in-player episodes panel (PE, Opus): feature/playback, app PlayerEntry/MainNavigation (player entry)
+  - v1.1-2 quality-switch stall (PE, Opus): core/player (+ BolbolApp media client if needed)
+  - v1.1-3 three subtitle colours (DE + UI, Sonnet): core/model enum, designsystem, settings
+  - v1.1-5 CW «رفتن به صفحهٔ …» (UI, Sonnet): feature/home, feature/details, app Routes/MainNavigation (home + details entries)
+  - then M: merge, emulator QA with screenshots, version 1.1.0 (code 2), signed release, GitHub release, APK to the user
 - [x] 2026-10-11 · M1 approved by the user ("go for a real watch… do a final product")
 - [x] 2026-10-11 · M1.0 Shared contract `:core:model` (domain types, repository interfaces, stream picking; 4 tests pass) + buildable skeletons for all M1 modules (M)
 - [x] 2026-10-11 · M1.1 + 1.2 Data layer merged: network (mirror failover, lenient JSON), Room, repositories; 165 unit tests (DE)
@@ -78,7 +85,7 @@ Last updated: 2026-10-11 (**v1.0.0 released and installed on the real TV by the 
 
 ## 📋 To do
 
-### v1.1: user feedback after installing on the real Mi TV (2026-10-11), planned, not started
+### v1.1: user feedback after installing on the real Mi TV (2026-10-11), in progress (see 🔄)
 - [ ] v1.1-1 **Player: «قسمت قبل» / «قسمت بعد» buttons** (previous / next episode) in the player controls for series
   (hidden for movies; disabled at the first/last episode; also on the remote's MEDIA_NEXT / MEDIA_PREVIOUS keys;
   the current episode's progress is saved before switching; same single-player replace as auto-next) (PE + UI)

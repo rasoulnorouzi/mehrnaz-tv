@@ -39,4 +39,24 @@ class PlaybackRequestsTest {
         assertNull(series.playbackRequest(WatchKey(7, 9, 9)))
         assertNull(details(TitleType.MOVIE).playbackRequest(WatchKey(7)))
     }
+
+    @Test fun previousEpisodeCrossesSeasonsInOrder() {
+        assertNull(series.previousEpisodeKey(WatchKey(7, 1, 1)))
+        assertEquals(WatchKey(7, 1, 1), series.previousEpisodeKey(WatchKey(7, 1, 2)))
+        assertEquals(WatchKey(7, 1, 2), series.previousEpisodeKey(WatchKey(7, 2, 1)))
+        assertNull(series.previousEpisodeKey(WatchKey(7, 9, 9)))
+    }
+
+    @Test fun episodeRequestCarriesPreviousAndSortedSeasons() {
+        val r = series.playbackRequest(WatchKey(7, 1, 2))!!
+        assertEquals(WatchKey(7, 1, 1), r.previous)
+        assertEquals(listOf(1, 2), r.seasons.map { it.number })
+        assertEquals(listOf(1, 2), r.seasons.first().episodes.map { it.number })
+    }
+
+    @Test fun movieRequestHasNoPreviousOrSeasons() {
+        val r = details(TitleType.MOVIE, streams = listOf(stream)).playbackRequest(WatchKey(7))!!
+        assertNull(r.previous)
+        assertEquals(emptyList<Season>(), r.seasons)
+    }
 }
