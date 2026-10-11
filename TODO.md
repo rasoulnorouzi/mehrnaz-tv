@@ -41,7 +41,17 @@ Last updated: 2026-10-11 (M1 about 70 % done)
 - [x] 2026-10-11 · M1.4 + 1.7 Player core + player screen merged: tuned ExoPlayer, resume prompt, LTR seek bar with accelerating D-pad seek, stream picker, diagnostics overlay, progress saving; 39 tests (PE)
 - [x] 2026-10-11 · M1.10a Subtitle settings contract (M) + M1.10c storage of style and per-title sync offset; 53 tests (DE)
 - [x] 2026-10-11 · App wiring: Application graph, image loader on the shared client, Navigation 3, player route (M)
-- [ ] 🔄 M1.5 + 1.6 Home + Details screens (UI, Sonnet), in progress
+- [x] 2026-10-11 · Build queue `tools/gw.sh` + skeletons for search/browse/settings/tvhome/lanremote + shared `SubtitleText` renderer (M)
+- **🔄 Running in parallel now (9 agents):**
+  - [ ] 🔄 M1.5 + 1.6 Home + Details screens (UI, Sonnet)
+  - [ ] 🔄 M1.10b Own subtitle engine + in-player subtitle menu + M2.2 auto-next episode (PE, Opus)
+  - [ ] 🔄 M2.4 + M3.4 Search: Persian/English keyboard + voice (UI, Sonnet)
+  - [ ] 🔄 M2.5 Browse / category grids with paging (UI, Sonnet)
+  - [ ] 🔄 M1.10d Settings screen with subtitle live preview (UI, Sonnet)
+  - [ ] 🔄 M3.5 Phone/QR remote (DE, Sonnet)
+  - [ ] 🔄 M3.6 Android TV home "Watch Next" row (DE, Sonnet)
+  - [ ] 🔄 M3.1 Login/account API investigation (R, Sonnet)
+  - [ ] 🔄 M4.5 App icon, TV banner, launch screen (UI, Sonnet)
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
