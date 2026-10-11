@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Bolbol TV logo mark: a bulbul (nightingale) in profile, crested, facing the play direction,
+  with a rounded play triangle cut out of its body (even-odd) and a cut-out eye.
+  108x108 adaptive-icon canvas; the mark fits inside the 66dp safe-zone circle.
+  Used as the adaptive icon foreground and, scaled up, as the launch-screen logo.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFC93C"
+        android:fillType="evenOdd"
+        android:pathData="M73.8,35.96 L84.36,41.24 L74.68,46.08 C75.56,54.44 72.04,62.36 65,66.76 C58.84,70.72 51.8,71.16 45.64,68.52 C42.12,72.04 35.96,74.68 29.8,76.44 C32.44,72.04 34.2,65.88 35.08,57.96 C35.96,48.28 42.12,40.36 50.04,35.96 C46.52,31.56 43.88,28.04 41.24,23.64 C46.52,25.4 50.92,27.16 54.44,29.8 C59.72,25.4 69.4,27.16 73.8,35.96 Z M64.47,35.08 A2.29,2.29 0 1,0 69.05,35.08 A2.29,2.29 0 1,0 64.47,35.08 Z M50.7,44.43 Q48.28,43 48.28,45.82 L48.28,63.06 Q48.28,65.88 50.7,64.45 L65.22,55.87 Q67.64,54.44 65.22,53.01 Z" />
+</vector>
