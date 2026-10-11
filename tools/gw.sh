@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # tools/gw.sh <gradle args>: run Gradle for THIS checkout/worktree with at most
-# BOLBOL_GRADLE_SLOTS (default 3) builds running machine-wide, and no lingering daemon.
+# BOLBOL_GRADLE_SLOTS (default 2) builds running machine-wide, and no lingering daemon.
 # Why: up to 9 agents work in parallel on a 16 GB machine; each build needs ~2.5 GB.
 # Never use `gradlew --stop` (it kills every agent's build).
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SLOTS="${BOLBOL_GRADLE_SLOTS:-3}"
+SLOTS="${BOLBOL_GRADLE_SLOTS:-2}"
 LOCKDIR="/tmp/bolbol-gradle-locks"
 mkdir -p "$LOCKDIR"
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
