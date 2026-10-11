@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-11 (**v1.1.0 released**: prev/next, episodes panel, CW «go to page», faster quality switch, 3 colours, 0.5 s sync only)
+Last updated: 2026-10-11 (**v1.2.0 released**: playback speed; before that **v1.1.0**: prev/next, episodes panel, CW «go to page», faster quality switch, 3 colours, 0.5 s sync only)
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -33,8 +33,9 @@ Last updated: 2026-10-11 (**v1.1.0 released**: prev/next, episodes panel, CW «g
 - [x] 2026-10-11 · Requirement recorded: search keyboard in **both Persian and English** (U)
 
 ## 🔄 In progress / waiting
-- [ ] 2026-10-11 · **v1.2-1 Playback speed** (user request, fa: "speed up to 2× and also slower, then publish"): «سرعت پخش» chips
-  ۰٫۵× · ۰٫۷۵× · عادی · ۱٫۲۵× · ۱٫۵× · ۲× in «تنظیمات پخش»; kept for the app session (no DB change); then v1.2.0 release (PE/UI Sonnet → M)
+- [x] 2026-10-11 · **v1.2.0 RELEASED: playback speed** (user request, fa): «سرعت پخش» ۰٫۵× · ۰٫۷۵× · عادی · ۱٫۲۵× · ۱٫۵× · ۲× in
+  «تنظیمات پخش» (2 rows), natural pitch, shown in the controls' status line, kept for the app session (no DB change). Sonnet agent +
+  M review/QA (2× measured on the emulator at 480p; chips de-stretched). GitHub release v1.2.0, APK sent (M)
 - [x] 2026-10-11 · **v1.1.0 RELEASED** (user: "go ahead for implementation and production"): 5 agents in parallel worktrees
   (2 Opus, 3 Sonnet), all merged and reviewed by M; signed APK installed **over v1.0.0** on the Android 11 emulator with history
   kept; GitHub release v1.1.0, APK sent to the user (M)
@@ -93,6 +94,7 @@ Last updated: 2026-10-11 (**v1.1.0 released**: prev/next, episodes panel, CW «g
 ## 📋 To do
 
 ### v1.x ideas / follow-ups
+- [ ] 📺 Check 2× at 1080p on the real TV (the emulator's software decoder can't; the MT9611 hardware decoder should) (PA)
 - [ ] 📺 Measure the quality switch on the real TV (`adb logcat -s BolbolPerf BolbolSwitch`, goal firstFrame ≤ 3 s) (PA)
 - [ ] Remove the now-unused `SubtitleOffset.LARGE_STEP_MS` (+ its test) in core/player (C)
 - [ ] Regenerate the Baseline Profile so the new player panels are covered (M)

@@ -4,7 +4,7 @@ Living memory for this project. Update it at the end of every session or milesto
 Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 
 ## ▶ Current status
-- **v1.1.0 released 2026-10-11** (versionCode 2; GitHub release; APK `dist/mehrnaz-tv-v1.1.0.apk` sent to the user). v1.0.0 before it.
+- **v1.2.0 released 2026-10-11** (versionCode 3, playback speed; GitHub release; APK `dist/mehrnaz-tv-v1.2.0.apk` sent). Before: v1.1.0 (code 2), v1.0.0.
 - **Next:** whatever the user reports from the TV; 📺 items (quality-switch measurement on the TV, perf vs the official app,
   Watch Next on PatchWall). Any update: bump versionCode/versionName, DB migrations (no in-place schema edits), `tools/release.sh`.
 - **Keep in mind:** the signing key is in `~/.bolboltv/` (back it up); losing it means the user must uninstall to update.
@@ -62,6 +62,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
   an agent team. No corrections so far.
 
 ## Progress log
+- 2026-10-11: v1.2.0 released (playback speed). Emulator lesson: 1080p can't be judged on the emulator (software decoder, 460 dropped frames, looks frozen) → test speed/timing at 480p; and OK on a player with no resume prompt pauses it (check the play/pause icon before calling video "frozen").
 - 2026-10-11: v1.1.0 released. 5 agents in worktrees (Opus: player episodes nav, quality switch; Sonnet: colours, CW menu, sync
   buttons); merges were conflict-free because each brief listed disjoint files (MainNavigation split by entry block).
   Lessons: (1) do the shared `core:model` contract change BEFORE spawning, so agents build against it; (2) test the update path
