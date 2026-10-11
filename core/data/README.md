@@ -5,14 +5,10 @@ The data layer. `:app` depends on this module only; it implements the `:core:mod
 
 ## Public API
 ```kotlin
-class DataGraph(
-    context: Context,
-    mirrors: List<String> = NetworkModule.DEFAULT_MIRRORS,
-    imageHosts: List<String> = NetworkModule.DEFAULT_IMAGE_HOSTS,
-) {
+class DataGraph(context: Context, mirrors: List<String> = DEFAULT_MIRRORS, imageHosts: List<String> = DEFAULT_IMAGE_HOSTS) {
     val catalog: CatalogRepository   // homeFeed(), details(id), list(query, page), search(text, page)
     val watch: WatchRepository       // continueWatching(), progress(), saveProgress(), markWatched(), ...
-    val prefs: PrefsRepository       // global + per-title playback prefs
+    val prefs: PrefsRepository       // playback prefs, subtitle style, per-title subtitle offset
     val okHttpClient: OkHttpClient   // the ONE shared client: API, Coil, Media3
     val currentMirror: String; val currentImageHost: String
     fun setMirrors(mirrors: List<String>); fun setImageHosts(imageHosts: List<String>)
@@ -24,7 +20,6 @@ OkHttp client per graph. Repository implementations are `internal`.
 ## Wiring in `:app`
 ```kotlin
 class BolbolApp : Application() { val data by lazy { DataGraph(this) } }
-
 // ViewModels:   viewModelFactory { initializer { HomeViewModel((this[APPLICATION_KEY] as BolbolApp).data.catalog) } }
 // Coil 3:       ImageLoader.Builder(ctx).components { add(OkHttpNetworkFetcherFactory(data.okHttpClient)) }
 // Media3:       DefaultMediaSourceFactory(OkHttpDataSource.Factory(data.okHttpClient))   // media3-datasource-okhttp
@@ -38,6 +33,8 @@ Errors are always `CatalogException` (Offline, AllMirrorsDown, NotFound, BadResp
   write failures are all handled without losing the good cache. Every collection refetches.
 - **Details:** in-memory LRU of 32 titles, 10 min TTL, failures not cached. Lists/search are not cached; blank search sends nothing.
 - **HTTP:** 50 MB OkHttp disk cache in `cacheDir/http` (mainly images and videos); connect 10 s, read 20 s.
+- **Subtitles:** `subtitleStyle()` emits `SubtitleStyle()` until saved (table `subtitle_style`, one row); the per-title offset
+  (`subtitle_offset`, no row = 0) is rounded to 0.5 s and clamped to +-10 s on save. Own tables, so playback prefs never overwrite them.
 - **Watch progress:** `saveProgress` upserts snapshot + progress in one transaction (un-hides the title); completed is
   forced at >= 95 %. Continue Watching = latest progress row per title, not completed, not hidden, newest first.
 
@@ -55,6 +52,6 @@ backdrop, photos, related) gets the primary image CDN's scheme+host (path/query 
 remembers the good host; `/wp-json/` and streams never match. Cached home JSON is re-parsed, so old caches get fixed URLs.
 
 ## Tests
-`./gradlew :core:network:testDebugUnitTest :core:data:testDebugUnitTest` (JVM only): every capture in
-`core/network/src/test/resources` is parsed, interceptors and Retrofit run against MockWebServer, data tests use fakes.
-Room SQL (Continue Watching) is verified by Room at compile time only; exercise it on the emulator.
+`./gradlew :core:network:testDebugUnitTest :core:data:testDebugUnitTest` (JVM only; MockWebServer and DAO fakes). Room SQL
+is verified by Room at compile time only; exercise it on the emulator. DB version 1 is edited in place while unreleased:
+an installed debug build must clear app data after schema changes.

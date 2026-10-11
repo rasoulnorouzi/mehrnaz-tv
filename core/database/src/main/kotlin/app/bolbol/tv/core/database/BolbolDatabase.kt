@@ -6,14 +6,18 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 /**
- * The app's single Room database. Version 1; the schema is exported to `core/database/schemas`.
- * Add a migration (never destructive fallback: progress is the user's data) when entities change.
+ * The app's single Room database. Version 1 while unreleased: new tables are added to it in place, which changes the
+ * identity hash, so an already-installed debug build must clear its app data. Once a build is used for real,
+ * every schema change needs a migration (never destructive fallback: progress is the user's data).
+ * The schema is exported to `core/database/schemas`.
  */
 @Database(
     entities = [
         ProgressEntity::class,
         TitleSnapshotEntity::class,
         PrefsEntity::class,
+        SubtitleStyleEntity::class,
+        SubtitleOffsetEntity::class,
         HomeCacheEntity::class,
     ],
     version = 1,

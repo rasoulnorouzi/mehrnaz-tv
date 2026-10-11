@@ -105,6 +105,26 @@ interface PrefsDao {
 
     @Upsert
     suspend fun upsert(prefs: PrefsEntity)
+
+    // --- subtitles (docs/subtitles.md): kept in their own tables so saving playback prefs and subtitle
+    // --- settings can never overwrite each other.
+
+    /** Global subtitle look; emits null while nothing was ever saved (the repository maps that to defaults). */
+    @Query("SELECT * FROM subtitle_style WHERE id = 1")
+    fun observeSubtitleStyle(): Flow<SubtitleStyleEntity?>
+
+    @Upsert
+    suspend fun upsertSubtitleStyle(style: SubtitleStyleEntity)
+
+    @Query("SELECT offsetMs FROM subtitle_offset WHERE postId = :postId")
+    suspend fun subtitleOffsetMs(postId: Long): Int?
+
+    @Upsert
+    suspend fun upsertSubtitleOffset(offset: SubtitleOffsetEntity)
+
+    /** Offset 0 is stored as "no row". */
+    @Query("DELETE FROM subtitle_offset WHERE postId = :postId")
+    suspend fun deleteSubtitleOffset(postId: Long)
 }
 
 /** Raw home JSON cache; a single row with id 1. */
