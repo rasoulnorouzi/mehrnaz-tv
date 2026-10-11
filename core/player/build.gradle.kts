@@ -22,6 +22,8 @@ kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 dependencies {
     api(project(":core:model"))
     api(libs.media3.exoplayer)
+    // PlayerFactory takes the app's shared okhttp3.Call.Factory, so OkHttp is part of our API.
+    api(libs.okhttp)
     implementation(libs.media3.datasource.okhttp)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

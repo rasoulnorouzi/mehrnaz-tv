@@ -27,6 +27,8 @@ dependencies {
     implementation(libs.media3.ui)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // BackHandler (close panel → hide overlay → exit) and the debug PlayerTestActivity.
+    implementation(libs.androidx.activity.compose)
     debugImplementation(libs.compose.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
