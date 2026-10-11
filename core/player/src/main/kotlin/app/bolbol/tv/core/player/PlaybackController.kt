@@ -8,11 +8,14 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.analytics.PlaybackStatsListener
+import androidx.media3.exoplayer.source.LoadEventInfo
+import androidx.media3.exoplayer.source.MediaLoadData
 import app.bolbol.tv.core.model.PlaybackPrefs
 import app.bolbol.tv.core.model.PlaybackRequest
 import app.bolbol.tv.core.model.PrefsRepository
@@ -35,6 +38,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 /** Coarse player state for the UI (changes on player events only). */
 data class PlayerStatus(
@@ -119,6 +123,15 @@ class PlaybackController(
     private val _error = MutableStateFlow<PlaybackError?>(null)
     val error: StateFlow<PlaybackError?> = _error.asStateFlow()
 
+    private val _switchingQuality = MutableStateFlow(false)
+
+    /**
+     * True from [switchStream] until the new stream's first frame (or READY); false after an
+     * error. The UI keeps the last frame and shows «در حال تغییر کیفیت…» (QualitySwitchIndicator)
+     * instead of the buffering spinner.
+     */
+    val switchingQuality: StateFlow<Boolean> = _switchingQuality.asStateFlow()
+
     var request: PlaybackRequest? = null
         private set
     var stream: StreamOption? = null
@@ -145,6 +158,12 @@ class PlaybackController(
     private var offsetSaveJob: Job? = null
     private var styleJob: Job? = null
 
+    /** Tracker + pre-warmer of players built by [PlayerFactory]; null for other players (tests). */
+    private val network: MediaNetwork? = PlayerFactory.networkFor(player)
+    private val switchPolicy = StreamSwitchPolicy()
+    private var switchTimeline: SwitchTimeline? = null
+    private var switchJob: Job? = null
+
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
             publishStatus()
@@ -169,12 +188,20 @@ class PlaybackController(
 
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_ENDED) saveProgress(SaveReason.ENDED)
+            if (playbackState == Player.STATE_READY) onSwitchReady()
+        }
+
+        override fun onTracksChanged(tracks: Tracks) {
+            // Non-empty tracks after a switch = the new file's moov box is downloaded and parsed.
+            val t = switchTimeline ?: return
+            if (!tracks.isEmpty && t.preparedAtMs < 0) switchTimeline = t.copy(preparedAtMs = clock.elapsedRealtimeMs())
         }
 
         override fun onPlayerError(error: PlaybackException) {
             val mapped = PlaybackError.from(error)
             Log.w(TAG, "playback error ${mapped.codeName} http=${mapped.httpStatus} kind=${mapped.kind}", error)
             _error.value = mapped
+            endSwitch("error_${mapped.kind}")
             saveProgress(SaveReason.ERROR)
         }
 
@@ -187,6 +214,7 @@ class PlaybackController(
             val what = "stream=${s?.quality}p/${s?.audio}"
             // tools/tv.sh perf greps "BolbolPerf ttff=<n>ms": keep this format stable.
             Log.i(PERF_TAG, if (ttffIsSwitch) "stream_switch=${ttff}ms $what" else "ttff=${ttff}ms $what")
+            if (ttffIsSwitch) onSwitchFirstFrame() else prewarmOtherStreams()
         }
 
         override fun onVideoSizeChanged(videoSize: VideoSize) {
@@ -209,6 +237,18 @@ class PlaybackController(
             initializationDurationMs: Long,
         ) {
             this@PlaybackController.decoderName = decoderName
+        }
+
+        override fun onLoadError(
+            eventTime: AnalyticsListener.EventTime,
+            loadEventInfo: LoadEventInfo,
+            mediaLoadData: MediaLoadData,
+            error: IOException,
+            wasCanceled: Boolean,
+        ) {
+            val t = switchTimeline ?: return
+            switchTimeline = t.copy(loadErrors = t.loadErrors + 1)
+            Log.i(SWITCH_TAG, "load error during switch: ${error.javaClass.simpleName} (Media3 retries it)")
         }
 
         override fun onBandwidthEstimate(
@@ -244,6 +284,7 @@ class PlaybackController(
     fun start(request: PlaybackRequest, stream: StreamOption, startPositionMs: Long, playWhenReady: Boolean = true) {
         if (released) return
         if (this.request != null) saveProgress(SaveReason.SWITCH)
+        endSwitch("replaced")
         val start = startPositionMs.coerceAtLeast(0)
         this.request = request
         this.stream = stream
@@ -270,6 +311,7 @@ class PlaybackController(
         val request = request ?: return
         if (released || (stream == this.stream && _error.value == null)) return
         saveProgress(SaveReason.SWITCH)
+        val from = this.stream
         val position = player.currentPosition.coerceAtLeast(0)
         val play = player.playWhenReady || _error.value != null
         this.stream = stream
@@ -277,7 +319,9 @@ class PlaybackController(
         stoppedByLifecycle = false
         savePolicy.reset(clock.elapsedRealtimeMs(), position)
         beginTtff(isSwitch = true)
-        player.setMediaItem(stream.toMediaItem(request), position)
+        beginSwitch(from, stream, position)
+        // Keyframe start (KeyframeStart): the first picture needs no hidden decoding of up to 10 s of frames.
+        player.setMediaItem(stream.toMediaItem(request, keyframeStart = true), position)
         player.playWhenReady = play
         player.prepare()
         loadSubtitles(stream)
@@ -332,6 +376,18 @@ class PlaybackController(
     }
 
     /**
+     * Warms DNS + TCP + TLS to the CDN hosts of this title's other streams (one tiny request per
+     * host, at most once a minute per host, off the main thread; see [ConnectionPrewarmer]).
+     * Called once after the first frame of [start]; call it again when the quality/audio picker
+     * opens, so the connection is fresh when the viewer chooses.
+     */
+    fun prewarmOtherStreams() {
+        val request = request ?: return
+        if (released) return
+        network?.prewarmer?.warm(request.streams, stream?.url)
+    }
+
+    /**
      * Sets this title's subtitle sync offset (clamped to ±120 s and rounded to 0.5 s steps, see
      * [SubtitleOffset]), applies it at once and saves it per title. Saving is debounced
      * ([OFFSET_SAVE_DEBOUNCE_MS]) so holding a step button doesn't write 8 rows a second.
@@ -374,6 +430,7 @@ class PlaybackController(
     fun onStop() {
         if (released || request == null) return
         saveProgress(SaveReason.STOP)
+        endSwitch("stopped")
         if (player.playbackState != Player.STATE_IDLE) {
             stoppedByLifecycle = true
             player.pause()
@@ -404,6 +461,7 @@ class PlaybackController(
     fun release() {
         if (released) return
         saveProgress(SaveReason.RELEASE)
+        endSwitch("released")
         publishDiagnostics()
         logSummary()
         released = true
@@ -423,6 +481,109 @@ class PlaybackController(
         ttffStartMs = clock.elapsedRealtimeMs()
         ttffIsSwitch = isSwitch
     }
+
+    // ---- quality/audio switch (v1.1-2, perf/reports/v1.1-quality-switch.md) ------------------
+
+    private fun beginSwitch(from: StreamOption?, to: StreamOption, positionMs: Long) {
+        endSwitch("replaced")
+        val now = clock.elapsedRealtimeMs()
+        network?.tracker?.watch(to.url)
+        switchTimeline = SwitchTimeline(
+            startedAtMs = now,
+            from = from?.tag() ?: "-",
+            to = to.tag(),
+            host = PrewarmPlan.hostOf(to.url) ?: "?",
+            requestedPositionMs = positionMs,
+        )
+        _switchingQuality.value = true
+        val firstCheckMs = switchPolicy.begin(now)
+        switchJob = scope.launch { watchSwitch(firstCheckMs) }
+    }
+
+    private suspend fun watchSwitch(firstCheckMs: Long) {
+        var delayMs = firstCheckMs
+        while (true) {
+            delay(delayMs)
+            if (released) return
+            val lastByteAtMs = network?.tracker?.lastByteAtMs() ?: -1
+            when (val action = switchPolicy.check(clock.elapsedRealtimeMs(), lastByteAtMs)) {
+                StreamSwitchPolicy.Action.None -> return
+                is StreamSwitchPolicy.Action.Wait -> delayMs = action.delayMs
+                is StreamSwitchPolicy.Action.Reprepare -> {
+                    reprepareSwitch()
+                    delayMs = action.delayMs
+                }
+                StreamSwitchPolicy.Action.GiveUp -> {
+                    giveUpSwitch()
+                    return
+                }
+            }
+        }
+    }
+
+    /** Watchdog: no picture and no bytes. Drop the stalled request and idle connections, load again. */
+    private fun reprepareSwitch() {
+        val request = request ?: return
+        val stream = stream ?: return
+        val t = switchTimeline ?: return
+        switchTimeline = t.copy(reprepares = switchPolicy.reprepares)
+        Log.i(SWITCH_TAG, "no first frame, no bytes ${clock.elapsedRealtimeMs() - t.startedAtMs}ms after switch: re-preparing ${stream.tag()}")
+        network?.dropIdleConnections()
+        player.setMediaItem(stream.toMediaItem(request, keyframeStart = true), t.requestedPositionMs)
+        player.prepare()
+    }
+
+    /** Watchdog gave up: stop loading and show the error panel (retry / «کیفیت پایین‌تر»). */
+    private fun giveUpSwitch() {
+        val code = PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
+        finishSwitch("gave_up")
+        ttffStartMs = NOT_MEASURING
+        player.stop() // retry() → prepare() then starts a fresh load at the same position
+        _error.value = PlaybackError(PlaybackError.Kind.NETWORK, code, null, PlaybackException.getErrorCodeName(code))
+        saveProgress(SaveReason.ERROR)
+        publishStatus()
+    }
+
+    private fun onSwitchFirstFrame() {
+        val t = switchTimeline ?: return
+        val now = clock.elapsedRealtimeMs()
+        val updated = t.copy(firstFrameAtMs = now, startPositionMs = player.currentPosition)
+        switchTimeline = updated
+        stopSwitchWatch()
+        val moov = if (updated.preparedAtMs >= 0) " (moov ${updated.preparedAtMs - updated.startedAtMs})" else ""
+        _diagnostics.value = _diagnostics.value.copy(lastSwitch = "${updated.to} ${now - updated.startedAtMs} ms$moov")
+        if (updated.readyAtMs >= 0) finishSwitch("ok")
+    }
+
+    private fun onSwitchReady() {
+        val t = switchTimeline ?: return
+        val updated = if (t.readyAtMs < 0) t.copy(readyAtMs = clock.elapsedRealtimeMs()) else t
+        switchTimeline = updated
+        stopSwitchWatch() // buffered, so not stalled; the picture follows
+        if (updated.firstFrameAtMs >= 0) finishSwitch("ok")
+    }
+
+    private fun stopSwitchWatch() {
+        switchPolicy.end()
+        switchJob?.cancel()
+        switchJob = null
+        _switchingQuality.value = false
+    }
+
+    /** Ends a running switch, if any, and logs it with [result]. */
+    private fun endSwitch(result: String) {
+        if (switchTimeline != null || _switchingQuality.value) finishSwitch(result)
+    }
+
+    private fun finishSwitch(result: String) {
+        stopSwitchWatch()
+        val t = switchTimeline ?: return
+        switchTimeline = null
+        val done = t.copy(reprepares = switchPolicy.reprepares, transfer = network?.tracker?.snapshot() ?: t.transfer)
+        Log.i(SWITCH_TAG, done.logLine(result))
+    }
+
+    private fun StreamOption.tag(): String = "${quality}p/$audio"
 
     private fun knownDurationMs(): Long = player.duration.let { if (it == C.TIME_UNSET || it < 0) 0 else it }
 
@@ -580,16 +741,23 @@ class PlaybackController(
 
     private fun Long.orUnknown(): Long = if (this == C.TIME_UNSET || this < 0) -1 else this
 
-    /** Video only: subtitles are side-loaded by our own engine, never by ExoPlayer. */
-    private fun StreamOption.toMediaItem(request: PlaybackRequest): MediaItem =
+    /**
+     * Video only: subtitles are side-loaded by our own engine, never by ExoPlayer. With
+     * [keyframeStart] the item starts at the keyframe before its start position ([KeyframeStart]).
+     */
+    private fun StreamOption.toMediaItem(request: PlaybackRequest, keyframeStart: Boolean = false): MediaItem =
         MediaItem.Builder()
             .setUri(url)
             .setMediaId("${request.key.asString()}@$quality/$audio")
+            .apply { if (keyframeStart) setTag(KeyframeStart) }
             .build()
 
     companion object {
         /** Logcat tag grepped by tools/tv.sh perf. */
         const val PERF_TAG = "BolbolPerf"
+
+        /** Logcat tag of the quality-switch breakdown (`switch … firstByte=… moov=… firstFrame=…`) and pre-warms. */
+        const val SWITCH_TAG = ConnectionPrewarmer.SWITCH_TAG
         private const val TAG = "BolbolPlayer"
         private const val NOT_MEASURING = -1L
         private const val OFFSET_SAVE_DEBOUNCE_MS = 400L

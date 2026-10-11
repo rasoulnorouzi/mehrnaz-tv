@@ -90,6 +90,52 @@ object PlayerTuning {
     /** … and at least this much is left to watch. */
     const val RESUME_MIN_REMAINING_MS = 60_000L
 
+    // ---- Media network (v1.1-2, perf/reports/v1.1-quality-switch.md) ---------------------
+
+    /**
+     * TCP connect timeout of the media client (the shared client uses 10 s). The CDNs are ~100 ms
+     * away; 6 s still covers two SYN retransmits on bad Wi-Fi, but a dead route fails fast.
+     */
+    const val MEDIA_CONNECT_TIMEOUT_MS = 6_000L
+
+    /**
+     * Read timeout of the media client (the shared client uses 20 s). 10 s without a single byte
+     * is a stalled connection, not a slow one: drop it and retry on a fresh one. Has no effect
+     * while ExoPlayer has stopped loading (full buffer): no read is pending then.
+     */
+    const val MEDIA_READ_TIMEOUT_MS = 10_000L
+
+    // ---- Quality/audio switch (v1.1-2) ----------------------------------------------------
+
+    /**
+     * No first frame this long after a switch, and no bytes arriving: re-prepare once on a fresh
+     * connection, then show the error panel (which offers «کیفیت پایین‌تر»). See [StreamSwitchPolicy].
+     */
+    const val SWITCH_FIRST_FRAME_TIMEOUT_MS = 8_000L
+
+    /** Bytes for the new stream arrived within this window = the switch is progressing, wait. */
+    const val SWITCH_STALL_MS = 2_000L
+
+    /** Give up (error panel) this long after the switch even if bytes trickle in. */
+    const val SWITCH_HARD_LIMIT_MS = 20_000L
+
+    /** Watchdog re-prepares per switch before giving up. */
+    const val SWITCH_MAX_REPREPARES = 1
+
+    /**
+     * A switch starts at the keyframe before the old position (SeekParameters.PREVIOUS_SYNC for
+     * that start only), so nothing has to be decoded and thrown away before the first frame. The
+     * site's x264 files have a keyframe every 1-10 s (mean ~3 s); never jump back more than this.
+     */
+    const val SWITCH_MAX_SNAP_BACK_MS = 15_000L
+
+    /**
+     * Connection pre-warm (DNS + TCP + TLS) for the other qualities' hosts: at most one tiny
+     * request per host per this interval. The CDNs' DNS TTL is 75-120 s and nginx drops idle
+     * keep-alive connections after ~1 min, so a warm-up older than this is mostly gone anyway.
+     */
+    const val PREWARM_MIN_INTERVAL_MS = 60_000L
+
     // ---- Diagnostics ---------------------------------------------------------------------
 
     /** Position/buffer/diagnostics refresh while playing or buffering (1 Hz is plenty). */

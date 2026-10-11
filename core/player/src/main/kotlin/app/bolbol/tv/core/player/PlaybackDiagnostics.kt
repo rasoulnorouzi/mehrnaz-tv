@@ -29,6 +29,8 @@ data class PlaybackDiagnostics(
     val meanJoinMs: Long = -1,
     /** Latest bandwidth estimate (bit/s), -1 if none. */
     val bandwidthEstimate: Long = -1,
+    /** Last quality/audio switch: target and time to its first frame, e.g. "1080p/SUBTITLED 2610 ms (moov 1830)". */
+    val lastSwitch: String? = null,
 ) {
     /** Short monospace lines for the overlay (Latin digits on purpose: this is data). */
     fun lines(): List<String> = listOf(
@@ -40,7 +42,7 @@ data class PlaybackDiagnostics(
         "rebuf $rebufferCount  mean ${ms(meanRebufferMs)}",
         "seek  mean ${ms(meanSeekMs)}  join ${ms(meanJoinMs)}",
         "bw    " + if (bandwidthEstimate > 0) kbps(bandwidthEstimate) else "-",
-    )
+    ) + listOfNotNull(lastSwitch?.let { "swtch $it" })
 
     private fun kbps(bits: Long): String = "${bits / 1000} kbps"
 
