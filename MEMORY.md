@@ -4,9 +4,9 @@ Living memory for this project. Update it at the end of every session or milesto
 Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 
 ## ▶ Current status
-- **Milestone:** M0 (Foundations), not started. Waiting for the user's go-ahead.
-- **Next task:** M0.1 install the toolchain (needs the user's sudo), then M0.2 git init + Gradle skeleton.
-- **Blockers:** none. ADB-over-Wi-Fi on the TV is not verified yet (see `docs/device.md` §ADB).
+- **Milestone:** M0 (Foundations), in progress.
+- **Next task:** M0.1 SDK packages + emulators (after the user accepts the SDK license), M0.1c GitHub repo (after `gh auth login`).
+- **Blockers:** SDK license + GitHub login (user). **No TV access for now**: develop on the emulator; 📺 tasks wait.
 
 ## User profile & preferences
 - Persian speaker; communicates in English (voice-typed, so expect transcription noise:
@@ -32,12 +32,15 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-11: The user has no TV access for now, so we use the Android TV emulator; performance numbers wait for the real TV. They asked for a **private GitHub repo** (approved pushing to it).
+- 2026-10-11: The user found the technical instructions confusing ("clearly guide me"). Give the user **plain-language, numbered, click-by-click steps** with exact commands; avoid jargon.
 - 2026-10-11: The user asked for a TODO list (done / doing / to do) and **a report after every task or
   change**. Implemented as `TODO.md` + hard rule 10 in CLAUDE.md. Always follow it.
 - 2026-10-11: The user confirmed the feasibility analysis and wants to proceed to planning with
   an agent team. No corrections so far.
 
 ## Progress log
+- 2026-10-11: Java 21 installed (user). Android cmdline-tools in `~/Android/Sdk` (new "Android CLI" 1.0; sdkmanager still works but is deprecated). gh 2.102.0 in `~/.local/bin`. Local git repo, first commit 490b59d.
 - 2026-10-11: Created the project folder. Feasibility study done (`docs/feasibility-analysis.md`):
   public JSON API `/wp-json/mapi/v1`, seekable MP4, VTT subtitles. Researched the device and the
   UI/player options. Wrote CLAUDE.md, MEMORY.md, docs/plan.md, decisions, design system,
