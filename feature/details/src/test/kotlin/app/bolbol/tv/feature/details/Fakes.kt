@@ -20,6 +20,7 @@ import app.bolbol.tv.core.model.WatchRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.map
 
 internal fun stream(quality: Int = 720, audio: AudioType = AudioType.SUBTITLED) =
     StreamOption(quality, audio, "https://s/$quality-$audio", null, "${quality}p", null)
@@ -77,11 +78,16 @@ internal class FakeCatalog(
 
 internal class FakeWatch(initial: List<PlaybackProgress> = emptyList()) : WatchRepository {
     val progress = MutableStateFlow(initial)
+    val markedWatched = mutableListOf<Pair<WatchKey, Boolean>>()
+    var failWrites = false
     override fun continueWatching(limit: Int): Flow<List<ContinueWatchingItem>> = emptyFlow()
     override suspend fun progress(key: WatchKey): PlaybackProgress? = progress.value.firstOrNull { it.key == key }
     override fun progressForTitle(postId: Long): Flow<List<PlaybackProgress>> = progress
     override suspend fun saveProgress(title: TitleSummary, progress: PlaybackProgress) = Unit
-    override suspend fun markWatched(key: WatchKey, watched: Boolean) = Unit
+    override suspend fun markWatched(key: WatchKey, watched: Boolean) {
+        if (failWrites) throw IllegalStateException("db")
+        markedWatched += key to watched
+    }
     override suspend fun hideFromContinueWatching(postId: Long) = Unit
 }
 
@@ -100,5 +106,19 @@ internal class FakePrefs(
     override suspend fun saveTitlePrefs(postId: Long, prefs: PlaybackPrefs) {
         title = prefs
         saved += postId to prefs
+    }
+}
+
+internal class FakeMyList(initial: Set<Long> = emptySet()) : MyListActions {
+    val listed = MutableStateFlow(initial)
+    val writes = mutableListOf<Pair<TitleSummary, Boolean>>()
+    var failWrites = false
+
+    override fun isInMyList(postId: Long): Flow<Boolean> = listed.map { postId in it }
+
+    override suspend fun setInMyList(title: TitleSummary, inList: Boolean) {
+        if (failWrites) throw IllegalStateException("db")
+        writes += title to inList
+        listed.value = if (inList) listed.value + title.id else listed.value - title.id
     }
 }

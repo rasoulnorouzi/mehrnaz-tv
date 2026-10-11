@@ -19,8 +19,8 @@ internal fun title(id: Long, fa: String = "عنوان $id") = TitleSummary(
     year = 2024, imdbRating = 7.0f, hasDub = true, hasSubtitle = false,
 )
 
-internal fun section(id: String, vararg ids: Long) =
-    HomeSection(id = id, title = "Row $id", items = ids.map { title(it) }, viewAll = null)
+internal fun section(id: String, vararg ids: Long, viewAll: ListQuery? = null) =
+    HomeSection(id = id, title = "Row $id", items = ids.map { title(it) }, viewAll = viewAll)
 
 internal fun feed(vararg sections: HomeSection, fromCache: Boolean = false) = HomeFeed(sections.toList(), fromCache)
 
@@ -43,10 +43,20 @@ internal class FakeCatalog(private val source: () -> Flow<HomeFeed>) : CatalogRe
 
 internal class FakeWatch(initial: List<ContinueWatchingItem> = emptyList()) : WatchRepository {
     val items = MutableStateFlow(initial)
+    val markedWatched = mutableListOf<Pair<WatchKey, Boolean>>()
+    val hidden = mutableListOf<Long>()
+    var failWrites = false
     override fun continueWatching(limit: Int): Flow<List<ContinueWatchingItem>> = items
     override suspend fun progress(key: WatchKey): PlaybackProgress? = null
     override fun progressForTitle(postId: Long): Flow<List<PlaybackProgress>> = MutableStateFlow(emptyList())
     override suspend fun saveProgress(title: TitleSummary, progress: PlaybackProgress) = Unit
-    override suspend fun markWatched(key: WatchKey, watched: Boolean) = Unit
-    override suspend fun hideFromContinueWatching(postId: Long) = Unit
+    override suspend fun markWatched(key: WatchKey, watched: Boolean) {
+        if (failWrites) throw IllegalStateException("db")
+        markedWatched += key to watched
+    }
+
+    override suspend fun hideFromContinueWatching(postId: Long) {
+        if (failWrites) throw IllegalStateException("db")
+        hidden += postId
+    }
 }

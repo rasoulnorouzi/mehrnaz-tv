@@ -7,6 +7,9 @@
     <string name="details_resume_episode">ادامه فصل %1$s قسمت %2$s</string>
     <string name="details_start_episode">شروع فصل %1$s قسمت %2$s</string>
     <string name="details_unavailable">این عنوان هنوز قابل پخش نیست</string>
+    <!-- My List toggle: the icon in front is a + or a check. -->
+    <string name="details_my_list">لیست من</string>
+    <string name="details_in_my_list">در لیست من</string>
 
     <!-- Pickers -->
     <string name="details_audio_label">صدا</string>
@@ -14,6 +17,8 @@
     <string name="details_audio_dubbed">دوبله</string>
     <string name="details_audio_subtitled">زیرنویس</string>
     <string name="details_season">فصل %1$s</string>
+    <!-- Spoken description of the check on a finished episode (long-press / MENU toggles it). -->
+    <string name="details_episode_watched">دیده شد</string>
 
     <!-- Meta line -->
     <string name="details_imdb">IMDb %1$s</string>

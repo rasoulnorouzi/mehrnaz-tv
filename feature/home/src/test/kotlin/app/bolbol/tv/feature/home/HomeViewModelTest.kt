@@ -2,6 +2,7 @@ package app.bolbol.tv.feature.home
 
 import app.bolbol.tv.core.model.CatalogException
 import app.bolbol.tv.core.model.HomeFeed
+import app.bolbol.tv.core.model.WatchKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -126,5 +127,37 @@ class HomeViewModelTest {
         vm.onCardFocused("section:a", 1)
 
         assertEquals(FocusTarget("section:a", 1), vm.lastFocus)
+    }
+
+    // ---- Continue Watching menu actions ----
+
+    @Test fun markWatchedMarksTheLatestEpisodeOfTheEntry() = runTest {
+        val watch = FakeWatch(listOf(resumable(8, season = 1, episode = 2)))
+        val vm = HomeViewModel(FakeCatalog { flow { emit(feed(section("a", 1))) } }, watch)
+
+        vm.markWatched(watch.items.value.single())
+
+        assertEquals(listOf(WatchKey(8, 1, 2) to true), watch.markedWatched)
+        assertTrue(watch.hidden.isEmpty())
+    }
+
+    @Test fun removeHidesTheWholeTitleFromContinueWatching() = runTest {
+        val watch = FakeWatch(listOf(resumable(8, season = 1, episode = 2), resumable(9)))
+        val vm = HomeViewModel(FakeCatalog { flow { emit(feed(section("a", 1))) } }, watch)
+
+        vm.removeFromContinueWatching(watch.items.value.first())
+
+        assertEquals(listOf(8L), watch.hidden)
+        assertTrue(watch.markedWatched.isEmpty())
+    }
+
+    @Test fun aFailedLocalWriteIsSwallowed() = runTest {
+        val watch = FakeWatch(listOf(resumable(8))).apply { failWrites = true }
+        val vm = HomeViewModel(FakeCatalog { flow { emit(feed(section("a", 1))) } }, watch)
+
+        vm.markWatched(watch.items.value.single())
+        vm.removeFromContinueWatching(watch.items.value.single())
+
+        assertTrue(watch.markedWatched.isEmpty() && watch.hidden.isEmpty())
     }
 }

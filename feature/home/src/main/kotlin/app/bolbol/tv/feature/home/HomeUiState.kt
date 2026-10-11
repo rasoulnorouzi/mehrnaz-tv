@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import app.bolbol.tv.core.model.CatalogException
 import app.bolbol.tv.core.model.ContinueWatchingItem
 import app.bolbol.tv.core.model.HomeSection
+import app.bolbol.tv.core.model.ListQuery
 import app.bolbol.tv.core.model.TitleSummary
 
 /** Where the top bar sends the user. Home itself is the selected tab and needs no destination. */
@@ -31,9 +32,14 @@ sealed interface HomeRow {
         override fun titleAt(index: Int): TitleSummary = items[index].title
     }
 
-    /** A server row of posters. */
+    /** A server row of posters. A non-null [viewAll] adds a last "مشاهده همه" card that opens that list. */
     @Immutable
-    data class Titles(override val id: String, val title: String, val items: List<TitleSummary>) : HomeRow {
+    data class Titles(
+        override val id: String,
+        val title: String,
+        val items: List<TitleSummary>,
+        val viewAll: ListQuery? = null,
+    ) : HomeRow {
         override val size: Int get() = items.size
         override fun titleAt(index: Int): TitleSummary = items[index]
     }
@@ -100,7 +106,7 @@ internal fun buildHomeUiState(feed: FeedState, continueWatching: List<ContinueWa
             for (section in feed.sections) {
                 val rowId = SECTION_ROW_PREFIX + section.id
                 val items = section.items.distinctBy { it.id }
-                if (items.isNotEmpty() && seen.add(rowId)) rows += HomeRow.Titles(rowId, section.title, items)
+                if (items.isNotEmpty() && seen.add(rowId)) rows += HomeRow.Titles(rowId, section.title, items, section.viewAll)
             }
             if (rows.isEmpty()) HomeUiState.Error(HomeError.GENERIC) else HomeUiState.Content(rows)
         }
@@ -123,4 +129,42 @@ internal fun List<HomeRow>.resolveInitialFocus(remembered: FocusTarget?): Initia
     if (rowIndex < 0) return null
     val row = this[rowIndex]
     return InitialFocus(rowIndex, 0, row.id, row.titleAt(0))
+}
+
+/**
+ * Cards are never shorter than this share of the progress bar: a 1 minute watch of a 3 hour film
+ * is 0.6 % (under one pixel row of the 4 dp bar), which looks like "not started".
+ */
+internal const val MIN_VISIBLE_PROGRESS = 0.03f
+
+/** The fraction to draw: 0 stays 0 (not started), anything above it is at least [MIN_VISIBLE_PROGRESS]. */
+internal fun visibleProgress(fraction: Float): Float =
+    if (fraction.isNaN() || fraction <= 0f) 0f else fraction.coerceIn(MIN_VISIBLE_PROGRESS, 1f)
+
+/**
+ * Where focus goes when the card [gone] disappears (marked as watched or removed): the card that
+ * slides into its place (the next one in the row), else the one before it, else the first card of
+ * the nearest other row (below first). Null when no card is left.
+ */
+internal fun List<HomeRow>.neighbourFocus(gone: FocusTarget): FocusTarget? {
+    val rowIndex = indexOfFirst { it.id == gone.rowId }
+    if (rowIndex >= 0) {
+        val row = this[rowIndex]
+        val index = (0 until row.size).firstOrNull { row.titleAt(it).id == gone.titleId }
+        if (index != null) {
+            val sibling = when {
+                index + 1 < row.size -> index + 1
+                index > 0 -> index - 1
+                else -> -1
+            }
+            if (sibling >= 0) return FocusTarget(row.id, row.titleAt(sibling).id)
+        }
+    }
+    val below = indices.filter { it > rowIndex }
+    val above = indices.filter { it < rowIndex }.reversed()
+    for (i in below + above) {
+        val row = this[i]
+        if (row.size > 0) return FocusTarget(row.id, row.titleAt(0).id)
+    }
+    return null
 }

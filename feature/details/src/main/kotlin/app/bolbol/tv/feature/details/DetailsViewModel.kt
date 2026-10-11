@@ -9,15 +9,20 @@ import app.bolbol.tv.core.model.AudioType
 import app.bolbol.tv.core.model.CatalogRepository
 import app.bolbol.tv.core.model.PlaybackPrefs
 import app.bolbol.tv.core.model.PrefsRepository
+import app.bolbol.tv.core.model.WatchKey
 import app.bolbol.tv.core.model.WatchRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -30,12 +35,16 @@ import kotlinx.coroutines.launch
  *
  * Audio and quality chips write `PrefsRepository.saveTitlePrefs`; the player reads the same prefs,
  * so what the chips show is what plays.
+ *
+ * [myList] (optional) drives the "+ لیست من" button: [DetailsUiState.Content.inMyList] follows it
+ * and [onToggleMyList] flips it. With null the button is hidden.
  */
 class DetailsViewModel(
     private val titleId: Long,
     private val catalog: CatalogRepository,
-    watch: WatchRepository,
+    private val watch: WatchRepository,
     private val prefs: PrefsRepository,
+    private val myList: MyListActions? = null,
 ) : ViewModel() {
 
     private val load = MutableStateFlow<LoadState>(LoadState.Loading)
@@ -43,17 +52,28 @@ class DetailsViewModel(
     private val userSeason = MutableStateFlow<Int?>(null)
     private var loadJob: Job? = null
 
+    /**
+     * null = unknown or not wired in. Starts with null so a slow or broken list can never hold the
+     * screen back, and a failing list simply hides the button.
+     */
+    private val inMyList: Flow<Boolean?> = myList?.isInMyList(titleId)
+        ?.map<Boolean, Boolean?> { it }
+        ?.onStart { emit(null) }
+        ?.catch { emit(null) }
+        ?: flowOf(null)
+
     val uiState: StateFlow<DetailsUiState> = combine(
         load,
         // A broken local progress table must not hide the title.
         watch.progressForTitle(titleId).catch { emit(emptyList()) },
         choice,
         userSeason,
-    ) { loadState, progress, prefsChoice, season ->
+        inMyList,
+    ) { loadState, progress, prefsChoice, season, listed ->
         when (loadState) {
             LoadState.Loading -> DetailsUiState.Loading
             is LoadState.Failed -> DetailsUiState.Error(loadState.error)
-            is LoadState.Loaded -> buildDetailsContent(loadState.details, progress, prefsChoice, season)
+            is LoadState.Loaded -> buildDetailsContent(loadState.details, progress, prefsChoice, season, listed)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), DetailsUiState.Loading)
 
@@ -77,6 +97,31 @@ class DetailsViewModel(
     fun onQualitySelected(quality: Int) {
         val shownAudio = (uiState.value as? DetailsUiState.Content)?.choices?.selectedAudio
         save((choice.value ?: PlaybackPrefs()).withQuality(quality, shownAudio))
+    }
+
+    /** "+ لیست من" / "✓ در لیست من": adds the title to My List, or removes it when it is already there. */
+    fun onToggleMyList() {
+        val actions = myList ?: return
+        val content = uiState.value as? DetailsUiState.Content ?: return
+        val listed = content.inMyList ?: return
+        val summary = content.details.summary.let { it.copy(type = it.type ?: content.details.type) }
+        viewModelScope.launch { quietly { actions.setInMyList(summary, !listed) } }
+    }
+
+    /** Long-press on an episode row: marks it watched ([watched] = true) or not watched. */
+    fun onSetWatched(key: WatchKey, watched: Boolean) {
+        viewModelScope.launch { quietly { watch.markWatched(key, watched) } }
+    }
+
+    /** A failed local write changes nothing on screen; there is nothing useful to tell the user. */
+    private inline fun quietly(block: () -> Unit) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // ignored on purpose
+        }
     }
 
     private fun save(updated: PlaybackPrefs) {
@@ -126,7 +171,8 @@ class DetailsViewModel(
             catalog: CatalogRepository,
             watch: WatchRepository,
             prefs: PrefsRepository,
+            myList: MyListActions? = null,
         ): ViewModelProvider.Factory =
-            viewModelFactory { initializer { DetailsViewModel(titleId, catalog, watch, prefs) } }
+            viewModelFactory { initializer { DetailsViewModel(titleId, catalog, watch, prefs, myList) } }
     }
 }
