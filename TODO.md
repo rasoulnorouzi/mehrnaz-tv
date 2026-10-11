@@ -39,6 +39,7 @@ Last updated: 2026-10-11 (**v1.1 in progress**: the user said "go ahead for impl
   - v1.1-2 quality-switch stall (PE, Opus): core/player (+ BolbolApp media client if needed)
   - v1.1-3 three subtitle colours (DE + UI, Sonnet): core/model enum, designsystem, settings
   - v1.1-5 CW «رفتن به صفحهٔ …» (UI, Sonnet): feature/home, feature/details, app Routes/MainNavigation (home + details entries)
+  - v1.1-6 (user request 2026-10-11, fa): remove the «زودتر/دیرتر ۵ ثانیه» sync buttons; 0.5 s steps are enough (UI, Sonnet)
   - then M: merge, emulator QA with screenshots, version 1.1.0 (code 2), signed release, GitHub release, APK to the user
 - [x] 2026-10-11 · M1 approved by the user ("go for a real watch… do a final product")
 - [x] 2026-10-11 · M1.0 Shared contract `:core:model` (domain types, repository interfaces, stream picking; 4 tests pass) + buildable skeletons for all M1 modules (M)
@@ -114,6 +115,8 @@ Last updated: 2026-10-11 (**v1.1 in progress**: the user said "go ahead for impl
 - [ ] v1.1-5 **Continue Watching long-press menu: «رفتن به صفحهٔ فیلم» / «رفتن به صفحهٔ سریال»** (user request 2026-10-11):
   a new first-level option in the existing popup (long-press OK / MENU on a «ادامه تماشا» card) that opens the title's
   details page; for a series the details page opens with that episode's season selected and the episode focused (UI)
+- [ ] v1.1-6 **Subtitle sync: remove the 5 s buttons** (user request 2026-10-11: «زودتر/دیرتر ۵ ثانیه» go, the 0.5 s steps with
+  hold-to-repeat are enough) (UI)
 
 ### M0: Foundations
 - [ ] 0.4 📺 Connect to the TV over Wi-Fi ADB + install scrcpy; fill in "Verified on device" in `docs/device.md` (U + M)

@@ -33,6 +33,8 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-11: (fa) Remove the «زودتر/دیرتر ۵ ثانیه» subtitle-sync buttons; 0.5 s steps are enough (v1.1-6). Supersedes the earlier "5 s steps" wish.
+- 2026-10-11: "Go ahead for implementation and production, assign tasks to agents": v1.1 started with 4 parallel agents.
 - 2026-10-11: Plan-only additions to v1.1 (do not implement until asked): an **in-player episodes/seasons button** for series
   (pick another episode while watching) and a **«رفتن به صفحهٔ فیلم/سریال»** option in the Continue Watching long-press menu.
 - 2026-10-11: **The user installed v1.0.0 on the real Mi TV by themselves; "everything's working pretty well."** Next wishes
