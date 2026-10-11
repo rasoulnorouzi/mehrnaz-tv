@@ -6,7 +6,11 @@ import kotlinx.serialization.Serializable
 /** Navigation 3 destinations. Serializable so the back stack survives process death. */
 @Serializable data object HomeRoute : NavKey
 
-@Serializable data class DetailsRoute(val titleId: Long) : NavKey
+/**
+ * Title details. [focusSeason] / [focusEpisode] (0 = none) open a series on that episode's season with that episode
+ * focused (Continue Watching's "رفتن به صفحهٔ سریال").
+ */
+@Serializable data class DetailsRoute(val titleId: Long, val focusSeason: Int = 0, val focusEpisode: Int = 0) : NavKey
 
 /**
  * Player for one movie (season = episode = 0) or episode.

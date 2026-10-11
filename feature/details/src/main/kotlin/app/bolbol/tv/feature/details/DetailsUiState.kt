@@ -86,6 +86,11 @@ sealed interface DetailsUiState {
         val episodes: List<EpisodeItem>,
         /** Whether the title is in "لیست من"; null = unknown or no My List wired in (the button is hidden). */
         val inMyList: Boolean? = null,
+        /**
+         * The episode that gets the screen's first focus (opened from Continue Watching's "رفتن به صفحهٔ سریال");
+         * non-null only when it exists, is playable and lies in [selectedSeason]. null = the usual default focus.
+         */
+        val focusEpisode: WatchKey? = null,
     ) : DetailsUiState {
         val isSeries: Boolean get() = details.type == TitleType.SERIES
     }
@@ -209,7 +214,9 @@ private fun Episode.toItem(titleId: Long, progress: Map<Pair<Int, Int>, Playback
 
 /**
  * Everything the screen shows, derived from the details, the saved progress and the remembered
- * choices. [userSeason] is the season tab the user picked; null follows the "continue" episode.
+ * choices. [userSeason] is the season tab the user picked (or the season asked for by the caller); null follows
+ * the "continue" episode. [focusTarget] is an episode to focus first; it is ignored (default behaviour) when
+ * that season or episode no longer exists.
  */
 internal fun buildDetailsContent(
     details: TitleDetails,
@@ -217,6 +224,7 @@ internal fun buildDetailsContent(
     prefs: PlaybackPrefs?,
     userSeason: Int?,
     inMyList: Boolean? = null,
+    focusTarget: WatchKey? = null,
 ): DetailsUiState.Content {
     val id = details.summary.id
     val cast = details.actors.distinctBy { it.id }
@@ -250,6 +258,9 @@ internal fun buildDetailsContent(
         ?.episodes.orEmpty()
         .sortedBy { it.number }
         .map { it.toItem(id, byEpisode) }
+    val focusEpisode = focusTarget
+        ?.takeIf { it.postId == id && it.season == selected }
+        ?.takeIf { target -> episodes.any { it.key == target && it.playable } }
 
     return DetailsUiState.Content(
         details = details,
@@ -261,8 +272,16 @@ internal fun buildDetailsContent(
         selectedSeason = selected,
         episodes = episodes,
         inMyList = inMyList,
+        focusEpisode = focusEpisode,
     )
 }
+
+/**
+ * The episode a caller asked to land on ([season] / [episode] from the route; 0 = none), as a key, or null
+ * when no complete target was given.
+ */
+internal fun episodeFocusTarget(titleId: Long, season: Int, episode: Int): WatchKey? =
+    if (season > 0 && episode > 0) WatchKey(titleId, season, episode) else null
 
 /** Audio / quality prefs after the user taps the audio chip: the quality intent is kept. */
 internal fun PlaybackPrefs.withAudio(audio: AudioType): PlaybackPrefs = copy(audio = audio)

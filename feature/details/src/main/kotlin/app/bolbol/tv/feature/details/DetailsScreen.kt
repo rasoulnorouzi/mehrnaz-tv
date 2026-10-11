@@ -36,8 +36,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -179,6 +182,11 @@ private fun DetailsContent(
     val scrollTo = remember(listState, scope) {
         { index: Int -> scope.launch { listState.animateScrollToItem(index) } }
     }
+    // The episode asked for by the route gets focus exactly once; the flag is saved with the entry so coming back
+    // from the player (or a recreated screen) never moves the user's focus again.
+    var focusPending by rememberSaveable { mutableStateOf(true) }
+    val focusEpisode = state.focusEpisode?.takeIf { focusPending }
+    val onFocusPlaced = remember { { focusPending = false } }
     val hasCast = state.cast.isNotEmpty()
     val castIndex = 1
     val relatedIndex = if (hasCast) 2 else 1
@@ -195,6 +203,8 @@ private fun DetailsContent(
                     onToggleMyList = onToggleMyList,
                     onSetWatched = onSetWatched,
                     onPlay = onPlay,
+                    focusEpisode = focusEpisode,
+                    onFocusPlaced = onFocusPlaced,
                     modifier = Modifier
                         .fillParentMaxHeight(HEADER_FRACTION)
                         .fillMaxWidth()
@@ -236,6 +246,8 @@ private fun DetailsHeader(
     onToggleMyList: () -> Unit,
     onSetWatched: (WatchKey, Boolean) -> Unit,
     onPlay: (WatchKey, Long) -> Unit,
+    focusEpisode: WatchKey?,
+    onFocusPlaced: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val summary = state.details.summary
@@ -254,6 +266,7 @@ private fun DetailsHeader(
                 onQualitySelected = onQualitySelected,
                 onToggleMyList = onToggleMyList,
                 onPlay = onPlay,
+                skipInitialFocus = focusEpisode != null,
                 modifier = Modifier.weight(if (state.isSeries) 0.46f else 0.64f).fillMaxHeight(),
             )
             if (state.isSeries) {
@@ -264,6 +277,8 @@ private fun DetailsHeader(
                     onSeasonSelected = onSeasonSelected,
                     onSetWatched = onSetWatched,
                     onPlay = onPlay,
+                    focusEpisode = focusEpisode,
+                    onFocusPlaced = onFocusPlaced,
                     modifier = Modifier.weight(0.54f).fillMaxHeight(),
                 )
             }
@@ -283,6 +298,7 @@ private fun InfoPane(
     onQualitySelected: (Int) -> Unit,
     onToggleMyList: () -> Unit,
     onPlay: (WatchKey, Long) -> Unit,
+    skipInitialFocus: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val details = state.details
@@ -334,7 +350,13 @@ private fun InfoPane(
                 )
             }
         }
-        PlayButtons(state = state, episodeTarget = episodeTarget, onToggleMyList = onToggleMyList, onPlay = onPlay)
+        PlayButtons(
+            state = state,
+            episodeTarget = episodeTarget,
+            onToggleMyList = onToggleMyList,
+            onPlay = onPlay,
+            skipInitialFocus = skipInitialFocus,
+        )
         ChoicePickers(state.choices, onAudioSelected, onQualitySelected)
     }
 }
@@ -372,6 +394,7 @@ private fun PlayButtons(
     episodeTarget: EpisodeFocusTarget,
     onToggleMyList: () -> Unit,
     onPlay: (WatchKey, Long) -> Unit,
+    skipInitialFocus: Boolean,
 ) {
     val primary = state.primary
     val inMyList = state.inMyList
@@ -386,8 +409,9 @@ private fun PlayButtons(
     }
 
     val firstFocus = remember { FocusRequester() }
-    // Initial focus is the first button (the main one). The effect lives next to the buttons so the requester is attached.
-    LaunchedEffect(Unit) { firstFocus.requestFocus() }
+    // Initial focus is the first button (the main one), unless an episode asked for it (opened from Continue
+    // Watching). The effect lives next to the buttons so the requester is attached.
+    LaunchedEffect(Unit) { if (!skipInitialFocus) firstFocus.requestFocus() }
 
     // Towards the episode list (D-pad left in RTL): from the LAST button of the row, so the
     // other buttons stay reachable. Series only; movies have no list.
@@ -510,12 +534,17 @@ private fun EpisodePane(
     onSeasonSelected: (Int) -> Unit,
     onSetWatched: (WatchKey, Boolean) -> Unit,
     onPlay: (WatchKey, Long) -> Unit,
+    focusEpisode: WatchKey?,
+    onFocusPlaced: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val targetKey = state.primary?.key
-    // The list opens one row above the episode "continue / start" points at, for context.
-    val targetIndex = if (targetKey != null && targetKey.season == state.selectedSeason) {
-        state.episodes.indexOfFirst { it.key == targetKey }
+    val initialFocus = remember { FocusRequester() }
+    // The list opens one row above the episode that is asked for (Continue Watching) or that "continue / start"
+    // points at, for context.
+    val scrollKey = focusEpisode ?: targetKey
+    val targetIndex = if (scrollKey != null && scrollKey.season == state.selectedSeason) {
+        state.episodes.indexOfFirst { it.key == scrollKey }
     } else {
         -1
     }
@@ -543,11 +572,25 @@ private fun EpisodePane(
                             onDispose { episodeTarget.attached = false }
                         }
                     }
+                    // One FocusRequester per row: the "continue" episode keeps its own, any other asked-for row uses initialFocus.
+                    val isFocusTarget = episode.key == focusEpisode
+                    val requester = when {
+                        isTarget -> episodeTarget.requester
+                        isFocusTarget -> initialFocus
+                        else -> null
+                    }
+                    if (isFocusTarget && requester != null) {
+                        LaunchedEffect(Unit) {
+                            // A row that cannot take focus just leaves the default focus alone.
+                            runCatching { requester.requestFocus() }
+                            onFocusPlaced()
+                        }
+                    }
                     EpisodeRow(
                         item = episode,
                         onClick = { onPlay(episode.key, episode.startPositionMs) },
                         onToggleWatched = { onSetWatched(episode.key, !episode.completed) },
-                        modifier = if (isTarget) Modifier.focusRequester(episodeTarget.requester) else Modifier,
+                        modifier = if (requester != null) Modifier.focusRequester(requester) else Modifier,
                     )
                 }
             }

@@ -38,6 +38,10 @@ import kotlinx.coroutines.launch
  *
  * [myList] (optional) drives the "+ لیست من" button: [DetailsUiState.Content.inMyList] follows it
  * and [onToggleMyList] flips it. With null the button is hidden.
+ *
+ * [focusSeason] / [focusEpisode] (from Continue Watching's "رفتن به صفحهٔ سریال"): that season starts selected and
+ * [DetailsUiState.Content.focusEpisode] names the episode to focus; both fall back to the usual behaviour when
+ * the season or episode does not exist. A season tab picked by the user replaces the preselection.
  */
 class DetailsViewModel(
     private val titleId: Long,
@@ -45,11 +49,16 @@ class DetailsViewModel(
     private val watch: WatchRepository,
     private val prefs: PrefsRepository,
     private val myList: MyListActions? = null,
+    /** Season of the episode to open on (0 = none): preselects that season tab when it exists. */
+    focusSeason: Int = 0,
+    /** Episode to focus first (0 = none); only used together with [focusSeason]. */
+    focusEpisode: Int = 0,
 ) : ViewModel() {
 
     private val load = MutableStateFlow<LoadState>(LoadState.Loading)
     private val choice = MutableStateFlow<PlaybackPrefs?>(null)
-    private val userSeason = MutableStateFlow<Int?>(null)
+    private val focusTarget = episodeFocusTarget(titleId, focusSeason, focusEpisode)
+    private val userSeason = MutableStateFlow<Int?>(focusSeason.takeIf { it > 0 })
     private var loadJob: Job? = null
 
     /**
@@ -73,7 +82,7 @@ class DetailsViewModel(
         when (loadState) {
             LoadState.Loading -> DetailsUiState.Loading
             is LoadState.Failed -> DetailsUiState.Error(loadState.error)
-            is LoadState.Loaded -> buildDetailsContent(loadState.details, progress, prefsChoice, season, listed)
+            is LoadState.Loaded -> buildDetailsContent(loadState.details, progress, prefsChoice, season, listed, focusTarget)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), DetailsUiState.Loading)
 
@@ -172,7 +181,11 @@ class DetailsViewModel(
             watch: WatchRepository,
             prefs: PrefsRepository,
             myList: MyListActions? = null,
+            focusSeason: Int = 0,
+            focusEpisode: Int = 0,
         ): ViewModelProvider.Factory =
-            viewModelFactory { initializer { DetailsViewModel(titleId, catalog, watch, prefs, myList) } }
+            viewModelFactory {
+                initializer { DetailsViewModel(titleId, catalog, watch, prefs, myList, focusSeason, focusEpisode) }
+            }
     }
 }

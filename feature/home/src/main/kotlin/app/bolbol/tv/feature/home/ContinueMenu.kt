@@ -1,5 +1,6 @@
 package app.bolbol.tv.feature.home
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
@@ -38,9 +39,29 @@ import androidx.tv.material3.Surface
 import app.bolbol.tv.core.designsystem.BolbolColors
 import app.bolbol.tv.core.designsystem.BolbolSpacing
 import app.bolbol.tv.core.designsystem.BolbolText
+import app.bolbol.tv.core.model.ContinueWatchingItem
+import app.bolbol.tv.core.model.TitleType
 
 /** What the Continue Watching menu can do. */
-internal enum class ContinueAction { RESUME, MARK_WATCHED, REMOVE, CANCEL }
+internal enum class ContinueAction { RESUME, OPEN_TITLE, MARK_WATCHED, REMOVE, CANCEL }
+
+/** The entries of the menu, top to bottom; focus starts on the first ([ContinueAction.RESUME]). */
+internal val ContinueMenuActions: List<ContinueAction> = ContinueAction.entries
+
+/** Series (or one of its episodes) rather than a movie: an episode key wins, else the title type when known. */
+internal fun ContinueWatchingItem.isSeries(): Boolean =
+    progress.key.isEpisode || title.type == TitleType.SERIES
+
+/** Label of the entry; "رفتن به صفحهٔ ..." depends on whether the card is a movie or a series. */
+@StringRes
+internal fun ContinueAction.labelRes(isSeries: Boolean): Int = when (this) {
+    ContinueAction.RESUME -> R.string.home_menu_resume
+    ContinueAction.OPEN_TITLE ->
+        if (isSeries) R.string.home_menu_open_series else R.string.home_menu_open_movie
+    ContinueAction.MARK_WATCHED -> R.string.home_menu_mark_watched
+    ContinueAction.REMOVE -> R.string.home_menu_remove
+    ContinueAction.CANCEL -> R.string.home_menu_cancel
+}
 
 private val PanelWidth = 380.dp
 private val PanelShape = RoundedCornerShape(12.dp)
@@ -50,7 +71,7 @@ private val ItemHeight = 48.dp
 /**
  * The small popup menu of a Continue Watching card, drawn over the home screen (same window, so
  * the focus handling below is fully ours): focus starts on "ادامه پخش", D-pad up/down moves
- * between the four entries, nothing can leave the panel, and Back cancels.
+ * between the five entries, nothing can leave the panel, and Back cancels.
  *
  * [openedByHold] is true when OK is still physically held down as the menu opens: that hold's
  * remaining auto-repeats and its release are swallowed, otherwise the release would "click" the
@@ -60,6 +81,7 @@ private val ItemHeight = 48.dp
 @Composable
 internal fun ContinueMenu(
     title: String,
+    isSeries: Boolean,
     openedByHold: Boolean,
     onChoose: (ContinueAction) -> Unit,
     modifier: Modifier = Modifier,
@@ -109,23 +131,13 @@ internal fun ContinueMenu(
                 color = BolbolColors.TextPrimary,
                 maxLines = 1,
             )
-            MenuItem(
-                text = stringResource(R.string.home_menu_resume),
-                onClick = { onChoose(ContinueAction.RESUME) },
-                modifier = Modifier.focusRequester(firstItem),
-            )
-            MenuItem(
-                text = stringResource(R.string.home_menu_mark_watched),
-                onClick = { onChoose(ContinueAction.MARK_WATCHED) },
-            )
-            MenuItem(
-                text = stringResource(R.string.home_menu_remove),
-                onClick = { onChoose(ContinueAction.REMOVE) },
-            )
-            MenuItem(
-                text = stringResource(R.string.home_menu_cancel),
-                onClick = { onChoose(ContinueAction.CANCEL) },
-            )
+            ContinueMenuActions.forEachIndexed { index, action ->
+                MenuItem(
+                    text = stringResource(action.labelRes(isSeries)),
+                    onClick = { onChoose(action) },
+                    modifier = if (index == 0) Modifier.focusRequester(firstItem) else Modifier,
+                )
+            }
         }
     }
 }

@@ -79,6 +79,10 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                         val k = item.progress.key
                         open(PlayerRoute(k.postId, k.season, k.episode, item.progress.positionMs))
                     },
+                    onOpenTitleAt = { item ->
+                        val k = item.progress.key
+                        open(DetailsRoute(item.title.id, k.season, k.episode))
+                    },
                     onViewAll = { q, title ->
                         open(BrowseRoute(title, q.category.name, q.country, q.genre, q.imdbTop250))
                     },
@@ -99,6 +103,7 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                     viewModel = viewModel(
                         factory = DetailsViewModel.factory(
                             route.titleId, data.catalog, data.watch, data.prefs, myList = app.myListActions,
+                            focusSeason = route.focusSeason, focusEpisode = route.focusEpisode,
                         ),
                     ),
                     onPlay = { key, start -> open(PlayerRoute(key.postId, key.season, key.episode, start)) },
