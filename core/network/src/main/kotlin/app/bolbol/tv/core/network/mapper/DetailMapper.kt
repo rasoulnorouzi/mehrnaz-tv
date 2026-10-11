@@ -59,6 +59,39 @@ internal fun DetailDto.toDetails(images: ImageUrls = ImageUrls.Default): TitleDe
     )
 }
 
+/** Streams built from a `player_links`/`download_links` pair: movie streams or seasons (the other is empty). */
+internal data class PlayableLinks(val streams: List<StreamOption>, val seasons: List<Season>) {
+    val isEmpty: Boolean get() = streams.isEmpty() && seasons.isEmpty()
+}
+
+/**
+ * Maps the links of `GET post/player-links?id=` (or the embedded ones) without knowing the title kind: movie entries
+ * (`play_link`) become [PlayableLinks.streams], series blocks (`items`) become [PlayableLinks.seasons].
+ */
+internal fun mapLinks(players: List<PlayerEntryDto>, downloads: List<DownloadEntryDto>): PlayableLinks =
+    PlayableLinks(mapMovieStreams(players, downloads), mapSeasons(players, downloads))
+
+/**
+ * Replaces the streams/seasons of a detail with those of `post/player-links` (what the official app uses; the detail
+ * can carry empty link arrays). A null or empty [links], or one of the wrong kind, keeps the detail's own streams.
+ * The dub/subtitle flags of the summary are widened by what the new streams offer.
+ */
+internal fun TitleDetails.withPlayableLinks(links: PlayableLinks?): TitleDetails {
+    if (links == null) return this
+    val newStreams = if (type == TitleType.MOVIE && links.streams.isNotEmpty()) links.streams else streams
+    val newSeasons = if (type == TitleType.SERIES && links.seasons.isNotEmpty()) links.seasons else seasons
+    if (newStreams === streams && newSeasons === seasons) return this
+    val all = newStreams + newSeasons.flatMap { season -> season.episodes.flatMap { it.streams } }
+    return copy(
+        summary = summary.copy(
+            hasDub = summary.hasDub || all.any { it.audio == AudioType.DUBBED },
+            hasSubtitle = summary.hasSubtitle || all.any { it.audio == AudioType.SUBTITLED },
+        ),
+        streams = newStreams,
+        seasons = newSeasons,
+    )
+}
+
 // ---------------------------------------------------------------------------------------------
 // Movies
 // ---------------------------------------------------------------------------------------------
@@ -100,38 +133,59 @@ private class EpisodeAccumulator(val season: Int, val number: Int) {
 }
 
 /**
- * Builds seasons from the per-(season, quality) blocks of `player_links`.
+ * Builds seasons from the per-(season, quality, audio) blocks of `player_links`.
  *
- * Each player block is matched with the `download_links` block of the same season number and
- * quality (preferring the block at the same index, never reusing a block); the download block
- * supplies the audio type (`type`), the label (`quality`), the size and the episode titles.
- * Episode number = the number in the download item title when the block's titles are complete
- * and distinct, otherwise the 1-based position. Blocks of all qualities are merged per
- * (season, episode) so each [Episode] carries every [StreamOption].
+ * Each player block is matched with the `download_links` block that has the **same key** (docs/api.md section 11;
+ * for arrays the index is the key). If the keys contradict season or quality, or one side lacks the key, the match
+ * falls back to an unused download block with the same season, quality and audio, then the same season and quality.
+ * The download block supplies the label (`quality`), the size and the episode titles.
+ *
+ * Audio: `type_link == "dub"` on the player block or `type == "dub"` on the download block means DUBBED; any other
+ * non-blank type means SUBTITLED; with no type at all, subtitle URLs mean SUBTITLED and their absence DUBBED.
+ *
+ * Episode number = the number in the download item title when the block's titles are complete and distinct,
+ * otherwise the 1-based position, **per block**: a dubbed block may stop at episode 4 while the subtitled one has 8.
+ * Blocks of all qualities and audio types are merged per (season, episode), so each [Episode] carries every
+ * [StreamOption] that exists for it (an episode that exists only subtitled keeps only subtitled streams).
  */
 internal fun mapSeasons(
     players: List<PlayerEntryDto>,
     downloads: List<DownloadEntryDto>,
 ): List<Season> {
     val used = BooleanArray(downloads.size)
+    val keyIndex: Map<String, Int> = downloads.withIndex()
+        .filter { it.value.key.isNotEmpty() }
+        .associate { it.value.key to it.index }
     val episodes = LinkedHashMap<Pair<Int, Int>, EpisodeAccumulator>()
 
     players.forEachIndexed { index, player ->
         if (player.items.isEmpty()) return@forEachIndexed
 
+        val byKey = keyIndex[player.key]?.takeIf { !used[it] }
         val seasonNumber = parseOrdinal(player.seasonName)
+            ?: byKey?.let { parseOrdinal(downloads[it].name) }
             ?: downloads.getOrNull(index)?.name?.let(::parseOrdinal)
             ?: 1
         val playerQuality = parseQuality(player.qualityLink)
+        val playerSaysDub = player.typeLink.contains("dub", ignoreCase = true)
 
-        fun candidate(j: Int): Boolean =
+        fun sameSlot(j: Int): Boolean =
             !used[j] &&
                 (parseOrdinal(downloads[j].name) ?: 1) == seasonNumber &&
                 parseQuality(downloads[j].quality) == playerQuality
 
+        fun sameAudio(j: Int): Boolean = downloads[j].type.contains("dub", ignoreCase = true) == playerSaysDub
+
+        fun keyIsConsistent(j: Int): Boolean {
+            val downloadQuality = parseQuality(downloads[j].quality)
+            return (parseOrdinal(downloads[j].name) ?: 1) == seasonNumber &&
+                (playerQuality == null || downloadQuality == null || downloadQuality == playerQuality)
+        }
+
         val matched = when {
-            index < downloads.size && candidate(index) -> index
-            else -> downloads.indices.firstOrNull { candidate(it) }
+            byKey != null && keyIsConsistent(byKey) -> byKey
+            else -> downloads.indices.firstOrNull { sameSlot(it) && sameAudio(it) }
+                ?: downloads.indices.firstOrNull { sameSlot(it) && downloads[it].type.isBlank() }
         }
         matched?.let { used[it] = true }
         val download = matched?.let { downloads[it] }
@@ -142,8 +196,8 @@ internal fun mapSeasons(
 
         val downloadType = download?.type.nullIfBlank()
         val audio = when {
-            downloadType != null -> parseAudio(downloadType)
-            player.typeLink.isNotBlank() -> parseAudio(player.typeLink)
+            playerSaysDub || downloadType?.contains("dub", ignoreCase = true) == true -> AudioType.DUBBED
+            downloadType != null || player.typeLink.isNotBlank() -> AudioType.SUBTITLED
             // Docs 8.4: default to subtitled if a subtitle URL exists; otherwise assume a dub.
             player.items.any { it.fasubLink.isNotBlank() } -> AudioType.SUBTITLED
             else -> AudioType.DUBBED

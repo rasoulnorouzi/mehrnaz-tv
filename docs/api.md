@@ -412,3 +412,7 @@ Other open items:
 - **Dubbing lags:** the dub blocks can have fewer episodes (4 dubbed vs 8 subtitled in Season 1). Episodes are per-audio:
   episode N may exist only as SUBTITLED.
 - Movies in player-links have the same 6-entry shape as in details (3 sub + 3 dub qualities).
+- **Client behaviour (data layer):** `details(id)` requests `post/{id}` and `post/player-links?id={id}` in parallel and uses the
+  player-links streams/seasons when they parse and are non-empty (movie entries or series blocks, key-matched download/player
+  blocks, audio from `type_link`/`type` == `dub`), otherwise the links embedded in the detail. Episodes are merged per
+  (season, episode) across all blocks, so an episode carries sub and dub streams in every quality, or only the audio that exists.

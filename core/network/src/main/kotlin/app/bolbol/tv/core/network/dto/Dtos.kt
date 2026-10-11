@@ -3,6 +3,8 @@ package app.bolbol.tv.core.network.dto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonTransformingSerializer
 
 /*
  * Wire DTOs. They mirror docs/api.md closely and never leave :core:network.
@@ -234,6 +236,31 @@ internal data class PlayerItemDto(
     @SerialName("ensub_link")
     @Serializable(with = LenientStringSerializer::class) val ensubLink: String = "",
 )
+
+// ---------------------------------------------------------------------------------------------
+// Links only: GET post/player-links?id={id} (docs/api.md section 11)
+// ---------------------------------------------------------------------------------------------
+
+@Serializable
+internal data class PlayerLinksEnvelopeDto(
+    @Serializable(with = FlagSerializer::class) val success: Boolean = false,
+    /** `{download_links, player_links}`; PHP may send `[]` when there is nothing. */
+    @Serializable(with = LinksDataSerializer::class) val data: LinksDto = LinksDto(),
+)
+
+@Serializable
+internal data class LinksDto(
+    @SerialName("download_links")
+    @Serializable(with = DownloadEntryListSerializer::class) val downloadLinks: List<DownloadEntryDto> = emptyList(),
+    @SerialName("player_links")
+    @Serializable(with = PlayerEntryListSerializer::class) val playerLinks: List<PlayerEntryDto> = emptyList(),
+)
+
+/** Anything but an object (`[]`, `""`) means "no links". */
+internal object LinksDataSerializer : JsonTransformingSerializer<LinksDto>(LinksDto.serializer()) {
+    override fun transformDeserialize(element: JsonElement): JsonElement =
+        if (element is JsonObject) element else JsonObject(emptyMap())
+}
 
 // ---------------------------------------------------------------------------------------------
 // Tolerant list serializers (object-keyed / array / [] / null -> List)
