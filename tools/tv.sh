@@ -11,7 +11,7 @@ ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 ADB="$ANDROID_HOME/platform-tools/adb"
 EMU="$ANDROID_HOME/emulator/emulator"
 
-PKG="${PKG:-app.bolbol.tv}"
+PKG="${PKG:-app.mehrnaz.tv}"
 ACTIVITY="${ACTIVITY:-app.bolbol.tv.MainActivity}"
 
 TV_IP_FILE="$ROOT/tools/.tv-ip"

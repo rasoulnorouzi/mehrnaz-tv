@@ -171,7 +171,7 @@ internal fun DeveloperPage(
 internal fun AboutPage(versionName: String, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         BolbolText(
-            text = "بلبل تی‌وی",
+            text = "مهرناز",
             style = MaterialTheme.typography.headlineSmall,
             color = BolbolColors.Accent,
         )

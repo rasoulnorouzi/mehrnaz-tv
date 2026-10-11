@@ -10,7 +10,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-private const val PKG = "app.bolbol.tv"
+private const val PKG = "app.mehrnaz.tv"
 
 internal fun summary(
     id: Long,
@@ -53,7 +53,7 @@ class WatchNextSpecTest {
         assertEquals(1_234_000, spec.positionMs)
         assertEquals(5_400_000, spec.durationMs)
         assertEquals(99L, spec.lastEngagementMs)
-        assertEquals("bolbol://play/353371/0/0", spec.deepLink)
+        assertEquals("mehrnaz://play/353371/0/0", spec.deepLink)
         assertEquals(PKG, spec.appPackage)
     }
 
@@ -66,7 +66,7 @@ class WatchNextSpecTest {
         assertEquals(1, spec.seasonNumber)
         assertEquals(2, spec.episodeNumber)
         assertEquals("فصل ۱ · قسمت ۲", spec.episodeTitle)
-        assertEquals("bolbol://play/7/1/2", spec.deepLink)
+        assertEquals("mehrnaz://play/7/1/2", spec.deepLink)
     }
 
     @Test

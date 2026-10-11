@@ -29,7 +29,7 @@ internal data class WatchNextSpec(
     val positionMs: Int,
     val durationMs: Int,
     val lastEngagementMs: Long,
-    /** `bolbol://play/...`; wrapped into an ACTION_VIEW intent URI for [appPackage]. */
+    /** `mehrnaz://play/...`; wrapped into an ACTION_VIEW intent URI for [appPackage]. */
     val deepLink: String,
     val appPackage: String,
 ) {

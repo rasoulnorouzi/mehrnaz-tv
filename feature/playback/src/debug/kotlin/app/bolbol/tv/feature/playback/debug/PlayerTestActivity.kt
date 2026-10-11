@@ -23,7 +23,7 @@ import okhttp3.OkHttpClient
  * repositories, so the player can be checked without the rest of the app.
  *
  * ```
- * adb shell am start -n app.bolbol.tv/app.bolbol.tv.feature.playback.debug.PlayerTestActivity \
+ * adb shell am start -n app.mehrnaz.tv/app.bolbol.tv.feature.playback.debug.PlayerTestActivity \
  *     [--ei quality 720] [--es audio dub|sub] [--el start_ms 600000] [--ez diag false] [--ez reset true] \
  *     [--ez next true]
  * adb logcat -s BolbolPerf BolbolPlayer BolbolTest

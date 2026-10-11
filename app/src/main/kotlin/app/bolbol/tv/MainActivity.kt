@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
 
-    /** A Watch Next card (bolbol://play/…) to open; consumed by MainNavigation. */
+    /** A Watch Next card (mehrnaz://play/…) to open; consumed by MainNavigation. */
     private val pendingDeepLink = MutableStateFlow<WatchKey?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {

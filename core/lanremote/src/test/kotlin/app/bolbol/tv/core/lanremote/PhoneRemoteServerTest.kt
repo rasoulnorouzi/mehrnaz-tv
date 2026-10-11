@@ -93,7 +93,7 @@ class PhoneRemoteServerTest {
         val response = call("GET", session.url)
         assertEquals(200, response.code)
         assertTrue(response.body.contains("dir=\"rtl\""))
-        assertTrue(response.body.contains("تایپ برای بلبل تی&zwnj;وی"))
+        assertTrue(response.body.contains("تایپ برای مهرناز"))
         assertTrue(response.headers["Content-Type"].orEmpty().single().contains("utf-8", ignoreCase = true))
         assertEquals("no-store", response.headers["Cache-Control"]?.single())
         assertEquals("nosniff", response.headers["X-Content-Type-Options"]?.single())

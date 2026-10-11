@@ -5,7 +5,7 @@ package app.bolbol.tv.core.lanremote
  * Persian and right-to-left. It reads the token from its own address (`?t=`) and POSTs `{"text": ...}` to
  * `/text?t=...` 250 ms after the last keystroke and on Enter, one request at a time so the TV never gets stale text.
  * ES5-style script and no template literals: it has to run on old iOS Safari and Android System WebView/Chrome.
- * The zero-width non-joiner in the Persian title is written as an HTML entity so no invisible character sits in the source.
+ * The zero-width non-joiner in the Persian copy is written as an HTML entity so no invisible character sits in the source.
  */
 internal object RemotePage {
     val html: String = """
@@ -16,7 +16,7 @@ internal object RemotePage {
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
 <meta name="referrer" content="no-referrer">
-<title>تایپ برای بلبل تی&zwnj;وی</title>
+<title>تایپ برای مهرناز</title>
 <style>
 :root{color-scheme:dark light;--bg:#0b0d12;--fg:#f2f4f8;--mut:#a9b0bd;--card:#151922;--line:#3a4252;--acc:#ffc93c;--ok:#4cd98a;--err:#ff5a5f}
 @media (prefers-color-scheme:light){:root{--bg:#f4f5f8;--fg:#14161c;--mut:#5b6472;--card:#fff;--line:#c9cfda;--ok:#13804a;--err:#c62828}}
@@ -35,7 +35,7 @@ p{color:var(--mut);margin:8px 0 0;font-size:14px}
 </head>
 <body>
 <main>
-<h1>تایپ برای بلبل تی&zwnj;وی</h1>
+<h1>تایپ برای مهرناز</h1>
 <form id="f" action="#" autocomplete="off">
 <input id="q" name="q" type="search" dir="rtl" autofocus enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="200" placeholder="اینجا تایپ کنید…" aria-label="جستجو">
 </form>

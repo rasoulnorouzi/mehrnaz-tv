@@ -21,7 +21,7 @@ import androidx.test.uiautomator.UiObject2
  * listed in docs/perf-budget.md (§"UI hooks the journeys can use").
  */
 
-const val TARGET_PACKAGE = "app.bolbol.tv"
+const val TARGET_PACKAGE = "app.mehrnaz.tv"
 const val TARGET_ACTIVITY = "app.bolbol.tv.MainActivity"
 
 /** Top bar tab label «فیلم» (exactly as in feature/home `home_tabs`). */

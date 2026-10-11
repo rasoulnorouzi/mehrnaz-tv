@@ -4,13 +4,13 @@ import android.net.Uri
 import app.bolbol.tv.core.model.WatchKey
 
 /**
- * Deep link used by the launcher's Watch Next cards: `bolbol://play/{postId}/{season}/{episode}`
+ * Deep link used by the launcher's Watch Next cards: `mehrnaz://play/{postId}/{season}/{episode}`
  * (movies: season = 0, episode = 0). The app's manifest needs an intent filter for it (see README.md).
  *
  * The string forms are separate so the parsing rules are testable on a plain JVM (android.net.Uri is a stub there).
  */
 object DeepLinks {
-    const val SCHEME = "bolbol"
+    const val SCHEME = "mehrnaz"
     private const val HOST_PLAY = "play"
 
     fun play(key: WatchKey): Uri = Uri.parse(playString(key))

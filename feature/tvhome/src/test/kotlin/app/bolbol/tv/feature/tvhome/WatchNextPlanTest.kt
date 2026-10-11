@@ -8,7 +8,7 @@ import org.junit.Test
 class WatchNextPlanTest {
 
     private fun spec(key: WatchKey, updatedAtMs: Long = 1_000, positionMs: Long = 600_000) =
-        item(key, positionMs = positionMs, updatedAtMs = updatedAtMs).toWatchNextSpec("app.bolbol.tv")!!
+        item(key, positionMs = positionMs, updatedAtMs = updatedAtMs).toWatchNextSpec("app.mehrnaz.tv")!!
 
     private fun row(
         id: Long,

@@ -5,7 +5,7 @@
 - `WatchNextPublisher(context)`: `suspend publish(items): Boolean` makes the launcher match `items` (ours only: insert
   new, update changed, delete stale). Idempotent, IO-dispatched, logs and returns `false` on failure (only cancellation
   propagates). Input equal to the last successful publish does no work. `suspend clear()` deletes all our programs.
-- `DeepLinks`: `play(key)` = `bolbol://play/{postId}/{season}/{episode}` (movies `/0/0`); `parse(uri)` is its strict inverse.
+- `DeepLinks`: `play(key)` = `mehrnaz://play/{postId}/{season}/{episode}` (movies `/0/0`); `parse(uri)` is its strict inverse.
 - One program per title (newest episode wins), newest first, max 20; finished items, unknown duration or blank title are
   skipped. `WATCH_NEXT_TYPE_CONTINUE`, `TYPE_MOVIE`/`TYPE_TV_EPISODE` («فصل ۱ · قسمت ۲»), poster = 16:9 backdrop
   (falls back to the 2:3 poster), `internalProviderId` = `WatchKey.asString()`.
@@ -34,7 +34,7 @@ Poster URLs are mirror-specific; a new URL changes the fingerprint and republish
   <action android:name="android.intent.action.VIEW" />
   <category android:name="android.intent.category.DEFAULT" />
   <category android:name="android.intent.category.BROWSABLE" />
-  <data android:scheme="bolbol" android:host="play" />
+  <data android:scheme="mehrnaz" android:host="play" />
 </intent-filter>
 ```
 Then `DeepLinks.parse(intent.data)?.let { key -> openPlayer(key) }`.

@@ -257,7 +257,7 @@ private fun ProfileCard(
             Avatar(initial = avatarInitial(name))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 BolbolText(
-                    text = name ?: "کاربر بلبل جان",
+                    text = name ?: "کاربر",
                     style = MaterialTheme.typography.headlineSmall,
                     color = BolbolColors.TextPrimary,
                     maxLines = 1,

@@ -57,7 +57,7 @@ internal fun LoginCard(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         BolbolText(
-            text = "ورود به حساب بلبل جان",
+            text = "ورود به حساب کاربری سایت",
             style = MaterialTheme.typography.titleLarge,
             color = BolbolColors.TextPrimary,
             maxLines = 1,

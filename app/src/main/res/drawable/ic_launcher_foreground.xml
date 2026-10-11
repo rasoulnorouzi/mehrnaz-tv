@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Bolbol TV logo mark: a bulbul (nightingale) in profile, crested, facing the play direction,
-  with a rounded play triangle cut out of its body (even-odd) and a cut-out eye.
-  108x108 adaptive-icon canvas; the mark fits inside the 66dp safe-zone circle.
+  Mehrnaz logo mark: a warm sun (round core + 12 soft rays; «مهر» = love and sun) with a rounded play triangle cut out
+  of the core (even-odd), so the dark background shows through.
+  108x108 adaptive-icon canvas; the whole mark (ray tips at radius ~30) sits well inside the 66dp safe-zone circle.
   Used as the adaptive icon foreground and, scaled up, as the launch-screen logo.
+  The banner (docs/branding-banner.html) uses the same geometry with a warm gradient on the rays.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -13,5 +14,18 @@
     <path
         android:fillColor="#FFC93C"
         android:fillType="evenOdd"
-        android:pathData="M73.8,35.96 L84.36,41.24 L74.68,46.08 C75.56,54.44 72.04,62.36 65,66.76 C58.84,70.72 51.8,71.16 45.64,68.52 C42.12,72.04 35.96,74.68 29.8,76.44 C32.44,72.04 34.2,65.88 35.08,57.96 C35.96,48.28 42.12,40.36 50.04,35.96 C46.52,31.56 43.88,28.04 41.24,23.64 C46.52,25.4 50.92,27.16 54.44,29.8 C59.72,25.4 69.4,27.16 73.8,35.96 Z M64.47,35.08 A2.29,2.29 0 1,0 69.05,35.08 A2.29,2.29 0 1,0 64.47,35.08 Z M50.7,44.43 Q48.28,43 48.28,45.82 L48.28,63.06 Q48.28,65.88 50.7,64.45 L65.22,55.87 Q67.64,54.44 65.22,53.01 Z" />
+        android:pathData="M56.39,29.71 L56.39,26.03 A2.39,2.39 0 0,0 51.61,26.03 L51.61,29.71 A2.39,2.39 0 0,0 56.39,29.71 Z
+        M68.22,34.16 L68.58,33.52 A2.39,2.39 0 0,0 64.44,31.13 L64.07,31.77 A2.39,2.39 0 0,0 68.22,34.16 Z
+        M76.23,43.93 L76.87,43.56 A2.39,2.39 0 0,0 74.48,39.42 L73.84,39.78 A2.39,2.39 0 0,0 76.23,43.93 Z
+        M78.29,56.39 L81.97,56.39 A2.39,2.39 0 0,0 81.97,51.61 L78.29,51.61 A2.39,2.39 0 0,0 78.29,56.39 Z
+        M73.84,68.22 L74.48,68.58 A2.39,2.39 0 0,0 76.87,64.44 L76.23,64.07 A2.39,2.39 0 0,0 73.84,68.22 Z
+        M64.07,76.23 L64.44,76.87 A2.39,2.39 0 0,0 68.58,74.48 L68.22,73.84 A2.39,2.39 0 0,0 64.07,76.23 Z
+        M51.61,78.29 L51.61,81.97 A2.39,2.39 0 0,0 56.39,81.97 L56.39,78.29 A2.39,2.39 0 0,0 51.61,78.29 Z
+        M39.78,73.84 L39.42,74.48 A2.39,2.39 0 0,0 43.56,76.87 L43.93,76.23 A2.39,2.39 0 0,0 39.78,73.84 Z
+        M31.77,64.07 L31.13,64.44 A2.39,2.39 0 0,0 33.52,68.58 L34.16,68.22 A2.39,2.39 0 0,0 31.77,64.07 Z
+        M29.71,51.61 L26.03,51.61 A2.39,2.39 0 0,0 26.03,56.39 L29.71,56.39 A2.39,2.39 0 0,0 29.71,51.61 Z
+        M34.16,39.78 L33.52,39.42 A2.39,2.39 0 0,0 31.13,43.56 L31.77,43.93 A2.39,2.39 0 0,0 34.16,39.78 Z
+        M43.93,31.77 L43.56,31.13 A2.39,2.39 0 0,0 39.42,33.52 L39.78,34.16 A2.39,2.39 0 0,0 43.93,31.77 Z
+        M36.34,54 A17.66,17.66 0 1,0 71.66,54 A17.66,17.66 0 1,0 36.34,54 Z
+        M48.98,49.11 A2.14,2.14 0 0,1 52.17,47.25 L60.83,52.14 A2.14,2.14 0 0,1 60.83,55.86 L52.17,60.75 A2.14,2.14 0 0,1 48.98,58.89 Z" />
 </vector>
