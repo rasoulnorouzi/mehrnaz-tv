@@ -7,7 +7,6 @@ import app.bolbol.tv.core.model.AccountState
 import app.bolbol.tv.core.model.LoginResult
 import app.bolbol.tv.core.model.PlaybackProgress
 import app.bolbol.tv.core.model.TitleSummary
-import app.bolbol.tv.core.model.WatchRepository
 import app.bolbol.tv.core.network.AccountRemoteDataSource
 import app.bolbol.tv.core.network.LoginOutcome
 import app.bolbol.tv.core.network.RemoteFavorite
@@ -44,7 +43,7 @@ internal class AccountRepositoryImpl(
     private val remote: AccountRemoteDataSource,
     private val dao: MyListDao,
     private val session: SessionStore,
-    private val watch: WatchRepository,
+    private val watch: WatchRepositoryImpl,
     /** Fetches a title's summary when the server sent only an id (details call). Null when unavailable. */
     private val resolveSummary: suspend (Long) -> TitleSummary?,
     /** Runs the debounced push after local changes. */
@@ -308,12 +307,18 @@ internal class AccountRepositoryImpl(
      * Fills the local watch progress from the server's list: an item is taken when it is **missing locally**, or when the
      * local one is not completed and the server's position is further than the local one by more than
      * [PULL_MARGIN_MS] (the server sends no timestamp, so "further" is the only signal). A server item never lowers or
-     * completes local progress. Taken items are saved through [WatchRepository.saveProgress]; as for any watching,
-     * that puts the title back into Continue Watching. A no-op when signed out. Never throws.
+     * completes local progress, and an imported item is **never completed** (QA-03). `current_time` is seconds; the
+     * server's `duration` is not trusted (the official app never reads it): the saved duration is the local player's
+     * real one when known, else the server's only if it is believable ([RemoteProgressItem.saneDurationMs]), else 0
+     * (unknown, the next local play fills it in). Taken items are saved through [WatchRepositoryImpl.importRemote]
+     * (`source = remote`); as for any watching, that puts the title back into Continue Watching. Every pull first
+     * repairs rows an older pull imported with a bogus duration ([WatchRepositoryImpl.repairRemoteImports]). A no-op
+     * when signed out. Never throws.
      */
     suspend fun pullProgress() {
         try {
             if (!session.isLoggedIn) return
+            watch.repairRemoteImports()
             val items = when (val result = remote.progressList()) {
                 is RemoteResult.Ok -> result.value
                 RemoteResult.Unauthorized -> return expire()
@@ -325,12 +330,13 @@ internal class AccountRepositoryImpl(
                 val local = watch.progress(item.key)
                 if (!shouldTakeServerProgress(local, item)) return@forEachIndexed
                 val title = item.summary ?: budget.resolve(item.key.postId) ?: return@forEachIndexed
-                watch.saveProgress(
+                watch.importRemote(
                     title,
                     PlaybackProgress(
                         key = item.key,
                         positionMs = item.positionMs,
-                        durationMs = if (item.durationMs > 0) item.durationMs else local?.durationMs ?: 0,
+                        durationMs = local?.durationMs?.takeIf { it > 0 }
+                            ?: RemoteProgressItem.saneDurationMs(item.durationMs, item.positionMs),
                         // Server order (assumed newest first) decides the order of what we add.
                         updatedAtMs = now - index,
                         completed = false,

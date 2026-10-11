@@ -43,7 +43,9 @@ class DataGraph(
         CatalogRepositoryImpl(network.catalog, RoomHomeCacheStore(database.homeCacheDao()))
     }
 
-    val watch: WatchRepository by lazy { WatchRepositoryImpl(database.watchDao()) }
+    private val watchImpl by lazy { WatchRepositoryImpl(database.watchDao()) }
+
+    val watch: WatchRepository get() = watchImpl
 
     val prefs: PrefsRepository by lazy { PrefsRepositoryImpl(database.prefsDao()) }
 
@@ -52,7 +54,7 @@ class DataGraph(
             remote = network.account,
             dao = database.myListDao(),
             session = session,
-            watch = watch,
+            watch = watchImpl,
             resolveSummary = { id ->
                 try {
                     catalog.details(id).summary
@@ -87,7 +89,8 @@ class DataGraph(
 
     /**
      * Fills local watch progress from the server (call after app start). Only adds titles/episodes missing locally
-     * or whose server position is further; no-op when signed out; never throws.
+     * or whose server position is further; imported items are never "completed" and carry no duration unless the
+     * server's is believable (the local player's real duration replaces it); no-op when signed out; never throws.
      */
     suspend fun pullProgress() = accountImpl.pullProgress()
 

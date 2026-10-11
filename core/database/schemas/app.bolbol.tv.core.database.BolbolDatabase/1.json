@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "85908d015c31b1e161cecbbbe7d712ad",
+    "identityHash": "2c38762c18520ffa4101413df74558c7",
     "entities": [
       {
         "tableName": "progress",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `postId` INTEGER NOT NULL, `season` INTEGER NOT NULL, `episode` INTEGER NOT NULL, `positionMs` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `updatedAtMs` INTEGER NOT NULL, `completed` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `postId` INTEGER NOT NULL, `season` INTEGER NOT NULL, `episode` INTEGER NOT NULL, `positionMs` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `updatedAtMs` INTEGER NOT NULL, `completed` INTEGER NOT NULL, `source` TEXT NOT NULL, PRIMARY KEY(`key`))",
         "fields": [
           {
             "fieldPath": "key",
@@ -54,6 +54,12 @@
             "fieldPath": "completed",
             "columnName": "completed",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
             "notNull": true
           }
         ],
@@ -389,7 +395,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '85908d015c31b1e161cecbbbe7d712ad')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2c38762c18520ffa4101413df74558c7')"
     ]
   }
 }

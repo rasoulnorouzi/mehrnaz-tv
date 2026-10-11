@@ -111,8 +111,26 @@ internal class FakeWatchDao : WatchDao() {
 
     override suspend fun markCompleted(key: String): Int {
         val row = progressRows.value[key] ?: return 0
-        progressRows.value = progressRows.value + (key to row.copy(completed = true, positionMs = row.durationMs))
+        val position = if (row.durationMs > 0) row.durationMs else row.positionMs
+        progressRows.value = progressRows.value + (key to row.copy(completed = true, positionMs = position, source = ProgressEntity.SOURCE_LOCAL))
         return 1
+    }
+
+    /** Same predicate as the SQL of [WatchDao.repairRemoteImports]. */
+    override suspend fun repairRemoteImports(): Int {
+        var repaired = 0
+        progressRows.value = progressRows.value.mapValues { (_, row) ->
+            val bogusDuration = row.durationMs > 0 &&
+                (row.durationMs < 60_000 || row.durationMs > 21_600_000 || row.durationMs < row.positionMs)
+            val bogusCompleted = row.completed && (row.durationMs < 60_000 || row.positionMs * 100 < row.durationMs * 95)
+            if (row.source == ProgressEntity.SOURCE_REMOTE && (bogusDuration || bogusCompleted)) {
+                repaired++
+                row.copy(completed = false, durationMs = 0)
+            } else {
+                row
+            }
+        }
+        return repaired
     }
 
     override suspend fun insertIfAbsent(progress: ProgressEntity) {

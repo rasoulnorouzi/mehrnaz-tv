@@ -87,15 +87,26 @@ data class RemoteFavorites(val items: List<RemoteFavorite>, val complete: Boolea
 data class RemoteFavorite(val id: Long, val summary: TitleSummary? = null)
 
 /**
- * One server continue-watching entry. [summary] is null when the payload had no title. [durationMs] is 0 when the
- * server's duration was missing or unreadable.
+ * One server continue-watching entry. [summary] is null when the payload had no title. [positionMs] comes from
+ * `current_time` (seconds). The server's `duration` is unreliable (the official app never reads it), so [durationMs] is
+ * 0 (= unknown) unless it parsed to a sane length: longer than the position and between 60 s and 6 h.
  */
 data class RemoteProgressItem(
     val key: WatchKey,
     val positionMs: Long,
     val durationMs: Long,
     val summary: TitleSummary?,
-)
+) {
+    companion object {
+        /** Shortest and longest server duration that is believed. */
+        const val MIN_DURATION_MS = 60_000L
+        const val MAX_DURATION_MS = 6 * 3_600_000L
+
+        /** [durationMs] when it is a believable length for [positionMs] (longer than it, 60 s..6 h), else 0 = unknown. */
+        fun saneDurationMs(durationMs: Long, positionMs: Long): Long =
+            if (durationMs > positionMs && durationMs in MIN_DURATION_MS..MAX_DURATION_MS) durationMs else 0
+    }
+}
 
 /** Supplies the login token to the HTTP layer (implemented by the data layer's session store). */
 fun interface TokenProvider {

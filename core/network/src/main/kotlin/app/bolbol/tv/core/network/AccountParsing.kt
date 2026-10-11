@@ -32,6 +32,7 @@ internal object AccountParsing {
     const val MSG_TOO_MANY = "تعداد تلاش‌ها زیاد است؛ چند دقیقه بعد دوباره امتحان کنید."
 
     private val BOM = Char(0xFEFF)
+    private val ZWNJ = Char(0x200C).toString()
     private const val MAX_NODES = 400
     private const val MAX_LIST_DEPTH = 4
     private const val MAX_NAME_LENGTH = 64
@@ -188,8 +189,10 @@ internal object AccountParsing {
 
     /**
      * Server progress entries: `{id, title, image, current_time, duration, season, episode}` with numbers or numeric
-     * strings (seconds; `duration` may also be `H:MM:SS`). Null when no list was found; entries without a readable
-     * id are skipped.
+     * strings. `current_time` is **seconds** (the official app seeks to `current_time * 1000`). `duration` is not
+     * trusted (the official app never reads it; unit and format are unknown): [RemoteProgressItem.durationMs] is 0
+     * unless [saneDurationSeconds] can prove a value. Null when no list was found; entries without a readable id are
+     * skipped.
      */
     fun extractProgress(root: JsonElement, images: ImageUrls = ImageUrls.Default): List<RemoteProgressItem>? {
         val elements = findItemElements(root, depth = 0) ?: return null
@@ -200,7 +203,7 @@ internal object AccountParsing {
             val episode = intField(obj, "episode") ?: 0
             val key = if (season > 0 && episode > 0) WatchKey(id, season, episode) else WatchKey(id)
             val positionSec = secondsField(obj, "current_time") ?: 0L
-            val durationSec = durationSeconds(secondsField(obj, "duration"), positionSec)
+            val durationSec = saneDurationSeconds(obj.stringOrNumber("duration"), positionSec)
             val title = cleanTitle(obj.stringOrNumber("title").orEmpty())
             val summary = if (title.isBlank()) null else TitleSummary(
                 id = id,
@@ -221,25 +224,43 @@ internal object AccountParsing {
     }
 
     /**
-     * The server's `duration` unit is not documented: seconds are assumed; a value below the position can only be
-     * minutes (a position past the end is impossible), anything else unreadable becomes 0 (= unknown).
+     * The server's `duration` field is unreliable (unknown unit and format; the official app never reads it), so it is
+     * accepted only when it provably is a length in seconds: a plain number of seconds, `H:MM:SS` / `MM:SS`, or a
+     * number followed by an explicit unit word (`85 دقیقه`, `85 min`, `2 ساعت`), that is also longer than
+     * [positionSec] and between 60 s and 6 h ([RemoteProgressItem.saneDurationMs]). A bare number is never guessed to
+     * be minutes. Anything else (missing, `0`, text, too short, too long, shorter than the position) gives 0 = unknown.
      */
-    internal fun durationSeconds(raw: Long?, positionSec: Long): Long {
-        val value = raw ?: return 0
-        return when {
-            value <= 0 -> 0
-            value >= positionSec -> value
-            value * 60 >= positionSec -> value * 60
-            else -> 0
-        }
+    internal fun saneDurationSeconds(raw: String?, positionSec: Long): Long {
+        val seconds = parseDurationSeconds(raw) ?: return 0
+        return RemoteProgressItem.saneDurationMs(seconds * 1000, positionSec * 1000) / 1000
+    }
+
+    private val UNIT_SECONDS = mapOf(
+        "ثانیه" to 1L, "sec" to 1L, "secs" to 1L, "second" to 1L, "seconds" to 1L, "s" to 1L,
+        "دقیقه" to 60L, "min" to 60L, "mins" to 60L, "minute" to 60L, "minutes" to 60L, "m" to 60L,
+        "ساعت" to 3600L, "h" to 3600L, "hr" to 3600L, "hrs" to 3600L, "hour" to 3600L, "hours" to 3600L,
+    )
+    private val NUMBER_WITH_UNIT = Regex("""^(\d+(?:\.\d+)?)\s*([^\d\s:.]+)\.?$""")
+
+    /** Seconds from a plain number, a clock string or a number with a unit word; null when it is none of those. */
+    private fun parseDurationSeconds(raw: String?): Long? {
+        val text = raw?.normalizeDigits()?.replace('٫', '.')?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        parseSeconds(text)?.let { return it }
+        val match = NUMBER_WITH_UNIT.matchEntire(text) ?: return null
+        val unit = match.groupValues[2].replace(ZWNJ, "").lowercase()
+        val factor = UNIT_SECONDS[unit] ?: return null
+        val amount = match.groupValues[1].toDoubleOrNull() ?: return null
+        return (amount * factor).toLong()
     }
 
     private fun intField(obj: JsonObject, key: String): Int? =
         obj.stringOrNumber(key)?.normalizeDigits()?.trim()?.let { it.toIntOrNull() ?: it.toDoubleOrNull()?.toInt() }?.takeIf { it >= 0 }
 
     /** Seconds from `1234`, `"1234"`, `"1234.5"` or `"1:02:03"` / `"02:03"`; null when absent or unreadable. */
-    private fun secondsField(obj: JsonObject, key: String): Long? {
-        val raw = obj.stringOrNumber(key)?.normalizeDigits()?.trim() ?: return null
+    private fun secondsField(obj: JsonObject, key: String): Long? =
+        parseSeconds(obj.stringOrNumber(key)?.normalizeDigits()?.trim() ?: return null)
+
+    private fun parseSeconds(raw: String): Long? {
         if (':' in raw) {
             val parts = raw.split(':').map { it.trim().toDoubleOrNull() ?: return null }
             if (parts.size !in 2..3 || parts.any { it < 0 }) return null
