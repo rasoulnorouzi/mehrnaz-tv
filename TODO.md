@@ -63,12 +63,15 @@ Last updated: 2026-10-11 (end-to-end flow works on the virtual TV)
 - [x] 2026-10-11 · Fix: login form keyboard. Hardware typing goes straight into a focused field; Tab/Enter jumps from username into the password field ready to type; Enter in the password field logs in (user feedback) (M)
 - [ ] **Waiting on you (U):** after watching, check «لیست من» (site favourites) and whether the website/phone app shows the film in "continue watching" at the time you stopped
 - **🔄 Running now (2 agents):**
-  - [ ] 🔄 QA: full device pass of the release build on TV_API34 (search, UI, pages, bookmarking/My List, player, settings, back behaviour) → `qa/2026-10-11-full-pass.md` (QA, Sonnet)
   - [ ] 🔄 User request: **«پروفایل» tab** (login / profile info / VIP / logout with confirmation) + **"Made with ❤ for Mehi by Rasoul"** on Home and About (UI, Sonnet)
 - [x] 2026-10-11 · User request: subtitle sync open-ended, ±120 s, 0.5 s + 5 s steps, hold-to-repeat, «همگام‌سازی: +۱۲٫۵ ثانیه» (PE)
 - [x] 2026-10-11 · User request: **rebrand to «مهرناز» (Mehrnaz)**: sun + play logo, banner, adaptive icon, launch screen, applicationId `app.mehrnaz.tv`, deep link `mehrnaz://`; no user-visible «بلبل» left (UI + M)
 - [x] 2026-10-11 · User request: **«پروفایل» tab** (login, full profile, VIP, «همگام‌سازی دوباره» with real result, logout with confirmation) + **"Made with ❤ for Mehi by Rasoul"** on Home + About (UI)
-  - [ ] 🔄 User request: **dubbing + quality must work everywhere.** Found that details can have empty links and dubbed series use separate (shorter) dub blocks; fix: streams from `post/player-links` + dub-aware series mapping (DE, Sonnet)
+- [x] 2026-10-11 · User request: **dubbing + quality everywhere**: streams from `post/player-links`, object-keyed series blocks, per-episode dub (DE); verified on the **Android 11** emulator: movie دوبله↔زیرنویس switch keeps position, quality ۱۰۸۰/۷۲۰/۴۸۰, dubbed series ep 1 offers both, ep 5 subtitle-only (M)
+- [x] 2026-10-11 · QA pass of the release build (R8 clean, 9/12 pass, 7 bugs) → `qa/2026-10-11-full-pass.md` (QA)
+- [x] 2026-10-11 · TV is **Android 11** (user). Created `MiTV_API30` emulator; fresh install of the signed release APK ✅, appears in the TV app list as «مهرناز» with banner ✅ (M)
+- [x] 2026-10-11 · Release pipeline: permanent key (~/.bolboltv, off-repo), `tools/release.sh` (zipalign + v1/v2/v3), APK checks ✅ (M)
+- **🔄 Fix wave (3 agents):** QA-01/03/04/05/06/07 UI (Sonnet) · QA-03 synced-progress duration (Sonnet) · QA-02 player Back order (Sonnet)
 - [ ] Next: fix wave from the QA report (agents per module) → re-test
 - [ ] **Release v1.0.0** (user request): dedicated signing key (kept off GitHub), APK checks (minSdk 29, leanback, no native libs, signature), fresh-install test on the Android 10 virtual TV, GitHub release with the APK, send the APK + Mi TV install steps to the user (M)
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.

@@ -8,7 +8,7 @@ anything not yet confirmed on the device. Confirm with `adb shell getprop` in M0
 | Model | Mi TV P1 43", ELA4584EU (L43M6-6AEU), 2021 |
 | SoC | MediaTek MT9611: 4× Cortex-A55 @ 1.5 GHz, Mali-G52 MP2 |
 | RAM / storage | **2 GB** / 16 GB |
-| OS | **Android TV 10 (API 29)** + Xiaomi PatchWall launcher. No Android 11 update found; likely end-of-support |
+| OS | **Android TV 11 (API 30)**, confirmed by the user on 2026-10-11 (the TV received the update) + Xiaomi PatchWall launcher. App minSdk stays 29 |
 | Panel | 4K 3840×2160 @ 60 Hz. UI is rendered at 1080p and upscaled; video on SurfaceView can use full res |
 | HDR | Dolby Vision, HLG, HDR10 (HDR10+ unclear). Irrelevant for our SDR H.264 sources |
 | Audio | Dolby Audio, DTS-HD, eARC on one HDMI port |

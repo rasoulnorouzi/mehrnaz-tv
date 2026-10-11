@@ -1,7 +1,7 @@
 # Mehrnaz («مهرناز»): private Android TV client for Bolboljan
 
 Kotlin + Jetpack Compose for TV + Media3 ExoPlayer app, sideloaded on one **Xiaomi Mi TV P1 43"
-(ELA4584EU, MT9611, 2 GB RAM, Android TV 10 / API 29)**. Persian RTL UI. **Private use only.**
+(ELA4584EU, MT9611, 2 GB RAM, **Android TV 11 / API 30**; minSdk 29)**. Persian RTL UI. **Private use only.**
 The main session (Opus) is the **project manager**. It delegates to the agents in `.claude/agents/`.
 
 **Naming:** the app is called «مهرناز» (Mehrnaz) since 2026-10-11 (it was «بلبل تی‌وی» / Bolbol TV). Installed package (`applicationId`) = `app.mehrnaz.tv`; deep link = `mehrnaz://play/{postId}/{season}/{episode}`. Kotlin packages and Gradle namespaces stay `app.bolbol.tv.*` (internal code names), so the launch component is `app.mehrnaz.tv/app.bolbol.tv.MainActivity`.
