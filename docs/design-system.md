@@ -49,7 +49,7 @@ Disney+/Prime (season tabs + episode list, Skip Intro, next-episode countdown), 
    - Resume dialog on start: "ادامه از ۴۷:۱۲" (focused) / "از ابتدا".
    - Next-episode card at the last ~30 s / credits with a 10 s countdown.
 4. **Search:** keyboard (start side) + results grid (end side) + mic button + "type on your phone" QR.
-5. **Category / View all:** a grid of PosterCards, paged, with filter chips (genre, year, dubbed).
+5. **Category / View all:** a 5-column grid of PosterCards, paged (next page within the last 2 rows), with quick-filter chips for the Movies/Series tabs: «همه» · «۲۵۰ برتر IMDb» (+ «ایرانی», «ترکی» for movies; country ids are per taxonomy). "View all" pages have no chips.
 6. **Account / Settings:** login (credentials or pairing code), mirror selection, default audio/quality,
    subtitle size, show-performance toggle, clear cache, app version.
 7. **Errors:** offline, server unreachable (tries the next mirror automatically), stream failed (try
