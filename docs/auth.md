@@ -4,6 +4,33 @@ Status: **research only, nothing here was tested with a real login.** Investigat
 
 Evidence tags: **[V]** verified in a saved capture or a live response; **[I]** inferred from verified facts; **[?]** unknown. Confidence: **High / Med / Low** applies to the inference, not to the raw fact.
 
+
+## 0. CONFIRMED from the official TV app (2026-10-11): this supersedes the guesses below
+
+Source: the official `bolbol-tv.apk` (11,149,486 B, sha256 prefix 6cf5b64035b8a270), downloaded with the user's
+permission and decompiled locally with jadx 1.5.6 (Retrofit interface `ApiService`, `AppModule`, data classes).
+The APK and the decompiled code are **not** stored in the repo (third-party code); only these facts are.
+
+| Call | Request | Response `data` |
+|---|---|---|
+| Login | `POST wp-json/mapi/v1/login`, **form-urlencoded** `username`, `password` | `Profile` |
+| Login by code | `POST wp-json/mapi/v1/login-code`, form-urlencoded `code` | `Profile` |
+| Profile | `GET wp-json/mapi/v1/user/profile` | `Profile` |
+| Favourites list (= our «لیست من») | `GET wp-json/mapi/v1/user/favorite-list` | `List<Favorite>` |
+| Favourite toggle | `POST wp-json/mapi/v1/user/favorite-list`, form-urlencoded `post_id` | `List<String>` |
+| Watch-list (= **server Continue Watching with position**) | `GET wp-json/mapi/v1/user/watch-list` | `List<WatchList>` |
+| Save progress | `POST wp-json/mapi/v1/user/watch-list`, **multipart** parts `post_id` (int), `current_time` (int **seconds**), `season` (int, omitted for movies), `episode` (int, omitted for movies) | `Unit` |
+
+- **Envelope:** `{ "success": bool, "data": T, "message": string, "page"?: int, "per_page"?: int }`.
+- **Auth header on every call when logged in:** `Authorization: Bearer <token>` (plus `Accept: application/json`).
+  The official app also sends `Content-Type: application/json` globally; not needed.
+- **Profile:** `id` (int), `username`, `email`, `display_name`, `token`, `vip` {`days_left`, `expire`, `expire_percent`, `status`}, `show` (object).
+- **WatchList item:** `id` (post id, int), `title`, `image`, `current_time` (seconds, string or number), `duration`, `season`, `episode` (strings).
+- The official app saves progress when the player closes: `current_time = exoPlayer.currentPosition / 1000`.
+- Official app's API hosts: **`https://playgen.ir`** (user/* calls) and **`https://arzanycenter.ir`** (some post calls). Both
+  verified 2026-10-11 to serve the same `mapi/v1` JSON as euploadi.com, so they are added to our mirror list.
+- `/post/tv` and `tracker.php` are not used by the TV app.
+
 ## 1. Summary
 
 | # | Question | Answer | Confidence |
