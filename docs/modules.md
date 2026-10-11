@@ -16,8 +16,13 @@ uses the same short build file, and versions come from `gradle/libs.versions.tom
 | `:feature:home` | `app.bolbol.tv.feature.home` | Home screen |
 | `:feature:details` | `app.bolbol.tv.feature.details` | Movie/series details |
 | `:feature:playback` | `app.bolbol.tv.feature.playback` | Player screen + overlay |
+| `:feature:search` | `app.bolbol.tv.feature.search` | Search: Persian/English TV keyboard, voice, results |
+| `:feature:browse` | `app.bolbol.tv.feature.browse` | Category / "view all" grids with paging (Movies, Series tabs) |
+| `:feature:settings` | `app.bolbol.tv.feature.settings` | Settings: subtitles (live preview), playback defaults, mirrors, performance overlay, about |
+| `:feature:tvhome` | `app.bolbol.tv.feature.tvhome` | Publishes Continue Watching / next episode to the Android TV home (Watch Next) |
+| `:core:lanremote` | `app.bolbol.tv.core.lanremote` | Phone/QR remote: tiny LAN HTTP server + QR code composable |
 
-Planned: `:feature:search`, `:feature:account`, `:feature:tvhome`, `:baselineprofile`, `:benchmark`.
+Planned: `:feature:account`, `:baselineprofile`, `:benchmark`.
 
 ## Recipe: Android library module with Compose
 1. Add `include(":feature:xyz")` to `settings.gradle.kts`.

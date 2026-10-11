@@ -13,6 +13,8 @@ object BolbolColors {
     val OnAccent = Color(0xFF14161C)
     val FocusRing = Color(0xFFFFFFFF)
     val Error = Color(0xFFFF5A5F)
+    /** Subtitle "yellow" option: warm, high-contrast on video. */
+    val SubtitleYellow = Color(0xFFFFE14D)
 
     // Additions used by components (solid colours only, no alpha stacks).
     /** 1 dp outline of secondary buttons / unfocused outlined elements. */

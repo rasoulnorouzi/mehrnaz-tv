@@ -59,6 +59,12 @@ The main session (Opus) is the **project manager**. It delegates to the agents i
 - Parallel agents get **disjoint modules** (use git worktrees when writing code in parallel).
   The manager reviews every diff before it is merged.
 - Agents return short reports (≤150 words + file list). Long output goes into files, not chat.
+- **Builds:** always `tools/gw.sh <tasks>` (queue: max 3 concurrent builds machine-wide, no lingering daemon,
+  creates local.properties in worktrees). **Never `gradlew --stop`**: it kills every agent's build.
+- **Emulator:** only the manager uses it (memory). Agents verify with unit tests + builds; the manager
+  screenshots after merging.
+- **Shared files** (settings.gradle.kts, root build, version catalog, core:model, designsystem when another
+  agent owns it): only the manager edits them; agents ask in their report.
 - The agent types in `.claude/agents/` load only when the session starts **inside this folder**.
   Otherwise use `general-purpose` with the same `model` and paste the role file's instructions into the brief.
 
