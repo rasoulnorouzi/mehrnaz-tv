@@ -27,8 +27,6 @@
     <string name="player_subtitle_sync">همگام&#8204;سازی: %1$s</string>
     <string name="player_subtitle_earlier">زودتر ۰٫۵ ثانیه</string>
     <string name="player_subtitle_later">دیرتر ۰٫۵ ثانیه</string>
-    <string name="player_subtitle_earlier_large">زودتر ۵ ثانیه</string>
-    <string name="player_subtitle_later_large">دیرتر ۵ ثانیه</string>
     <string name="player_subtitle_reset">تنظیم مجدد</string>
     <string name="player_subtitle_seconds">%1$s ثانیه</string>
     <string name="player_subtitle_offset_toast">زیرنویس: %1$s ثانیه</string>

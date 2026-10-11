@@ -171,8 +171,8 @@ class PlayerViewModel(
         controller.setSubtitleStyle(controller.subtitleStyle.value.copy(sizeScale = scale))
 
     /**
-     * One step of «زودتر/دیرتر ۰٫۵ ثانیه» or «… ۵ ثانیه»: [deltaMs] = ±SubtitleOffset.SMALL_STEP_MS or
-     * ±LARGE_STEP_MS (negative = earlier), clamped to ±120 s. Returns the new offset in ms (for the toast).
+     * One step of «زودتر/دیرتر ۰٫۵ ثانیه»: [deltaMs] = ±SubtitleOffset.SMALL_STEP_MS (negative = earlier),
+     * clamped to ±120 s. Returns the new offset in ms (for the toast).
      */
     fun shiftSubtitles(deltaMs: Int): Int =
         controller.setSubtitleOffset(SubtitleOffset.shift(controller.subtitleOffsetMs.value, deltaMs))
