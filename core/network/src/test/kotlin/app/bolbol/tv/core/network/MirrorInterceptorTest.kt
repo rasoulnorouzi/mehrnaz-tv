@@ -208,12 +208,13 @@ class MirrorInterceptorTest {
     fun theSharedClientHasTheDocumentedSettings() {
         val dir = java.nio.file.Files.createTempDirectory("okhttp-cache").toFile()
         try {
-            val shared = createOkHttpClient(dir, MirrorList(NetworkModule.DEFAULT_MIRRORS))
+            val shared = createOkHttpClient(dir, MirrorList(NetworkModule.DEFAULT_MIRRORS), MirrorList(NetworkModule.DEFAULT_IMAGE_HOSTS))
             assertEquals(10_000, shared.connectTimeoutMillis)
             assertEquals(20_000, shared.readTimeoutMillis)
             assertTrue(shared.retryOnConnectionFailure)
             assertEquals(50L * 1024 * 1024, shared.cache!!.maxSize())
             assertTrue(shared.interceptors.any { it is MirrorInterceptor })
+            assertTrue(shared.interceptors.any { it is ImageCdnInterceptor })
         } finally {
             dir.deleteRecursively()
         }

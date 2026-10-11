@@ -18,7 +18,7 @@ private val STREAM_ORDER = compareByDescending<StreamOption> { it.quality }.then
  * Detail payload -> [TitleDetails] (docs/api.md section 5.4 and 8.4).
  * The kind comes from `type`; when that is missing it is inferred from the shape of `player_links`.
  */
-internal fun DetailDto.toDetails(): TitleDetails {
+internal fun DetailDto.toDetails(images: ImageUrls = ImageUrls.Default): TitleDetails {
     val kind = parseType(type)
         ?: if (playerLinks.any { it.items.isNotEmpty() }) TitleType.SERIES else TitleType.MOVIE
 
@@ -31,8 +31,8 @@ internal fun DetailDto.toDetails(): TitleDetails {
         type = kind,
         title = cleanTitle(title),
         faTitle = faTitle.decodeHtmlEntities().trim(),
-        posterUrl = image.nullIfBlank(),
-        backdropUrl = backgroundImage.nullIfBlank(),
+        posterUrl = images.normalize(image),
+        backdropUrl = images.normalize(backgroundImage),
         year = parseYear(release),
         imdbRating = parseImdb(imdbRate),
         // The flags can lag behind the links; trust whichever says "yes".
@@ -49,13 +49,13 @@ internal fun DetailDto.toDetails(): TitleDetails {
         metacritic = parseMetacritic(metacriticRate),
         genres = genres.mapNotNull { it.name.decodeHtmlEntities().nullIfBlank() },
         countries = countries.mapNotNull { it.name.decodeHtmlEntities().nullIfBlank() },
-        actors = actors.mapNotNull { it.toPerson() },
-        directors = directors.mapNotNull { it.toPerson() },
+        actors = actors.mapNotNull { it.toPerson(images) },
+        directors = directors.mapNotNull { it.toPerson(images) },
         trailerUrl = trailer.nullIfBlank(),
         updateText = updateText.decodeHtmlEntities().nullIfBlank(),
         streams = streams,
         seasons = seasons,
-        related = relatedPosts.mapNotNull { it.toSummary() }.distinctBy { it.id },
+        related = relatedPosts.mapNotNull { it.toSummary(images) }.distinctBy { it.id },
     )
 }
 

@@ -22,12 +22,13 @@ import okhttp3.OkHttpClient
 class DataGraph(
     context: Context,
     mirrors: List<String> = NetworkModule.DEFAULT_MIRRORS,
+    imageHosts: List<String> = NetworkModule.DEFAULT_IMAGE_HOSTS,
 ) {
     private val appContext = context.applicationContext
-    private val network by lazy { NetworkModule(appContext, mirrors) }
+    private val network by lazy { NetworkModule(appContext, mirrors, imageHosts) }
     private val database by lazy { BolbolDatabase.create(appContext) }
 
-    /** Shared by the API, the image loader and the video player (disk cache, timeouts, mirror failover). */
+    /** Shared by the API, the image loader and the video player (disk cache, timeouts, API mirror + image CDN failover). */
     val okHttpClient: OkHttpClient by lazy { network.okHttpClient }
 
     val catalog: CatalogRepository by lazy {
@@ -41,6 +42,12 @@ class DataGraph(
     /** The API mirror calls currently start with (diagnostics). */
     val currentMirror: String get() = network.currentMirror
 
+    /** The image CDN image requests currently start with (diagnostics). */
+    val currentImageHost: String get() = network.currentImageHost
+
     /** Replaces the API mirror list at runtime (site roots such as "https://euploadi.com/"). */
     fun setMirrors(mirrors: List<String>) = network.setMirrors(mirrors)
+
+    /** Replaces the image CDN list at runtime; its first entry is written into every image URL the repositories return. */
+    fun setImageHosts(imageHosts: List<String>) = network.setImageHosts(imageHosts)
 }

@@ -8,6 +8,7 @@ import app.bolbol.tv.core.model.Page
 import app.bolbol.tv.core.model.TitleDetails
 import app.bolbol.tv.core.model.TitleSummary
 import app.bolbol.tv.core.network.dto.HomeEnvelopeDto
+import app.bolbol.tv.core.network.mapper.ImageUrls
 import app.bolbol.tv.core.network.mapper.emptyPage
 import app.bolbol.tv.core.network.mapper.toDetails
 import app.bolbol.tv.core.network.mapper.toHomeSections
@@ -24,6 +25,7 @@ import java.net.UnknownHostException
 internal class RetrofitCatalogRemote(
     private val service: BolboljanService,
     private val json: Json = BolboljanJson,
+    private val images: ImageUrls = ImageUrls.Default,
 ) : CatalogRemoteDataSource {
 
     override suspend fun fetchHomeJson(): String = guarded {
@@ -33,14 +35,14 @@ internal class RetrofitCatalogRemote(
     override fun parseHome(json: String): List<HomeSection> = guardedBlocking {
         val envelope = this.json.decodeFromString(HomeEnvelopeDto.serializer(), json)
         if (!envelope.success && envelope.data == null) throw CatalogException.BadResponse()
-        envelope.toHomeSections()
+        envelope.toHomeSections(images)
     }
 
     override suspend fun details(id: Long): TitleDetails = guarded {
         val envelope = service.detail(id)
         val data = envelope.data
         if (!envelope.success || data == null) throw CatalogException.NotFound()
-        data.toDetails()
+        data.toDetails(images)
     }
 
     override suspend fun list(query: ListQuery, page: Int): Page<TitleSummary> = try {
@@ -51,7 +53,7 @@ internal class RetrofitCatalogRemote(
                 country = query.country,
                 genres = query.genre,
                 imdbTop250 = if (query.imdbTop250) 1 else null,
-            ).toPage(page, query.category)
+            ).toPage(page, query.category, images)
         }
     } catch (e: CatalogException.NotFound) {
         emptyPage(page)
@@ -61,7 +63,7 @@ internal class RetrofitCatalogRemote(
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return emptyPage(page)
         return try {
-            guarded { service.search(trimmed, page).toPage(page, category = null) }
+            guarded { service.search(trimmed, page).toPage(page, category = null, images = images) }
         } catch (e: CatalogException.NotFound) {
             emptyPage(page)
         }

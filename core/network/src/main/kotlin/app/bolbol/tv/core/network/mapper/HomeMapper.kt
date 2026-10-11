@@ -67,7 +67,7 @@ private data class ParsedSection(
  *    a movie row (`key == "movies"`) in the same feed is the server's copy/paste bug (WordPress term ids are
  *    globally unique, so a series row can never legitimately use a movie genre); that genre is dropped.
  */
-internal fun HomeEnvelopeDto.toHomeSections(): List<HomeSection> {
+internal fun HomeEnvelopeDto.toHomeSections(images: ImageUrls = ImageUrls.Default): List<HomeSection> {
     val sections = data?.sections.orEmpty()
     val parsed = sections.mapIndexed { index, dto ->
         val viewAll = parseViewAll(dto.viewAll)
@@ -86,7 +86,7 @@ internal fun HomeEnvelopeDto.toHomeSections(): List<HomeSection> {
             else -> null
         }
         val items = section.dto.items
-            .mapNotNull { it.toSummary(rowType) }
+            .mapNotNull { it.toSummary(rowType, images) }
             .distinctBy { it.id }
         if (items.isEmpty()) return@mapNotNull null
 
