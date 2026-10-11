@@ -32,6 +32,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-11: (fa) The app's name and logo must differ from the original site: **rebrand to «مهرناز» (Mehrnaz)**. Logo = sun («مهر» = love/sun) + play. applicationId `app.mehrnaz.tv` (Kotlin packages stay `app.bolbol.tv.*` internally). The dedication "Made with ❤ for Mehi by Rasoul" stays.
 - 2026-10-11: (fa) Subtitle sync must be open-ended: 0.5 s steps but any amount, e.g. ±50 s → ±120 s, plus 5 s steps and hold-to-repeat.
 - 2026-10-11: The user wants a GitHub release + the APK file sent to them, "100% working on my Mi TV": verify installability carefully before release.
 - 2026-10-11: User asked for a **profile section for login/logout** and the visible line **"Made with love for Mehi by Rasoul"** (personal dedication; keep it on Home + About in every future redesign).
