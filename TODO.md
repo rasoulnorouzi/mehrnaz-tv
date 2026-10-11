@@ -35,8 +35,9 @@ Last updated: 2026-10-11 (M0 done on the emulator; TV-only items pending)
 ## 🔄 In progress / waiting
 - [x] 2026-10-11 · M1 approved by the user ("go for a real watch… do a final product")
 - [x] 2026-10-11 · M1.0 Shared contract `:core:model` (domain types, repository interfaces, stream picking; 4 tests pass) + buildable skeletons for all M1 modules (M)
-- [ ] 🔄 M1.1 + 1.2 Data layer: network, database, repositories (DE, Sonnet), in progress
-- [ ] 🔄 M1.3 Design system components + Vazirmatn font + gallery (UI, Sonnet), in progress
+- [x] 2026-10-11 · M1.1 + 1.2 Data layer merged: network (mirror failover, lenient JSON), Room, repositories; 165 unit tests (DE)
+- [x] 2026-10-11 · Fix: image URLs rewritten to the image CDN (majnoonbazar.ir → seo2024.ir failover); the API's own hosts 404 for images (found on the emulator by M, fixed by DE)
+- [x] 2026-10-11 · M1.3 Design system merged: Vazirmatn, PosterCard, WideCard, ContentRow, HeroBackdrop, buttons, chips, TopBar, states, gallery; verified with screenshots, RTL row scrolling confirmed correct (UI + M)
 - [ ] 🔄 M1.4 + 1.7 Player core + player screen (PE, Opus), in progress
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
@@ -56,6 +57,11 @@ Last updated: 2026-10-11 (M0 done on the emulator; TV-only items pending)
 - [ ] 1.5 Home screen: top bar, hero, rows, Continue Watching, instant paint from cache (UI)
 - [ ] 1.6 Movie details: Resume/Play, dub/sub + quality choice (UI)
 - [ ] 1.7 Player screen: overlay, fast D-pad seeking, resume prompt (PE + UI)
+- [ ] 1.10 **Subtitles as a first-class feature** (user requirement, spec `docs/subtitles.md`):
+  - [ ] 1.10a Contract: `SubtitleStyle` + offset prefs in core:model (M)
+  - [ ] 1.10b Own subtitle engine: VTT parser, timing offset, cue sync, Persian bidi, `SubtitleText` (PE, Opus)
+  - [ ] 1.10c Storage of style + per-title offset (DE, Sonnet)
+  - [ ] 1.10d In-player subtitle menu (on/off, size, ±0.5 s sync) + Settings → زیرنویس page with live preview (UI, Sonnet)
 - [ ] 1.8 Baseline Profile + release build (M); 📺 measure the gain on the TV
 - [ ] 1.9 Review gate: code review + QA pass (emulator) + 📺 perf report `perf/reports/M1.md` (M, QA, PA)
 

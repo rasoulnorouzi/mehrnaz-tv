@@ -50,6 +50,7 @@ Room cache (stale-while-revalidate for home rows, so the home screen paints inst
 | 1.5 | `feature/home`: top bar, static hero, lazy rows from `post/all`, Continue Watching row from Room, cached first paint | UI | budget: cold start ≤ 1.5 s to first rows from cache; no dropped frames on D-pad scroll (gfxinfo) |
 | 1.6 | `feature/details` (movie): backdrop, metadata, **Resume/Play** focused by default, audio (dub/sub) + quality choice | UI | screenshots; Resume label shows the saved time |
 | 1.7 | `feature/playback`: overlay (auto-hide), D-pad seek ±10 s with acceleration, scrubbing mode, resume prompt | PE + UI | seek latency within budget; screenshots of the overlay |
+| 1.10 | **Subtitles first-class** (`docs/subtitles.md`): own VTT engine with timing offset, Persian bidi, styling (size/colour/box/position/bold), in-player menu + Settings page with live preview | PE + DE + UI | parser tests on real files; screenshots of each style; offset works |
 | 1.8 | Baseline Profile + Startup Profile generated on the TV emulator; release build | M | Macrobenchmark shows the improvement vs no profile on the real TV |
 | 1.9 | Review gate: code review + device QA pass + perf report | M, QA, PA | `perf/reports/M1.md` within budget |
 

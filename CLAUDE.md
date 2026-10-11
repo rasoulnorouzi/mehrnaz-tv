@@ -13,7 +13,8 @@ The main session (Opus) is the **project manager**. It delegates to the agents i
 | Planning or picking the next task | `docs/plan.md` (milestones, task list, acceptance criteria) |
 | Calling or modelling the backend API | `docs/api.md`, then sample JSON in `research/webapp/api/*.json` |
 | Building or changing any screen/component | `docs/design-system.md` (tokens, layout, focus, RTL, screen specs) |
-| Working on playback, buffering, subtitles | `docs/decisions.md` §Player, `core/player/` |
+| Working on playback or buffering | `docs/decisions.md` §Player, `core/player/README.md` |
+| Working on subtitles (engine, styling, sync, settings) | `docs/subtitles.md` |
 | Checking speed, memory, jank, or benchmarks | `docs/perf-budget.md` (budgets + measurement commands), `tools/tv.sh` |
 | Device quirks (codecs, ADB, launcher, RAM) | `docs/device.md` |
 | Why something was chosen (or to change a choice) | `docs/decisions.md`. Add a new dated entry; never silently reverse |
