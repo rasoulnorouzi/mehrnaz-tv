@@ -97,3 +97,14 @@ form `username`/`password` → `data.token`; `Authorization: Bearer`. Token stor
 **«لیست من» = local Room list (source of truth) + best-effort two-way sync with the site's favourites** (toggle endpoint, so
 membership is checked before toggling). **Progress sync:** push `current_time` (seconds) to the site's watch-list when the
 player closes; pull once per app start, filling titles/episodes missing locally or further on the server.
+
+## Local files (v1.3, planned)
+**2026-10-12 · (planned) USB playback reuses the online pipeline via negative title ids.** Local titles get ids < 0 from a
+new `local_title` table, so progress, title snapshots, prefs, subtitle offsets, Continue Watching, Watch Next, auto-next and
+the episodes panel work without changes; a local file is keyed by USB volume UUID + relative path. DB v1 → v2 is additive
+(2 tables + tested migration). Storage access = `MANAGE_EXTERNAL_STORAGE` (private sideloaded app; granted once via ADB
+appops or TV Settings), SAF picker as fallback. Embedded text subtitles are drawn by our own renderer so the user's style and
+sync apply. Continue Watching for local titles: shared row vs separate row, both built behind a Settings switch; the user picks.
+- Rejected: a separate progress store for local files (duplicates every resume/CW path); `READ_EXTERNAL_STORAGE` + MediaStore
+  only (on API 30 it can't see sidecar `.srt` files); VLC/Kodi side by side (loses our UI, subtitles and history).
+- Revisit if: the TV doesn't allow all-files access, or the user wants LAN (PC/NAS) sources instead of USB.

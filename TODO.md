@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-11 (**v1.2.0 released**: playback speed; before that **v1.1.0**: prev/next, episodes panel, CW «go to page», faster quality switch, 3 colours, 0.5 s sync only)
+Last updated: 2026-10-12 (**v1.3 «فایل‌های من» (USB playback) planned**, not started) · 2026-10-11 (**v1.2.0 released**: playback speed; before that **v1.1.0**: prev/next, episodes panel, CW «go to page», faster quality switch, 3 colours, 0.5 s sync only)
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -92,6 +92,17 @@ Last updated: 2026-10-11 (**v1.2.0 released**: playback speed; before that **v1.
 - [ ] Decision 2026-10-11: **no TV access for now → develop on the Android TV emulator.** Tasks marked 📺 need the real TV and wait until it's available.
 
 ## 📋 To do
+
+### v1.3 «فایل‌های من»: USB movies and series (📋 next update, planned 2026-10-12; start only when the user says "go")
+Full spec: `docs/plan.md` §v1.3. User's folders: `Show/Season N/episodes` or `Show/episodes`; files are MKV and MP4,
+with no subtitle, a sidecar `.srt`, or embedded soft subtitles.
+- [ ] v1.3-1 `core:model` contract for local titles (negative ids) + `LocalMediaRepository` (M)
+- [ ] v1.3-2 USB scan + series/season/episode detector + DB v1→v2 (2 new tables, tested migration) (DE)
+- [ ] v1.3-3 Local playback: `.srt` + Persian encoding detection, embedded subs drawn by our renderer, subtitle + audio menus, FFmpeg audio ext. if needed (PE)
+- [ ] v1.3-4 «فایل‌های من» screens: entry on home, grid, series + movie pages (UI)
+- [ ] v1.3-5 Continue Watching **both options** (A: one shared row with USB badge, B: separate «ادامه از فلش» row) + Settings switch; user picks on the TV, then remove the loser (UI + M)
+- [ ] v1.3-6 Wiring, `tools/tv.sh` USB access grant, emulator QA with a fake USB, signed release over v1.2.0 (M + QA)
+- [ ] 📺 v1.3-7 On the TV: USB format, "all files access" setting, AC3/DTS audio, 4K HEVC from USB (U + PA)
 
 ### v1.x ideas / follow-ups
 - [ ] 📺 Check 2× at 1080p on the real TV (the emulator's software decoder can't; the MT9611 hardware decoder should) (PA)

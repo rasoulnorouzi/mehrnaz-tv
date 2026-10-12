@@ -96,6 +96,51 @@ Room cache (stale-while-revalidate for home rows, so the home screen paints inst
 | v1.1-6 | Subtitle sync: remove the 5 s buttons (0.5 s steps + hold-to-repeat are enough; user request) | UI | panel shows only 0.5 s + reset |
 | v1.1-5 | Continue Watching long-press menu: «رفتن به صفحهٔ فیلم/سریال» → details (series: that season + episode focused) | UI | option present for movies and series; focus lands on the episode |
 
+## v1.3: «فایل‌های من», play movies and series from a USB stick (📋 planned 2026-10-12, start when the user says "go")
+**Goal:** the user plugs a USB stick with their own movies and series into the TV and watches them inside the app, with
+the same player, subtitle styling and sync, speed, resume, Continue Watching, auto-next and episodes panel as online titles.
+
+**Folder rules** (no renaming needed; pure-Kotlin detector with unit tests over many naming styles):
+- Each folder at the stick's root is a title. A folder with one video, or a video directly at the root, is a **movie**.
+- A folder with videos directly inside is a **series, season 1**. A folder with sub-folders is a **series**; each
+  sub-folder is a season, numbered from its name (`Season 2`, `S02`, `فصل ۲`, `2`), else name order.
+- Episode number from `S01E03`, `E03`, `Episode 3`, `قسمت ۳` or a leading number, else **natural** name order (ep2 < ep10).
+- Skip `sample` files, very short clips and hidden/system files. Example the user has: `Island Stories/Season 1/E01.mkv`.
+- Poster: `poster.jpg` / `folder.jpg` in the folder → else a best-effort match against the catalog → else a text card.
+
+**How it fits the existing code:**
+- Local titles get **negative ids** (a new `local_title` table), so `progress`, `title_snapshot`, `prefs` and
+  `subtitle_offset` (all keyed by `postId`) work unchanged. A local key = USB volume UUID + relative path, so
+  re-plugging or another port keeps progress (renaming a folder starts that title fresh).
+- **DB v1 → v2**, additive only: `local_title` + `local_episode` tables, a tested `Migration`, new schema JSON (hard rule 11).
+- Player: `DefaultDataSource` wrapping the OkHttp factory (file/content URIs), a smaller buffer for local files.
+- Access: `MANAGE_EXTERNAL_STORAGE`, granted once with `tools/tv.sh` (appops over ADB) or TV Settings; Storage Access
+  Framework folder picker as the fallback (often missing/awkward on TVs). Drives found with `StorageManager`, refreshed on plug-in.
+
+**Subtitles and audio (all three cases the user has):** none → «زیرنویس ندارد»; sidecar `.srt` (`E02.srt`, `E02.fa.srt`,
+`E02.en.srt`) with a new SRT parser + Windows-1256 detection; **embedded soft subtitles** in MKV/MP4 (SRT/ASS/mov_text) take
+their text from ExoPlayer and draw it with **our own renderer**, so style/sync settings apply (ASS styling dropped, text kept);
+image subtitles (PGS/VobSub) shown as they are. One menu lists off + sidecar + embedded tracks by language, Persian first,
+choice remembered per title. MKV audio tracks («دوبله فارسی» / «زبان اصلی») get a picker, remembered per title.
+DTS/other audio: add the Media3 FFmpeg audio extension only if the user's files need it (docs/decisions.md §Player revisit-if).
+
+**Continue Watching: build both, the user picks on the TV:** (A) one shared «ادامه تماشا» row with a USB badge on local
+cards; (B) a separate «ادامه از فلش» row under it. Settings switch «ادامه تماشا: یکجا / جدا» for the trial; after the user
+chooses, remove the other option and the switch. A local card whose stick is unplugged stays and says «فلش "…" را وصل کنید».
+Local titles also go to the Android TV Watch Next row.
+
+| # | Task | Agent | Acceptance |
+|---|---|---|---|
+| v1.3-1 | `core:model` contract: local title/episode types, `LocalMediaRepository`, negative-id rules (before spawning) | M | builds; agents code against it |
+| v1.3-2 | USB scan (off the main thread) + folder/season/episode detector + DB v1→v2 (2 tables) + repository | DE | detector tests on many naming styles; migration test keeps history + My List |
+| v1.3-3 | Local playback: data source, local buffer, SRT parser + encoding detection, sidecar loading, embedded text subs via our renderer, image subs, subtitle + audio menus, FFmpeg audio ext. if needed | PE | `.srt` (UTF-8 and 1256), embedded MKV/MP4 subs and dual-audio MKV play on the emulator; unit tests for parser/encoding |
+| v1.3-4 | «فایل‌های من» entry on home, title grid, series page (seasons + episodes with progress/✓) and movie page, reusing current components | UI | screenshots: RTL, focus, empty "no USB" state |
+| v1.3-5 | Continue Watching option A + option B + Settings switch, unplugged-stick message, Watch Next for local titles | UI + M | screenshots of both options sent to the user |
+| v1.3-6 | Wiring (routing negative ids to local pages), `tools/tv.sh` access grant, emulator QA with a virtual USB shaped like the user's, release | M + QA | install over v1.2.0 with history kept; 📺 then on the TV |
+
+📺 **Check on the real TV:** USB format (FAT32 / exFAT / NTFS), whether Xiaomi shows the "all files access" setting,
+AC3/E-AC3/DTS playback from the user's own files, 4K HEVC from USB vs `docs/perf-budget.md`.
+
 ## Out of scope (for now)
 Profiles, downloads/offline playback (16 GB storage), trailer autoplay, seek-preview thumbnails
 (the server provides no sprites; generating them on a 2 GB TV is too costly), Chromecast, Play Store.
