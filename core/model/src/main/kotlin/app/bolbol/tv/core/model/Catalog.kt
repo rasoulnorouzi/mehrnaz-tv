@@ -89,6 +89,9 @@ data class ListQuery(
 
 enum class Category { MOVIES, SERIES, CARTOONS, DOCUMENTARIES, SUGGESTIONS }
 
+/** A genre usable as [ListQuery.genre]. Ids differ between movies and series (docs/api.md quirk 13). */
+data class Genre(val id: Int, val name: String)
+
 data class Page<T>(val items: List<T>, val page: Int, val totalPages: Int) {
     val hasNext: Boolean get() = page < totalPages
 }

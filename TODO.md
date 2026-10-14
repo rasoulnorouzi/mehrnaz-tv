@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-12 (**v1.3 «فایل‌های من» (USB playback) planned**, not started) · 2026-10-11 (**v1.2.0 released**: playback speed; before that **v1.1.0**: prev/next, episodes panel, CW «go to page», faster quality switch, 3 colours, 0.5 s sync only)
+Last updated: 2026-10-14 (**v1.4 started**: in-app update, offline saving, genres, search keyboard + prediction, phone-remote typing bug, player prev/next swap, details episode box; USB files postponed) · 2026-10-12 (**v1.3 «فایل‌های من» (USB playback) planned**, not started) · 2026-10-11 (**v1.2.0 released**: playback speed; before that **v1.1.0**: prev/next, episodes panel, CW «go to page», faster quality switch, 3 colours, 0.5 s sync only)
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -93,7 +93,16 @@ Last updated: 2026-10-12 (**v1.3 «فایل‌های من» (USB playback) plann
 
 ## 📋 To do
 
-### v1.3 «فایل‌های من»: USB movies and series (📋 next update, planned 2026-10-12; start only when the user says "go")
+### v1.4: update in-app, offline saving, genres, search, fixes (🔄 started 2026-10-14; spec docs/plan.md §v1.4)
+- [x] 2026-10-14 · v1.4-0 Contract (DownloadRepository, UpdateRepository, Genre) + skeleton modules core:download, core:update, feature:downloads (M)
+- [ ] 🔄 v1.4-1 Download engine + DB v1→v2 + offline playback, and v1.4-7 «قسمت بعد» on the right (PE, Opus)
+- [ ] 🔄 v1.4-2 Downloads UI (details button + dialog, «دانلودها» screen, «حذف») and v1.4-3 details episode box (UI)
+- [ ] 🔄 v1.4-4 Genres for movies and series (DE)
+- [ ] 🔄 v1.4-5 Search keyboard + prediction and v1.4-6 phone-remote typing bug (UI)
+- [ ] 🔄 v1.4-8 In-app update (core:update, Settings, release.sh → public repo) (DE)
+- [ ] v1.4-9 Wiring, full emulator QA, release v1.4.0 (M + QA)
+
+### v1.3 «فایل‌های من»: USB movies and series (⏸ postponed by the user 2026-10-14; planned 2026-10-12)
 Full spec: `docs/plan.md` §v1.3. User's folders: `Show/Season N/episodes` or `Show/episodes`; files are MKV and MP4,
 with no subtitle, a sidecar `.srt`, or embedded soft subtitles.
 - [ ] v1.3-1 `core:model` contract for local titles (negative ids) + `LocalMediaRepository` (M)

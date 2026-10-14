@@ -96,7 +96,7 @@ Room cache (stale-while-revalidate for home rows, so the home screen paints inst
 | v1.1-6 | Subtitle sync: remove the 5 s buttons (0.5 s steps + hold-to-repeat are enough; user request) | UI | panel shows only 0.5 s + reset |
 | v1.1-5 | Continue Watching long-press menu: «رفتن به صفحهٔ فیلم/سریال» → details (series: that season + episode focused) | UI | option present for movies and series; focus lands on the episode |
 
-## v1.3: «فایل‌های من», play movies and series from a USB stick (📋 planned 2026-10-12, start when the user says "go")
+## v1.3: «فایل‌های من», play movies and series from a USB stick (⏸ postponed by the user 2026-10-14; planned 2026-10-12)
 **Goal:** the user plugs a USB stick with their own movies and series into the TV and watches them inside the app, with
 the same player, subtitle styling and sync, speed, resume, Continue Watching, auto-next and episodes panel as online titles.
 
@@ -141,8 +141,39 @@ Local titles also go to the Android TV Watch Next row.
 📺 **Check on the real TV:** USB format (FAT32 / exFAT / NTFS), whether Xiaomi shows the "all files access" setting,
 AC3/E-AC3/DTS playback from the user's own files, 4K HEVC from USB vs `docs/perf-budget.md`.
 
+## v1.4: in-app update, offline saving, genres, better search, fixes (🔄 started 2026-10-14, user: "go")
+User request 2026-10-14 (USB files postponed). Decisions by the user: updates come from a **public releases-only repo**;
+a download **asks quality + dub/sub each time** (size and free space shown); categories: **genres** for movies and series.
+DB v1→v2 for downloads (tested migration, hard rule 11). Released as **v1.4.0** (versionCode 4) only after full emulator QA.
+
+**Update source:** public GitHub repo `rasoulnorouzi/mehrnaz-releases` (APKs + `update.json` only, no code). The app reads
+`https://github.com/rasoulnorouzi/mehrnaz-releases/releases/latest/download/update.json`:
+`{"versionCode":5,"versionName":"1.4.1","apkUrl":"…/mehrnaz-tv-v1.4.1.apk","sizeBytes":…,"sha256":"…","notesFa":"…"}`.
+Check ≤ once a day (and on demand in Settings); install via `PackageInstaller` (needs `REQUEST_INSTALL_PACKAGES` and
+the one-time "install unknown apps" switch for «مهرناز»). Same signing key, so it installs over the old version with data kept.
+A developer-settings URL override lets the emulator test against a server on the PC (`http://10.0.2.2:…`).
+
+**Offline saving:** «دانلود» on details (movie) and per episode; dialog lists quality × dub/sub with sizes and the free space;
+refuses if size + 300 MB margin doesn't fit. One download at a time (2 GB RAM, don't hammer the CDN), Wi-Fi/any network,
+resumes after app restart, foreground service with a notification. Saves video + Persian VTT + poster. «دانلودها» tab
+(top bar) lists items with progress, «حذف» on every item (with confirm), «حذف همه», used/free space. Player plays the saved
+copy when present (works with no internet; quality/dub switching hidden). Offline start: if home fails, the error offers «دانلودها».
+
+| # | Task | Agent | Acceptance |
+|---|---|---|---|
+| v1.4-0 | `core:model` contract (DownloadRepository, UpdateRepository, Genre) + skeleton modules `:core:download`, `:core:update`, `:feature:downloads` | M | builds; agents code against it |
+| v1.4-1 | Download engine: Media3 DownloadManager (or own resumable writer), storage checks, subtitle + poster files, DB v1→v2 `download` table + tested migration, offline playback in the player | PE (Opus) | migration test keeps history + My List; unit tests; offline playback works on the emulator with Wi-Fi off |
+| v1.4-2 | Downloads UI: «دانلود» button/states + quality dialog on details (movie + episodes), «دانلودها» screen with clear «حذف» / «حذف همه» | UI | screenshots: RTL, focus, empty state, in-progress, completed |
+| v1.4-3 | Details: episode list in a fixed box that scrolls inside itself, first → last episode, page doesn't jump | UI (same agent as v1.4-2) | screenshots scrolling a 20+ episode season |
+| v1.4-4 | Genres: genre lists for movies and series (ids per kind, researched with few requests), genre chips on «فیلم‌ها» / «سریال‌ها» | DE | chips load real lists; ids verified; tests |
+| v1.4-5 | Search keyboard redesign + prediction row (completions from titles + recents) | UI | typing «باز» shows predictions; picking one searches; screenshots |
+| v1.4-6 | Bug: phone remote page stops typing after the first text | UI (same agent as v1.4-5) | send text 3+ times in a row from the phone page; unit test for the cause |
+| v1.4-7 | Player: «قسمت بعد» on the right (start), «قسمت قبل» on the left | PE (same agent as v1.4-1) | screenshot; D-pad order matches |
+| v1.4-8 | In-app update: `core:update` + Settings «به‌روزرسانی» + Home banner + `tools/release.sh` publishing to the public repo | DE | emulator: v1.4.0 → v1.4.1 test build updates in-app, data kept |
+| v1.4-9 | Wiring, full emulator QA (install over v1.2.0, download → offline → delete, update flow), release v1.4.0 | M + QA | report + screenshots; signed APK |
+
 ## Out of scope (for now)
-Profiles, downloads/offline playback (16 GB storage), trailer autoplay, seek-preview thumbnails
+Profiles, trailer autoplay, seek-preview thumbnails
 (the server provides no sprites; generating them on a 2 GB TV is too costly), Chromecast, Play Store.
 
 ## How a typical task flows

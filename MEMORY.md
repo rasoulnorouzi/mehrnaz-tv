@@ -5,7 +5,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 
 ## ▶ Current status
 - **v1.2.0 released 2026-10-11** (versionCode 3, playback speed; GitHub release; APK `dist/mehrnaz-tv-v1.2.0.apk` sent). Before: v1.1.0 (code 2), v1.0.0.
-- **Next update (planned, start on "go"):** v1.3 «فایل‌های من», USB movies/series (docs/plan.md §v1.3).
+- **In progress (2026-10-14): v1.4** (docs/plan.md §v1.4): in-app update, offline saving, genres, search keyboard, fixes. v1.3 USB postponed.
 - **Next:** whatever the user reports from the TV; 📺 items (quality-switch measurement on the TV, perf vs the official app,
   Watch Next on PatchWall). Any update: bump versionCode/versionName, DB migrations (no in-place schema edits), `tools/release.sh`.
 - **Keep in mind:** the signing key is in `~/.bolboltv/` (back it up); losing it means the user must uninstall to update.
@@ -34,6 +34,11 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-14: "Don't want the local file (USB) yet, postpone." New wishes, implement now ("let's go planning and implementation"): update
+  from inside the app (no more sending APKs), offline saving with a very clear remove button, better movie/series categories
+  (chose: genres), better search keyboard with prediction, phone remote page stops typing after one text, «قسمت بعد» should
+  be on the right, episodes on details should scroll inside their own box. Choices: public releases repo; ask quality each
+  download. "Test also on the simulator before publishing."
 - 2026-10-12: Wants to **play their own movies/series from a USB stick inside the app** (folders like `Island Stories/Season 1/E01`
   or episodes directly in the show folder), with resume, "where we watched" and Continue Watching. Files: MKV and MP4; subtitles
   none / sidecar `.srt` / embedded soft subs. Continue Watching: "not sure, do both" → build a shared row AND a separate row with a

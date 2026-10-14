@@ -108,3 +108,16 @@ sync apply. Continue Watching for local titles: shared row vs separate row, both
 - Rejected: a separate progress store for local files (duplicates every resume/CW path); `READ_EXTERNAL_STORAGE` + MediaStore
   only (on API 30 it can't see sidecar `.srt` files); VLC/Kodi side by side (loses our UI, subtitles and history).
 - Revisit if: the TV doesn't allow all-files access, or the user wants LAN (PC/NAS) sources instead of USB.
+
+## Updates, downloads, genres (v1.4)
+**2026-10-14 · In-app update from a public releases-only repo** (user choice). `rasoulnorouzi/mehrnaz-releases` holds only
+signed APKs + `update.json` (version, URL, size, SHA-256, Persian notes); the code repo stays private. The app checks at most
+once a day, verifies the SHA-256, installs with `PackageInstaller` (one-time "install unknown apps" switch). Same key as
+`tools/release.sh`, so data survives. The APK is publicly downloadable by URL; it holds no secrets (login is typed on the TV).
+- Rejected: reading the private repo (would need a token in the app); serving from the PC on Wi-Fi (PC must be on);
+  upload from the phone page (the APK still has to reach the phone first).
+**2026-10-14 · Offline saving is now in scope** (was out of scope because of 16 GB storage). Guard rails instead: the
+quality is asked every time with sizes and free space shown, a 300 MB free-space margin, one download at a time, and a
+clear «حذف» everywhere. DB v1 → v2 adds the download table (tested migration). USB files (v1.3) are postponed by the user.
+**2026-10-14 · Genres come from a researched per-kind table** (movie and series genre ids differ, docs/api.md quirk 13),
+exposed as `CatalogRepository.genres(category)`, so the source can later move to an API endpoint without touching the UI.

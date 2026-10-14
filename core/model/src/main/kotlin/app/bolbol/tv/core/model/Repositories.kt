@@ -21,6 +21,9 @@ interface CatalogRepository {
     suspend fun list(query: ListQuery, page: Int): Page<TitleSummary>
 
     suspend fun search(text: String, page: Int = 1): Page<TitleSummary>
+
+    /** Genre chips for the Movies / Series pages (v1.4), in display order; empty for other categories. */
+    suspend fun genres(category: Category): List<Genre> = emptyList()
 }
 
 /** Local watch progress and history (Room). The server keeps none. */
