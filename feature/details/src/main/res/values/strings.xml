@@ -20,6 +20,32 @@
     <!-- Spoken description of the check on a finished episode (long-press / MENU toggles it). -->
     <string name="details_episode_watched">دیده شد</string>
 
+    <!-- Offline saving (v1.4). Percent and sizes are passed in already formatted with Persian digits. -->
+    <string name="details_download">دانلود</string>
+    <string name="details_download_queued">در صف دانلود</string>
+    <string name="details_download_queued_short">در صف</string>
+    <string name="details_download_progress">در حال دانلود %1$s٪</string>
+    <string name="details_download_progress_unknown">در حال دانلود…</string>
+    <string name="details_download_paused">دانلود متوقف شد</string>
+    <string name="details_download_paused_short">متوقف</string>
+    <string name="details_download_done">دانلود شده</string>
+    <string name="details_download_failed">خطا در دانلود · تلاش دوباره</string>
+    <string name="details_percent">%1$s٪</string>
+    <string name="details_download_remove">حذف دانلود</string>
+    <string name="details_download_cancel">انصراف</string>
+    <string name="details_download_dialog_title">دانلود برای تماشای بدون اینترنت</string>
+    <string name="details_download_free_space">فضای خالی تلویزیون: %1$s</string>
+    <string name="details_download_free_loading">در حال بررسی فضای خالی…</string>
+    <string name="details_download_size_unknown">حجم نامشخص</string>
+    <string name="details_download_no_fit">جای کافی نیست</string>
+    <string name="details_download_no_space">فضای کافی نیست. حجم لازم: %1$s، فضای خالی: %2$s</string>
+    <string name="details_download_fail_no_space">فضای کافی نیست</string>
+    <string name="details_download_fail_network">اتصال به اینترنت برقرار نیست</string>
+    <string name="details_download_fail_gone">این فایل دیگر در دسترس نیست</string>
+    <string name="details_download_fail_generic">دانلود شروع نشد. دوباره امتحان کنید</string>
+    <string name="details_download_confirm_title">حذف دانلود؟</string>
+    <string name="details_download_confirm_body">«%1$s» از حافظهٔ تلویزیون پاک می‌شود. برای دیدن بدون اینترنت باید دوباره دانلودش کنید.</string>
+
     <!-- Meta line -->
     <string name="details_imdb">IMDb %1$s</string>
     <string name="details_age">رده سنی %1$s</string>

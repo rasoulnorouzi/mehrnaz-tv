@@ -5,6 +5,7 @@ import app.bolbol.tv.core.designsystem.formatProgressLabelFa
 import androidx.compose.runtime.Immutable
 import app.bolbol.tv.core.model.AudioType
 import app.bolbol.tv.core.model.CatalogException
+import app.bolbol.tv.core.model.DownloadItem
 import app.bolbol.tv.core.model.Episode
 import app.bolbol.tv.core.model.Person
 import app.bolbol.tv.core.model.PlaybackPrefs
@@ -62,6 +63,8 @@ data class EpisodeItem(
     val playable: Boolean,
     /** «ادامه از ۱۲:۳۴» (duration unknown, e.g. synced from the website) or «۲۴ دقیقه مانده»; null if not started. */
     val progressLabel: String? = null,
+    /** Offline-saving state of this episode; null = offline saving not wired in (no download icon). */
+    val download: DownloadButtonState? = null,
 ) {
     val number: Int get() = key.episode
 }
@@ -91,6 +94,8 @@ sealed interface DetailsUiState {
          * non-null only when it exists, is playable and lies in [selectedSeason]. null = the usual default focus.
          */
         val focusEpisode: WatchKey? = null,
+        /** Offline-saving state of a movie; null = not wired in, or a series (episodes carry their own). */
+        val movieDownload: DownloadButtonState? = null,
     ) : DetailsUiState {
         val isSeries: Boolean get() = details.type == TitleType.SERIES
     }
@@ -197,7 +202,11 @@ internal fun episodeSubtitle(title: String): String? {
     return trimmed
 }
 
-private fun Episode.toItem(titleId: Long, progress: Map<Pair<Int, Int>, PlaybackProgress>): EpisodeItem {
+private fun Episode.toItem(
+    titleId: Long,
+    progress: Map<Pair<Int, Int>, PlaybackProgress>,
+    downloads: Map<WatchKey, DownloadItem>?,
+): EpisodeItem {
     val saved = progress[season to number]
     val resume = saved.resumePositionMs()
     return EpisodeItem(
@@ -209,6 +218,7 @@ private fun Episode.toItem(titleId: Long, progress: Map<Pair<Int, Int>, Playback
         startPositionMs = resume,
         playable = streams.isNotEmpty(),
         progressLabel = if (resume > 0) formatProgressLabelFa(saved!!.positionMs, saved.durationMs, saved.completed) else null,
+        download = downloads?.let { it[WatchKey(titleId, season, number)].toButtonState() },
     )
 }
 
@@ -225,8 +235,11 @@ internal fun buildDetailsContent(
     userSeason: Int?,
     inMyList: Boolean? = null,
     focusTarget: WatchKey? = null,
+    /** This title's downloads; null = offline saving not wired in (no download buttons). */
+    downloads: List<DownloadItem>? = null,
 ): DetailsUiState.Content {
     val id = details.summary.id
+    val downloadsByKey = downloads?.associateBy { it.key }
     val cast = details.actors.distinctBy { it.id }
     val related = details.related.distinctBy { it.id }
 
@@ -241,6 +254,7 @@ internal fun buildDetailsContent(
             selectedSeason = 0,
             episodes = emptyList(),
             inMyList = inMyList,
+            movieDownload = downloadsByKey?.let { if (details.streams.isEmpty()) null else it[WatchKey(id)].toButtonState() },
         )
     }
 
@@ -257,7 +271,7 @@ internal fun buildDetailsContent(
     val episodes = seasons.firstOrNull { it.number == selected }
         ?.episodes.orEmpty()
         .sortedBy { it.number }
-        .map { it.toItem(id, byEpisode) }
+        .map { it.toItem(id, byEpisode, downloadsByKey) }
     val focusEpisode = focusTarget
         ?.takeIf { it.postId == id && it.season == selected }
         ?.takeIf { target -> episodes.any { it.key == target && it.playable } }
