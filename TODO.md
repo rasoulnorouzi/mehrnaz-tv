@@ -96,7 +96,7 @@ Last updated: 2026-10-14 (**v1.4 started**: in-app update, offline saving, genre
 ### v1.4: update in-app, offline saving, genres, search, fixes (🔄 started 2026-10-14; spec docs/plan.md §v1.4)
 - [x] 2026-10-14 · v1.4-0 Contract (DownloadRepository, UpdateRepository, Genre) + skeleton modules core:download, core:update, feature:downloads (M)
 - [ ] 🔄 v1.4-1 Download engine + DB v1→v2 + offline playback, and v1.4-7 «قسمت بعد» on the right (PE, Opus)
-- [ ] 🔄 v1.4-2 Downloads UI (details button + dialog, «دانلودها» screen, «حذف») and v1.4-3 details episode box (UI)
+- [x] 2026-10-14 · v1.4-2 Downloads UI (details «دانلود» + quality dialog with sizes/free space, red «حذف دانلود» with confirm, per-episode control, «دانلودها» tab + screen with «حذف»/«حذف همه», offline-start button) and v1.4-3 episode box that scrolls inside itself. Merged; awaiting engine wiring + device QA (UI)
 - [x] 2026-10-14 · v1.4-4 Genres: 23 movie + 17 series genres (ids from the site's genre pages, spot-checked; no API endpoint exists), one chip row «همه · ۲۵۰ برتر · … | ژانرها». Merged; tests pass; device QA pending (DE)
 - [x] 2026-10-14 · v1.4-5 Search keyboard (44 dp keys, prediction row from recents + a local title index; site index is 28.7 MB so not used) and v1.4-6 phone-remote fix (root cause: the QR panel was a Dialog that closed on the first text and stopped the phone server). Merged; tests pass; device QA pending (UI + M)
 - [ ] 🔄 v1.4-8 In-app update (core:update, Settings, release.sh → public repo) (DE)
