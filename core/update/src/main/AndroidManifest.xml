@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- In-app update (docs/update.md): PackageInstaller needs this, plus the one-time
+         "install unknown apps" switch the user flips for «مهرناز» in Android settings. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application>
+        <!-- Receives PackageInstaller session results (confirmation intent, success, failure). -->
+        <receiver
+            android:name=".InstallResultReceiver"
+            android:exported="false" />
+    </application>
+</manifest>

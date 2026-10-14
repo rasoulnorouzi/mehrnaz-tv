@@ -64,6 +64,8 @@ fun SettingsScreen(
     val showPerformance by viewModel.showPerformance.collectAsStateWithLifecycle()
     val mirror by viewModel.mirror.collectAsStateWithLifecycle()
     val mirrorResetDone by viewModel.mirrorResetDone.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val manifestUrl by viewModel.manifestUrl.collectAsStateWithLifecycle()
 
     var nav by remember { mutableStateOf(SettingsNavState(initialSection)) }
     // Attached to the selected list item / to the first control of the shown page.
@@ -74,6 +76,8 @@ fun SettingsScreen(
     LaunchedEffect(Unit) { runCatching { listEntry.requestFocus() } }
     LaunchedEffect(nav.section) {
         if (nav.section == SettingsSection.CONNECTION) viewModel.refreshMirror()
+        // Opening the page checks for a new version (skipped if one was done in the last 24 h).
+        if (nav.section == SettingsSection.UPDATE) viewModel.checkForUpdate(force = false)
     }
 
     BackHandler(enabled = nav.zone == SettingsZone.CONTENT) {
@@ -127,9 +131,24 @@ fun SettingsScreen(
                         onReset = viewModel::onResetMirrors,
                         entry = contentEntry,
                     )
+                    SettingsSection.UPDATE -> UpdatePage(
+                        versionName = viewModel.versionName,
+                        state = updateState,
+                        onAction = { action ->
+                            when (action) {
+                                UpdateAction.CHECK -> viewModel.checkForUpdate(force = true)
+                                UpdateAction.DOWNLOAD -> viewModel.downloadAndInstall()
+                                UpdateAction.OPEN_PERMISSION_SETTINGS -> viewModel.openInstallPermissionSettings()
+                                UpdateAction.NONE -> Unit
+                            }
+                        },
+                        entry = contentEntry,
+                    )
                     SettingsSection.DEVELOPER -> DeveloperPage(
                         showPerformance = showPerformance,
                         onShowPerformance = viewModel::onShowPerformance,
+                        manifestUrl = manifestUrl,
+                        onManifestUrl = viewModel::onManifestUrl,
                         entry = contentEntry,
                     )
                     SettingsSection.ABOUT -> AboutPage(versionName = viewModel.versionName)
