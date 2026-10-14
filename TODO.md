@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-14 (**v1.4 started**: in-app update, offline saving, genres, search keyboard + prediction, phone-remote typing bug, player prev/next swap, details episode box; USB files postponed) · 2026-10-12 (**v1.3 «فایل‌های من» (USB playback) planned**, not started) · 2026-10-11 (**v1.2.0 released**: playback speed; before that **v1.1.0**: prev/next, episodes panel, CW «go to page», faster quality switch, 3 colours, 0.5 s sync only)
+Last updated: 2026-10-14 (**v1.4.0 released**: in-app update, offline saving, genres, search keyboard + prediction, phone-remote typing bug, player prev/next swap, details episode box; USB files postponed) · 2026-10-12 (**v1.3 «فایل‌های من» (USB playback) planned**, not started) · 2026-10-11 (**v1.2.0 released**: playback speed; before that **v1.1.0**: prev/next, episodes panel, CW «go to page», faster quality switch, 3 colours, 0.5 s sync only)
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -101,7 +101,7 @@ Last updated: 2026-10-14 (**v1.4 started**: in-app update, offline saving, genre
 - [x] 2026-10-14 · v1.4-5 Search keyboard (44 dp keys, prediction row from recents + a local title index; site index is 28.7 MB so not used) and v1.4-6 phone-remote fix (root cause: the QR panel was a Dialog that closed on the first text and stopped the phone server). Merged; tests pass; device QA pending (UI + M)
 - [x] 2026-10-14 · v1.4-8 In-app update: core:update (daily check, SHA-256, PackageInstaller, one-time permission), Settings › «به‌روزرسانی» (only there, user request), release.sh `--publish` + tools/serve-update.sh. Merged + wired; device QA pending (DE + M)
 - [x] 2026-10-14 · v1.4-9 Wiring + full emulator QA on MiTV_API30 (M): v1.4.0 over v1.2.0 keeps history; in-app update v1.4.0→v1.4.1 test build works (after 2 fixes); downloads → offline play → delete; search predictions; phone remote 5 texts in a row; genre/quick chips. Fixed in QA: install-result receiver, update-page focus, startup crash on a bad update URL, dev URL field focus trap, top bar «ت..», Latin digits, browse initial focus, free space after delete. Screens: shots/2026-10-14/
-- [ ] v1.4-10 Publish v1.4.0: push code to rasoulnorouzi/mehrnaz-tv + GitHub release with APK + update.json (waiting for the user's OK) (M)
+- [x] 2026-10-14 · **v1.4.0 RELEASED**: code pushed to rasoulnorouzi/mehrnaz-tv, GitHub release v1.4.0 with APK + update.json; `releases/latest/download/update.json` verified, APK checksum matches (M)
 
 ### v1.3 «فایل‌های من»: USB movies and series (⏸ postponed by the user 2026-10-14; planned 2026-10-12)
 Full spec: `docs/plan.md` §v1.3. User's folders: `Show/Season N/episodes` or `Show/episodes`; files are MKV and MP4,

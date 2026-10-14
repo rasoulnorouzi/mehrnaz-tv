@@ -5,7 +5,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 
 ## ▶ Current status
 - **v1.2.0 released 2026-10-11** (versionCode 3, playback speed; GitHub release; APK `dist/mehrnaz-tv-v1.2.0.apk` sent). Before: v1.1.0 (code 2), v1.0.0.
-- **In progress (2026-10-14): v1.4** (docs/plan.md §v1.4): in-app update, offline saving, genres, search keyboard, fixes. v1.3 USB postponed.
+- **v1.4.0 released 2026-10-14** (versionCode 4; https://github.com/rasoulnorouzi/mehrnaz-tv/releases/tag/v1.4.0). Next releases: bump version, `tools/release.sh --publish --notes "…"` → in-app update. Was: **v1.4** (docs/plan.md §v1.4): in-app update, offline saving, genres, search keyboard, fixes. v1.3 USB postponed.
 - **Next:** whatever the user reports from the TV; 📺 items (quality-switch measurement on the TV, perf vs the official app,
   Watch Next on PatchWall). Any update: bump versionCode/versionName, DB migrations (no in-place schema edits), `tools/release.sh`.
 - **Keep in mind:** the signing key is in `~/.bolboltv/` (back it up); losing it means the user must uninstall to update.
