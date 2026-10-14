@@ -8,7 +8,7 @@
 #   With --publish: also `gh release create v<version>` on the public repo below with the APK and update.json.
 #   The in-app updater reads update.json (docs/update.md). Run --publish only when the manager says so.
 set -euo pipefail
-REPO="rasoulnorouzi/mehrnaz-releases"
+REPO="rasoulnorouzi/mehrnaz-tv"
 PUBLISH=0; NOTES=""
 while [[ $# -gt 0 ]]; do
   case "$1" in

@@ -116,6 +116,10 @@ once a day, verifies the SHA-256, installs with `PackageInstaller` (one-time "in
 `tools/release.sh`, so data survives. The APK is publicly downloadable by URL; it holds no secrets (login is typed on the TV).
 - Rejected: reading the private repo (would need a token in the app); serving from the PC on Wi-Fi (PC must be on);
   upload from the phone page (the APK still has to reach the phone first).
+**2026-10-14 · Update source changed: the code repo itself** (supersedes the releases-only repo above). The user made the
+repo public and asked for a new name: `bolboljan-androidtv` → **`rasoulnorouzi/mehrnaz-tv`**. Updates come from its Releases
+(`releases/latest/download/update.json`). History was checked for secrets before relying on it being public: none (the signing
+key and passwords live in `~/.bolboltv/`, the login token only on the TV).
 **2026-10-14 · The update button lives only in Settings › «به‌روزرسانی»** (user: "update button should come in settings
 as update part"). The daily background check still runs, so the section already shows «نسخهٔ … آماده است» when opened.
 **2026-10-14 · Offline saving is now in scope** (was out of scope because of 16 GB storage). Guard rails instead: the

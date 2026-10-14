@@ -11,7 +11,7 @@ import kotlinx.serialization.json.contentOrNull
 
 /** Where the manifest lives unless a developer override is set (docs/update.md). */
 const val DEFAULT_MANIFEST_URL =
-    "https://github.com/rasoulnorouzi/mehrnaz-releases/releases/latest/download/update.json"
+    "https://github.com/rasoulnorouzi/mehrnaz-tv/releases/latest/download/update.json"
 
 /**
  * Parses `update.json`, leniently: unknown keys are ignored, numbers may be strings (`"5"`), the SHA-256

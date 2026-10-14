@@ -146,8 +146,8 @@ User request 2026-10-14 (USB files postponed). Decisions by the user: updates co
 a download **asks quality + dub/sub each time** (size and free space shown); categories: **genres** for movies and series.
 DB v1→v2 for downloads (tested migration, hard rule 11). Released as **v1.4.0** (versionCode 4) only after full emulator QA.
 
-**Update source:** public GitHub repo `rasoulnorouzi/mehrnaz-releases` (APKs + `update.json` only, no code). The app reads
-`https://github.com/rasoulnorouzi/mehrnaz-releases/releases/latest/download/update.json`:
+**Update source:** the Releases of the app's own repo `rasoulnorouzi/mehrnaz-tv` (made public and renamed from `bolboljan-androidtv` by the user on 2026-10-14). The app reads
+`https://github.com/rasoulnorouzi/mehrnaz-tv/releases/latest/download/update.json`:
 `{"versionCode":5,"versionName":"1.4.1","apkUrl":"…/mehrnaz-tv-v1.4.1.apk","sizeBytes":…,"sha256":"…","notesFa":"…"}`.
 Check ≤ once a day (and on demand in Settings); install via `PackageInstaller` (needs `REQUEST_INSTALL_PACKAGES` and
 the one-time "install unknown apps" switch for «مهرناز»). Same signing key, so it installs over the old version with data kept.
