@@ -7,7 +7,7 @@ The app updates itself: no more building, sending and installing from the PC.
   Manifest: `https://github.com/rasoulnorouzi/mehrnaz-releases/releases/latest/download/update.json`
   (`{versionCode, versionName, apkUrl, sizeBytes, sha256, notesFa}`; parsing is lenient, see `UpdateManifest`).
 - **`core:update`** (`UpdateRepositoryImpl`): `check()` fetches the manifest (redirects followed, network only; at most
-  once per 24 h unless forced; the last manifest is cached so the Home banner survives within the 24 h). A higher
+  once per 24 h unless forced; the last manifest is cached so Settings › «به‌روزرسانی» still shows an available update within the 24 h; there is no Home banner, user choice). A higher
   `versionCode` than the installed one = `Available`.
 - `downloadAndInstall()`: asks the PackageInstaller permission first (`NeedsInstallPermission` before any download),
   checks free space (2x size + 32 MB), streams the APK to `cache/updates` with progress, verifies SHA-256 (mismatch:
