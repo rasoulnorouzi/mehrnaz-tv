@@ -6,6 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.layout.layout
+import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -37,8 +41,6 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import app.bolbol.tv.core.designsystem.BolbolColors
@@ -99,6 +101,8 @@ fun SearchScreen(
 
     // Phone remote ------------------------------------------------------------------------------
     var showPhone by rememberSaveable { mutableStateOf(false) }
+    var phoneEverShown by rememberSaveable { mutableStateOf(false) }
+    if (showPhone) phoneEverShown = true
     LaunchedEffect(externalInput) {
         externalInput?.collect { typed ->
             showPhone = false // results are what the person wants to see now
@@ -108,6 +112,8 @@ fun SearchScreen(
 
     // Focus -------------------------------------------------------------------------------------
     val keyboardFocus = remember { FocusRequester() }
+    // The overlay (focused) disappears when the phone sends text: put focus back on the keyboard.
+    LaunchedEffect(showPhone) { if (!showPhone && phoneEverShown) keyboardFocus.tryRequestFocus() }
     val micFocus = remember { FocusRequester() }
     // Back from details: focus the title that was opened (if it is still in the results).
     var restoreId by remember(viewModel) {
@@ -128,13 +134,17 @@ fun SearchScreen(
         }
     }
     val onFocusedIndex = remember(viewModel) { { index: Int -> viewModel.onResultFocused(index, GRID_COLUMNS) } }
+    val onPrediction = remember(viewModel) { { text: String -> viewModel.onPredictionClicked(text) } }
+    val onKeyFocused = remember(viewModel) { { id: String -> viewModel.onKeyFocused(id) } }
+    val initialKeyId = remember(viewModel) { viewModel.lastKeyId }
     val onRecent = remember(viewModel) { { query: String -> viewModel.onRecentClicked(query) } }
     val onRetry = remember(viewModel) { { viewModel.retry() } }
     val onRestoreDone = remember { { restoreId = null } }
     val onPhone = remember { { showPhone = true } }
 
+    Box(modifier.fillMaxSize()) {
     Row(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(BolbolColors.Background)
             .padding(horizontal = BolbolSpacing.SafeHorizontal, vertical = BolbolSpacing.SafeVertical)
@@ -164,6 +174,10 @@ fun SearchScreen(
             onPhone = onPhone,
             wrapLeftEdge = !state.hasFocusableResults,
             initialFocus = keyboardFocus,
+            predictions = state.predictions,
+            onPrediction = onPrediction,
+            initialKeyId = initialKeyId,
+            onKeyFocused = onKeyFocused,
             modifier = Modifier.weight(1f),
         )
         ResultsPanel(
@@ -183,8 +197,11 @@ fun SearchScreen(
         )
     }
 
-    if (showPhone && phoneRemoteContent != null) {
-        PhoneRemoteDialog(onDismiss = { showPhone = false }, content = phoneRemoteContent)
+    // The QR panel owns the phone server, so it must stay composed (just invisible) after the first text arrives
+    // and the overlay closes; a Dialog would dispose it and stop the server (v1.4-6 root cause).
+    if (phoneRemoteContent != null && phoneEverShown) {
+        PhoneRemoteOverlay(visible = showPhone, onDismiss = { showPhone = false }, content = phoneRemoteContent)
+    }
     }
 }
 
@@ -207,47 +224,62 @@ private fun canRecognizeSpeech(context: Context): Boolean = try {
     false
 }
 
-/** Small panel with the app-provided QR code. Back or "بستن" closes it; focus starts on the close button. */
+/**
+ * Small panel with the app-provided QR code. Back or "بستن" closes it; focus starts on the close button.
+ *
+ * Not a `Dialog`: when [visible] is false the content stays in the composition (measured to zero size, so
+ * it is invisible and unfocusable) so the phone keeps working while the person looks at the results.
+ */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-private fun PhoneRemoteDialog(onDismiss: () -> Unit, content: @Composable () -> Unit) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+private fun PhoneRemoteOverlay(visible: Boolean, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    val closeFocus = remember { FocusRequester() }
+    BackHandler(enabled = visible, onBack = onDismiss)
+    if (visible) LaunchedEffect(Unit) { closeFocus.tryRequestFocus() }
+    val hidden = Modifier.layout { _, _ -> layout(0, 0) {} }
+    Box(
+        modifier = if (visible) {
+            Modifier
+                .fillMaxSize()
+                .background(BolbolColors.Background.copy(alpha = 0.92f))
+                // Focus cannot leave the panel while it is open.
+                .focusProperties { exit = { FocusRequester.Cancel } }
+                .focusGroup()
+        } else {
+            hidden
+        },
+        contentAlignment = Alignment.Center,
     ) {
-        val closeFocus = remember { FocusRequester() }
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(
-                modifier = Modifier
-                    .width(380.dp)
-                    .background(BolbolColors.Surface, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 28.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                BolbolText(
-                    text = SearchStrings.Phone,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = BolbolColors.TextPrimary,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(6.dp))
-                BolbolText(
-                    text = SearchStrings.PhoneHint,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = BolbolColors.TextSecondary,
-                    textAlign = TextAlign.Center,
-                    maxLines = 3,
-                )
-                Spacer(Modifier.height(16.dp))
-                content()
-                Spacer(Modifier.height(20.dp))
-                TvButton(
-                    text = SearchStrings.Close,
-                    onClick = onDismiss,
-                    modifier = Modifier.focusRequester(closeFocus),
-                    style = TvButtonStyle.Secondary,
-                )
-            }
+        Column(
+            modifier = Modifier
+                .width(380.dp)
+                .background(BolbolColors.Surface, RoundedCornerShape(12.dp))
+                .padding(horizontal = 28.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            BolbolText(
+                text = SearchStrings.Phone,
+                style = MaterialTheme.typography.titleMedium,
+                color = BolbolColors.TextPrimary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(6.dp))
+            BolbolText(
+                text = SearchStrings.PhoneHint,
+                style = MaterialTheme.typography.bodyMedium,
+                color = BolbolColors.TextSecondary,
+                textAlign = TextAlign.Center,
+                maxLines = 3,
+            )
+            Spacer(Modifier.height(16.dp))
+            content()
+            Spacer(Modifier.height(20.dp))
+            TvButton(
+                text = SearchStrings.Close,
+                onClick = onDismiss,
+                modifier = Modifier.focusRequester(closeFocus),
+                style = TvButtonStyle.Secondary,
+            )
         }
-        LaunchedEffect(Unit) { closeFocus.tryRequestFocus() }
     }
 }

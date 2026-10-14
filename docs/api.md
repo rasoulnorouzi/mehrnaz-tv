@@ -384,7 +384,7 @@ fetch('https://majnoonbazar.ir/tracker.php', { method: 'POST', body: FormData{
 `majnoonbazar.ir` is also the image CDN host. The `|0` suffix of the token was the same on both mirrors; if it is `<hash>|<userId>`, `0` means guest (speculation). `tracker.php` may accept other actions (for example saving progress), which is worth probing once an account exists. Local Room storage remains the safe default.
 
 Other open items:
-- Static search index: `YAS_SEARCH.json_url = https://euploadi.com/wp-content/uploads/search-data.json` (`version "1791668064"`) feeds the website's typeahead. Not downloaded; may allow offline/instant search.
+- Static search index: `YAS_SEARCH.json_url = https://euploadi.com/wp-content/uploads/search-data.json` (`version "1791668064"`) feeds the website's typeahead. **Evaluated 2026-10-14 (v1.4-5): one HEAD request says `Content-Length: 28673013` (~28 MB, cacheable for 30 days), so it is NOT downloaded** (a 2 GB TV should not parse a 28 MB JSON for a nicety). See "Search predictions" below.
 - Pagination beyond `total_page`; `page` on search; whether `country`/`genres`/`imdbtop250` combine; ids outside the home sample.
 - Series dub representation, multi-season ordering, 0- vs 1-based season/episode numbers, empty-result shapes of the season endpoints.
 - `/post/player-links` params; `/file/*`; actor/director/comment shapes; meaning of `sub_type`, `playonline_active` when `""`, and non-empty `dl_price`/`encoder_link`/`dl_sound`.
@@ -417,3 +417,15 @@ Other open items:
   player-links streams/seasons when they parse and are non-empty (movie entries or series blocks, key-matched download/player
   blocks, audio from `type_link`/`type` == `dub`), otherwise the links embedded in the detail. Episodes are merged per
   (season, episode) across all blocks, so an episode carries sub and dub streams in every quality, or only the audio that exists.
+
+
+## Search predictions (v1.4-5)
+
+The keyboard's prediction row (up to 6 chips above the keys) is built locally, with no extra requests:
+`CatalogRepository.suggestions(prefix, limit)` is answered by `TitleSuggestionIndex` (core:data), a prefix index over the
+titles (Latin and Persian) the app has already received: home rows (cached and fresh), search result pages and list pages
+(max 4000 titles, in memory only, rebuilt lazily on the IO dispatcher). A title matches when the normalised query is a prefix
+of the title or of any word-start suffix of it; whole-title prefixes rank first, then shorter titles. Normalisation: ي/ى to ی,
+ك to ک, ZWNJ and punctuation to a space, Persian/Arabic digits to ASCII, Latin lower-case. The search screen adds recent
+searches in front and debounces by 120 ms. Because the index only knows titles seen so far, predictions get better the more the
+person browses and searches; the 28 MB `search-data.json` remains the option if a full catalogue index is ever wanted.

@@ -68,6 +68,9 @@ class SearchViewModelTest {
 
     private class FakeCatalog(var handler: suspend (String, Int) -> Page<TitleSummary>) : CatalogRepository {
         val calls = mutableListOf<Pair<String, Int>>()
+        var titles: List<String> = emptyList()
+        override suspend fun suggestions(prefix: String, limit: Int): List<String> =
+            titles.filter { it.startsWith(prefix, ignoreCase = true) }.take(limit)
         override fun homeFeed(): Flow<HomeFeed> = emptyFlow()
         override suspend fun details(id: Long): TitleDetails = error("unused")
         override suspend fun list(query: ListQuery, page: Int): Page<TitleSummary> = error("unused")
@@ -109,6 +112,41 @@ class SearchViewModelTest {
     }
 
     private val SearchViewModel.current get() = state.value
+
+    // --- predictions ---
+
+    @Test
+    fun predictionsListRecentsFirstThenKnownTitlesWithoutDuplicates() = runTest(dispatcher) {
+        val catalog = FakeCatalog { _, _ -> pageOf(1..2) }
+        catalog.titles = listOf("Dune", "Dune Part Two", "Dunkirk", "Dune 1984")
+        val vm = vm(catalog, FakeStore(recents = listOf("Dune Part Two", "Friends")))
+        vm.type("Du"); pass(150)
+        assertEquals(listOf("Dune Part Two", "Dune", "Dunkirk", "Dune 1984"), vm.current.predictions)
+        vm.onKey(KeyAction.Clear); pass(150)
+        assertTrue(vm.current.predictions.isEmpty())
+    }
+
+    @Test
+    fun choosingAPredictionFillsTheQuerySearchesAtOnceAndRemembersIt() = runTest(dispatcher) {
+        val catalog = FakeCatalog { _, _ -> pageOf(1..2) }
+        catalog.titles = listOf("Dune Part Two")
+        val store = FakeStore()
+        val vm = vm(catalog, store)
+        vm.type("Du"); pass(150)
+        vm.onPredictionClicked(vm.current.predictions.single())
+        pass(1) // immediate: no debounce
+        assertEquals("Dune Part Two", vm.current.query)
+        assertEquals("Dune Part Two" to 1, catalog.calls.last())
+        assertEquals(listOf("Dune Part Two"), vm.current.recents)
+    }
+
+    @Test
+    fun theLastFocusedKeyIsRemembered() = runTest(dispatcher) {
+        val vm = vm(FakeCatalog { _, _ -> pageOf(1..1) })
+        assertEquals(SearchViewModel.DEFAULT_KEY_ID, vm.lastKeyId)
+        vm.onKeyFocused("3.7")
+        assertEquals("3.7", vm.lastKeyId)
+    }
 
     // --- typing and debounce ---
 

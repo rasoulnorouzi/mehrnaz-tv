@@ -53,11 +53,12 @@ internal class CatalogRepositoryImpl(
     detailsTtlMs: Long = DETAILS_TTL_MS,
 ) : CatalogRepository {
 
+    private val suggestionIndex = TitleSuggestionIndex(io)
     private val detailsCache = LruTtlCache<Long, TitleDetails>(detailsCacheSize, detailsTtlMs, clock)
 
     override fun homeFeed(): Flow<HomeFeed> = flow {
         val cached = loadCachedSections()
-        if (cached != null) emit(HomeFeed(cached, fromCache = true))
+        if (cached != null) emit(HomeFeed(cached, fromCache = true).also { suggestionIndex.addSections(it.sections) })
 
         // Emit outside the try block: a failure of the collector must not be mistaken for a network failure.
         val fresh: List<HomeSection>? = try {
@@ -66,7 +67,7 @@ internal class CatalogRepositoryImpl(
             if (cached == null) throw e
             null // keep showing the cache, finish quietly
         }
-        if (fresh != null) emit(HomeFeed(fresh, fromCache = false))
+        if (fresh != null) emit(HomeFeed(fresh, fromCache = false).also { suggestionIndex.addSections(it.sections) })
     }.flowOn(io)
 
     override suspend fun details(id: Long): TitleDetails {
@@ -77,12 +78,14 @@ internal class CatalogRepositoryImpl(
     }
 
     override suspend fun list(query: ListQuery, page: Int): Page<TitleSummary> =
-        withContext(io) { remote.list(query, page) }
+        withContext(io) { remote.list(query, page).also { suggestionIndex.add(it.items) } }
 
     override suspend fun search(text: String, page: Int): Page<TitleSummary> {
         if (text.isBlank()) return Page(emptyList(), page = 1, totalPages = 1)
-        return withContext(io) { remote.search(text.trim(), page) }
+        return withContext(io) { remote.search(text.trim(), page).also { suggestionIndex.add(it.items) } }
     }
+
+    override suspend fun suggestions(prefix: String, limit: Int): List<String> = suggestionIndex.suggest(prefix, limit)
 
     /** Cached rows, or null when there is no cache, it is unreadable, or it no longer parses. */
     private suspend fun loadCachedSections(): List<HomeSection>? {

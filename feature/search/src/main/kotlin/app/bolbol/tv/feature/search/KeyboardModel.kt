@@ -1,5 +1,7 @@
 package app.bolbol.tv.feature.search
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Pure model of the on-screen TV keyboard (no Compose, unit-tested): layouts, key actions and the
  * reducer that applies an action to the query text. docs/design-system.md §Components TvKeyboard.
@@ -38,6 +40,7 @@ internal enum class KeyKind { Character, Function }
  * One key. [longPress] runs on a long press of OK (alternate letter such as ي for ی); [hint] is
  * the small alternate glyph drawn in the key's corner. [weight] is the relative width in its row.
  */
+@Immutable
 internal data class KeyboardKey(
     val id: String,
     val label: String,
@@ -49,6 +52,7 @@ internal data class KeyboardKey(
 )
 
 /** Rows of character keys (digits first) plus the function row (switch, space, backspace, clear). */
+@Immutable
 internal class KeyboardLayout(
     val language: KeyboardLanguage,
     val characterRows: List<List<KeyboardKey>>,

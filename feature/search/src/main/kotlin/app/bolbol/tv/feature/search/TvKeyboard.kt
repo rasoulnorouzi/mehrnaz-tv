@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -23,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -43,12 +46,14 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import app.bolbol.tv.core.designsystem.BolbolColors
 import app.bolbol.tv.core.designsystem.BolbolSpacing
+import app.bolbol.tv.core.designsystem.SelectableChip
 import app.bolbol.tv.core.designsystem.TvButton
 import app.bolbol.tv.core.designsystem.TvButtonStyle
 
 private val PanelShape = RoundedCornerShape(12.dp)
 private val KeyShape = RoundedCornerShape(6.dp)
-private val KeyHeight = 40.dp
+private val KeyHeight = 44.dp
+private val PredictionHeight = 36.dp
 private val KeyGap = 4.dp
 
 /** Row slots reserved for focus-wrap requesters (Persian needs 6 rows incl. the function row). */
@@ -94,9 +99,18 @@ internal fun KeyboardPanel(
     onPhone: () -> Unit,
     wrapLeftEdge: Boolean,
     initialFocus: FocusRequester,
+    predictions: List<String>,
+    onPrediction: (String) -> Unit,
+    initialKeyId: String,
+    onKeyFocused: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val layout = KeyboardLayouts.of(language)
+    val layout = remember(language) { KeyboardLayouts.of(language) }
+    // The key that gets the initial focus: the one focused last (kept by the ViewModel), if this layout has it.
+    val focusKeyId = remember(layout, initialKeyId) {
+        if (layout.rows.any { row -> row.any { it.id == initialKeyId } }) initialKeyId else SearchViewModel.DEFAULT_KEY_ID
+    }
+    val hasPredictions = predictions.isNotEmpty()
     // Physical right / left edge keys of each row, for wrapping.
     val rightEdges = remember { List(MAX_ROWS) { FocusRequester() } }
     val leftEdges = remember { List(MAX_ROWS) { FocusRequester() } }
@@ -111,7 +125,11 @@ internal fun KeyboardPanel(
         verticalArrangement = Arrangement.spacedBy(KeyGap),
     ) {
         QueryField(query = query, language = language)
-        Spacer(Modifier.height(6.dp))
+        PredictionRow(
+            predictions = predictions,
+            onPrediction = onPrediction,
+            upTarget = if (voiceAvailable) micFocus else if (phoneAvailable) phoneFocus else rightEdges[lastRow],
+        )
 
         // Keys are laid out left-to-right like every Persian keyboard (ض at the left of the first letter
         // row, ۱ at the left of the digits), even though the screen itself is right-to-left.
@@ -120,7 +138,7 @@ internal fun KeyboardPanel(
                 key(if (r == lastRow) "function" else "row$r") {
                     // Top row: UP wraps to the bottom buttons (or the function row when there are none).
                     val upTarget = when {
-                        r != 0 -> null
+                        r != 0 || hasPredictions -> null
                         voiceAvailable -> micFocus
                         phoneAvailable -> phoneFocus
                         else -> rightEdges[lastRow]
@@ -129,8 +147,9 @@ internal fun KeyboardPanel(
                     val downTarget = if (!hasButtons && r == lastRow) rightEdges[0] else null
                     KeyRow(
                         keys = keys,
-                        rowIndex = r,
                         onAction = onAction,
+                        focusKeyId = focusKeyId,
+                        onKeyFocused = onKeyFocused,
                         rightEdge = rightEdges[r],
                         leftEdge = leftEdges[r],
                         wrapLeftEdge = wrapLeftEdge,
@@ -228,8 +247,9 @@ private fun Caret() {
 @Composable
 private fun KeyRow(
     keys: List<KeyboardKey>,
-    rowIndex: Int,
     onAction: (KeyAction) -> Unit,
+    focusKeyId: String,
+    onKeyFocused: (String) -> Unit,
     rightEdge: FocusRequester,
     leftEdge: FocusRequester,
     wrapLeftEdge: Boolean,
@@ -256,21 +276,21 @@ private fun KeyRow(
                     // Past the left edge: normally the D-pad leaves to the results; wrap only if there are none.
                     if (wrapLeftEdge) keyModifier = keyModifier.redirectKey(Key.DirectionLeft, rightEdge)
                 }
-                // The first key of the first letter row takes the initial focus.
-                if (rowIndex == 1 && index == 0) keyModifier = keyModifier.focusRequester(initialFocus)
-                KeyCap(key = k, onAction = onAction, modifier = keyModifier)
+                // The key focused last (or the default one) takes the initial focus.
+                if (k.id == focusKeyId) keyModifier = keyModifier.focusRequester(initialFocus)
+                KeyCap(key = k, onAction = onAction, onFocused = onKeyFocused, modifier = keyModifier)
             }
         }
     }
 }
 
 @Composable
-private fun KeyCap(key: KeyboardKey, onAction: (KeyAction) -> Unit, modifier: Modifier) {
+private fun KeyCap(key: KeyboardKey, onAction: (KeyAction) -> Unit, onFocused: (String) -> Unit, modifier: Modifier) {
     val function = key.kind == KeyKind.Function
     val longPress = key.longPress
     Surface(
         onClick = { onAction(key.action) },
-        modifier = modifier.height(KeyHeight),
+        modifier = modifier.height(KeyHeight).onFocusChanged { if (it.isFocused) onFocused(key.id) },
         onLongClick = if (longPress != null) ({ onAction(longPress) }) else null,
         shape = ClickableSurfaceDefaults.shape(KeyShape),
         colors = ClickableSurfaceDefaults.colors(
@@ -292,7 +312,7 @@ private fun KeyCap(key: KeyboardKey, onAction: (KeyAction) -> Unit, modifier: Mo
             } else {
                 Text(
                     text = key.label,
-                    style = if (function) MaterialTheme.typography.labelSmall else MaterialTheme.typography.titleSmall,
+                    style = if (function) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                     softWrap = false,
@@ -305,6 +325,31 @@ private fun KeyCap(key: KeyboardKey, onAction: (KeyAction) -> Unit, modifier: Mo
                     modifier = Modifier.align(Alignment.TopEnd).padding(top = 1.dp, end = 3.dp),
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, lineHeight = 11.sp),
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Prediction chips above the keys (phone-keyboard style), best first. The row always keeps its height so the
+ * keys do not jump while the list comes and goes. UP from a chip wraps to the bottom buttons; DOWN reaches the keys.
+ */
+@Composable
+private fun PredictionRow(
+    predictions: List<String>,
+    onPrediction: (String) -> Unit,
+    upTarget: FocusRequester,
+) {
+    Box(Modifier.fillMaxWidth().height(PredictionHeight), contentAlignment = Alignment.CenterStart) {
+        if (predictions.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().redirectKey(Key.DirectionUp, upTarget),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                items(predictions, key = { it }, contentType = { "prediction" }) { text ->
+                    SelectableChip(text = text, selected = false, onClick = { onPrediction(text) })
+                }
             }
         }
     }
