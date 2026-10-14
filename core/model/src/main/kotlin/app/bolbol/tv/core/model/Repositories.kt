@@ -24,6 +24,12 @@ interface CatalogRepository {
 
     /** Genre chips for the Movies / Series pages (v1.4), in display order; empty for other categories. */
     suspend fun genres(category: Category): List<Genre> = emptyList()
+
+    /**
+     * Search keyboard predictions (v1.4): up to [limit] completions for what has been typed so far
+     * (title words / titles), best first. Must be cheap: local data or one cached request, never a crawl.
+     */
+    suspend fun suggestions(prefix: String, limit: Int = 8): List<String> = emptyList()
 }
 
 /** Local watch progress and history (Room). The server keeps none. */
