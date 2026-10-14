@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import app.bolbol.tv.core.model.CatalogRepository
+import app.bolbol.tv.core.model.Genre
 import app.bolbol.tv.core.model.ListQuery
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -55,6 +56,21 @@ class BrowseViewModel(
 
     init {
         loadFirstPage()
+        if (genresOfferedFor(query)) loadGenres()
+    }
+
+    /** Separate coroutine: the chips may appear a moment after the grid, never delay it. A failure just means no genre chips. */
+    private fun loadGenres() {
+        viewModelScope.launch {
+            val genres = try {
+                catalog.genres(query.category)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                emptyList()
+            }
+            _state.update { it.copy(genres = genres) }
+        }
     }
 
     /** Called when the poster with [id] at grid position [index] gains focus. */
@@ -69,7 +85,16 @@ class BrowseViewModel(
         val s = _state.value
         if (filter !in filters || (filter == s.selected && s.phase != BrowsePhase.Error)) return
         activeQuery = query.withFilter(filter)
-        _state.update { it.copy(selected = filter) }
+        _state.update { it.copy(selected = filter, selectedGenre = null) }
+        loadFirstPage()
+    }
+
+    /** Reloads the grid from page 1 for [genre] (replaces any quick chip; the API's combined-filter behaviour is unverified). */
+    internal fun selectGenre(genre: Genre) {
+        val s = _state.value
+        if (genre !in s.genres || (genre == s.selectedGenre && s.phase != BrowsePhase.Error)) return
+        activeQuery = query.withGenre(genre)
+        _state.update { it.copy(selected = null, selectedGenre = genre) }
         loadFirstPage()
     }
 

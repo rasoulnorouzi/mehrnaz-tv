@@ -2,6 +2,7 @@ package app.bolbol.tv.feature.browse
 
 import app.bolbol.tv.core.designsystem.toPersianDigits
 import app.bolbol.tv.core.model.CatalogException
+import app.bolbol.tv.core.model.Genre
 import app.bolbol.tv.core.model.TitleSummary
 
 internal enum class BrowsePhase { Loading, Content, Empty, Error }
@@ -14,7 +15,11 @@ internal data class BrowseUiState(
     val title: String,
     /** Chips; empty = no chip row. */
     val filters: List<BrowseFilter>,
-    val selected: BrowseFilter,
+    /** Selected quick chip; null while a [selectedGenre] is active (the two never stack). */
+    val selected: BrowseFilter?,
+    /** Genre chips (filled asynchronously, never blocks the grid); empty = none. */
+    val genres: List<Genre> = emptyList(),
+    val selectedGenre: Genre? = null,
     val phase: BrowsePhase,
     /** Unique by id, in server order. */
     val items: List<TitleSummary> = emptyList(),
