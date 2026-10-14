@@ -30,6 +30,9 @@ enum class TvButtonStyle {
 
     /** Outlined: every other action; fills white when focused. */
     Secondary,
+
+    /** Red filled: removing something ("حذف دانلود", "حذف همه"). Always asks to confirm first. */
+    Danger,
 }
 
 private val ButtonShape = RoundedCornerShape(BolbolSpacing.CardRadius)
@@ -59,12 +62,24 @@ fun TvButton(
     enabled: Boolean = true,
 ) {
     val primary = style == TvButtonStyle.Primary
+    val danger = style == TvButtonStyle.Danger
     Surface(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
         shape = ClickableSurfaceDefaults.shape(ButtonShape),
-        colors = if (primary) {
+        colors = if (danger) {
+            ClickableSurfaceDefaults.colors(
+                containerColor = BolbolColors.Error,
+                contentColor = BolbolColors.Background,
+                focusedContainerColor = BolbolColors.Error,
+                focusedContentColor = BolbolColors.Background,
+                pressedContainerColor = BolbolColors.Error,
+                pressedContentColor = BolbolColors.Background,
+                disabledContainerColor = BolbolColors.SurfaceHigh,
+                disabledContentColor = BolbolColors.TextSecondary,
+            )
+        } else if (primary) {
             ClickableSurfaceDefaults.colors(
                 containerColor = BolbolColors.Accent,
                 contentColor = BolbolColors.OnAccent,
@@ -89,7 +104,7 @@ fun TvButton(
         },
         scale = ClickableSurfaceDefaults.scale(focusedScale = BolbolSpacing.FOCUS_SCALE_SMALL),
         border = ClickableSurfaceDefaults.border(
-            border = if (primary) Border.None else Border(BorderStroke(1.dp, BolbolColors.Outline), shape = ButtonShape),
+            border = if (primary || danger) Border.None else Border(BorderStroke(1.dp, BolbolColors.Outline), shape = ButtonShape),
             focusedBorder = FocusBorder,
         ),
     ) {

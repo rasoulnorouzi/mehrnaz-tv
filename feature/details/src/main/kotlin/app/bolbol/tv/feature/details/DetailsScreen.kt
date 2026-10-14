@@ -48,6 +48,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -113,6 +119,14 @@ fun DetailsScreen(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val overlay by viewModel.overlay.collectAsStateWithLifecycle()
+    val downloadActions = remember(viewModel) {
+        DownloadActions(
+            onDownload = viewModel::onDownloadClicked,
+            onRemove = viewModel::onRemoveDownloadClicked,
+            onRetry = viewModel::onRetryDownload,
+        )
+    }
     Box(modifier.fillMaxSize().background(BolbolColors.Background)) {
         when (val current = state) {
             DetailsUiState.Loading -> LoadingState()
@@ -127,10 +141,19 @@ fun DetailsScreen(
                 onQualitySelected = { viewModel.onQualitySelected(it) },
                 onToggleMyList = { viewModel.onToggleMyList() },
                 onSetWatched = { key, watched -> viewModel.onSetWatched(key, watched) },
+                downloadActions = downloadActions,
                 onPlay = onPlay,
                 onOpenTitle = onOpenTitle,
             )
         }
+        val summary = (state as? DetailsUiState.Content)?.details?.summary
+        DetailsOverlayHost(
+            overlay = overlay,
+            titleName = summary?.let { it.faTitle.ifBlank { it.title } }.orEmpty(),
+            onChoose = viewModel::onDownloadOptionChosen,
+            onConfirmRemove = viewModel::onConfirmRemoveDownload,
+            onDismiss = viewModel::closeOverlay,
+        )
     }
 }
 
@@ -172,6 +195,7 @@ private fun DetailsContent(
     onQualitySelected: (Int) -> Unit,
     onToggleMyList: () -> Unit,
     onSetWatched: (WatchKey, Boolean) -> Unit,
+    downloadActions: DownloadActions,
     onPlay: (WatchKey, Long) -> Unit,
     onOpenTitle: (TitleSummary) -> Unit,
 ) {
@@ -202,6 +226,7 @@ private fun DetailsContent(
                     onQualitySelected = onQualitySelected,
                     onToggleMyList = onToggleMyList,
                     onSetWatched = onSetWatched,
+                    downloadActions = downloadActions,
                     onPlay = onPlay,
                     focusEpisode = focusEpisode,
                     onFocusPlaced = onFocusPlaced,
@@ -245,6 +270,7 @@ private fun DetailsHeader(
     onQualitySelected: (Int) -> Unit,
     onToggleMyList: () -> Unit,
     onSetWatched: (WatchKey, Boolean) -> Unit,
+    downloadActions: DownloadActions,
     onPlay: (WatchKey, Long) -> Unit,
     focusEpisode: WatchKey?,
     onFocusPlaced: () -> Unit,
@@ -265,6 +291,7 @@ private fun DetailsHeader(
                 onAudioSelected = onAudioSelected,
                 onQualitySelected = onQualitySelected,
                 onToggleMyList = onToggleMyList,
+                downloadActions = downloadActions,
                 onPlay = onPlay,
                 skipInitialFocus = focusEpisode != null,
                 modifier = Modifier.weight(if (state.isSeries) 0.46f else 0.64f).fillMaxHeight(),
@@ -276,6 +303,7 @@ private fun DetailsHeader(
                     defaultSpec = defaultSpec,
                     onSeasonSelected = onSeasonSelected,
                     onSetWatched = onSetWatched,
+                    downloadActions = downloadActions,
                     onPlay = onPlay,
                     focusEpisode = focusEpisode,
                     onFocusPlaced = onFocusPlaced,
@@ -297,6 +325,7 @@ private fun InfoPane(
     onAudioSelected: (AudioType) -> Unit,
     onQualitySelected: (Int) -> Unit,
     onToggleMyList: () -> Unit,
+    downloadActions: DownloadActions,
     onPlay: (WatchKey, Long) -> Unit,
     skipInitialFocus: Boolean,
     modifier: Modifier = Modifier,
@@ -354,6 +383,7 @@ private fun InfoPane(
             state = state,
             episodeTarget = episodeTarget,
             onToggleMyList = onToggleMyList,
+            downloadActions = downloadActions,
             onPlay = onPlay,
             skipInitialFocus = skipInitialFocus,
         )
@@ -393,6 +423,7 @@ private fun PlayButtons(
     state: DetailsUiState.Content,
     episodeTarget: EpisodeFocusTarget,
     onToggleMyList: () -> Unit,
+    downloadActions: DownloadActions,
     onPlay: (WatchKey, Long) -> Unit,
     skipInitialFocus: Boolean,
 ) {
@@ -453,6 +484,10 @@ private fun PlayButtons(
                 icon = if (inMyList) BolbolIcons.Check else BolbolIcons.Add,
                 style = TvButtonStyle.Secondary,
             )
+        }
+        val movieDownload = state.movieDownload
+        if (movieDownload != null && !state.isSeries) {
+            MovieDownloadButtons(WatchKey(state.details.summary.id), movieDownload, downloadActions)
         }
     }
 }
@@ -525,6 +560,37 @@ private fun PickerRow(label: String, chips: @Composable () -> Unit) {
 private val EpisodeRowHeight = 60.dp
 private val EpisodeShape = RoundedCornerShape(BolbolSpacing.CardRadius)
 
+/**
+ * The list keeps one row of context above and below the focused row: moving down at the bottom edge scrolls by exactly
+ * one row, moving up at the top edge likewise, and a row already inside the margins does not move the list at all
+ * (the default spec scrolls only when the row is cut off, which makes the last visible row jump). Used only by the
+ * episode box; the page keeps [NoAutoScrollSpec].
+ */
+@OptIn(ExperimentalFoundationApi::class)
+internal class EpisodeListSpec(private val marginPx: Float) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
+        episodeScrollDistance(offset, size, containerSize, marginPx)
+}
+
+/**
+ * Pixels to scroll (positive = towards the end) so a child at [offset] with [size] inside a container of
+ * [containerSize] keeps at least [marginPx] free on both sides; the margin shrinks when the child is large.
+ */
+internal fun episodeScrollDistance(offset: Float, size: Float, containerSize: Float, marginPx: Float): Float {
+    val margin = marginPx.coerceAtMost(((containerSize - size) / 2f).coerceAtLeast(0f))
+    val end = offset + size
+    return when {
+        offset < margin -> offset - margin
+        end > containerSize - margin -> end - (containerSize - margin)
+        else -> 0f
+    }
+}
+
+/**
+ * Season tabs and the episode box. The box has a fixed height (whatever the info block leaves), clips its content,
+ * and scrolls inside itself from the first to the last episode; a thin bar at its end edge shows where you are.
+ * The page behind it never moves while the focus travels between episodes (see [NoAutoScrollSpec]).
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EpisodePane(
@@ -533,6 +599,7 @@ private fun EpisodePane(
     defaultSpec: BringIntoViewSpec,
     onSeasonSelected: (Int) -> Unit,
     onSetWatched: (WatchKey, Boolean) -> Unit,
+    downloadActions: DownloadActions,
     onPlay: (WatchKey, Long) -> Unit,
     focusEpisode: WatchKey?,
     onFocusPlaced: () -> Unit,
@@ -551,17 +618,26 @@ private fun EpisodePane(
     val listState = remember(state.selectedSeason) {
         LazyListState(firstVisibleItemIndex = (targetIndex - 1).coerceAtLeast(0))
     }
+    val listSpec = with(LocalDensity.current) { remember(this) { EpisodeListSpec((EpisodeRowHeight + 8.dp).toPx()) } }
 
-    // The page itself does not auto-scroll on focus (see NoAutoScrollSpec), but these two scrollables must.
-    CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
-        Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (state.seasons.size > 1) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (state.seasons.size > 1) {
+            // The season tabs scroll sideways and need the normal bring-into-view behaviour.
+            CompositionLocalProvider(LocalBringIntoViewSpec provides defaultSpec) {
                 SeasonChips(state.seasons, state.selectedSeason, onSeasonSelected)
             }
+        }
+        CompositionLocalProvider(LocalBringIntoViewSpec provides listSpec) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(vertical = 4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .clip(EpisodeBoxShape)
+                    .background(BolbolColors.Background.copy(alpha = 0.45f))
+                    .episodeScrollBar(listState),
+                // The end padding keeps rows clear of the scroll bar; the rest leaves room for the focus border.
+                contentPadding = PaddingValues(start = 6.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(items = state.episodes, key = { it.number }, contentType = { "episode" }) { episode ->
@@ -586,15 +662,54 @@ private fun EpisodePane(
                             onFocusPlaced()
                         }
                     }
-                    EpisodeRow(
-                        item = episode,
-                        onClick = { onPlay(episode.key, episode.startPositionMs) },
-                        onToggleWatched = { onSetWatched(episode.key, !episode.completed) },
-                        modifier = if (requester != null) Modifier.focusRequester(requester) else Modifier,
-                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        EpisodeRow(
+                            item = episode,
+                            onClick = { onPlay(episode.key, episode.startPositionMs) },
+                            onToggleWatched = { onSetWatched(episode.key, !episode.completed) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .then(if (requester != null) Modifier.focusRequester(requester) else Modifier),
+                        )
+                        if (episode.download != null) {
+                            EpisodeDownloadButton(episode.key, episode.download, downloadActions)
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+private val EpisodeBoxShape = RoundedCornerShape(12.dp)
+
+/** Thin position bar at the end edge of the episode box; drawn only when the list does not fit. Read in the draw phase. */
+private fun Modifier.episodeScrollBar(state: LazyListState): Modifier = drawWithContent {
+    drawContent()
+    val info = state.layoutInfo
+    val total = info.totalItemsCount
+    val visible = info.visibleItemsInfo.size
+    if (total > visible && visible > 0) {
+        val barWidth = 4.dp.toPx()
+        val inset = 5.dp.toPx()
+        val trackHeight = size.height - 2 * inset
+        val thumbHeight = (trackHeight * visible / total).coerceAtLeast(24.dp.toPx())
+        val first = state.firstVisibleItemIndex.toFloat()
+        val progress = (first / (total - visible).coerceAtLeast(1)).coerceIn(0f, 1f)
+        val top = inset + (trackHeight - thumbHeight) * progress
+        val x = if (layoutDirection == LayoutDirection.Rtl) inset else size.width - inset - barWidth
+        drawRoundRect(
+            color = BolbolColors.ProgressTrack,
+            topLeft = Offset(x, inset),
+            size = Size(barWidth, trackHeight),
+            cornerRadius = CornerRadius(barWidth / 2f),
+        )
+        drawRoundRect(
+            color = BolbolColors.TextSecondary,
+            topLeft = Offset(x, top),
+            size = Size(barWidth, thumbHeight),
+            cornerRadius = CornerRadius(barWidth / 2f),
+        )
     }
 }
 
@@ -643,7 +758,6 @@ private fun EpisodeRow(
         onClick = onClick,
         enabled = item.playable,
         modifier = modifier
-            .fillMaxWidth()
             .height(EpisodeRowHeight)
             .longPressOrMenu { onToggleWatched() },
         shape = ClickableSurfaceDefaults.shape(EpisodeShape),

@@ -108,3 +108,27 @@ fun formatImdb(rating: Float): String {
     val tenths = Math.round(rating * 10f).coerceAtLeast(0)
     return "${tenths / 10}.${tenths % 10}"
 }
+
+private const val KIB = 1024L
+private const val MIB = KIB * 1024L
+private const val GIB = MIB * 1024L
+
+/**
+ * File size for UI text with Persian numerals and the Persian decimal separator: «۲٫۴۲ گیگابایت»,
+ * «۸۵۰ مگابایت», «۱۲ کیلوبایت». Gigabytes get two decimals below 10 GB and one above; a negative size reads as zero.
+ */
+fun formatBytesFa(bytes: Long): String {
+    val b = bytes.coerceAtLeast(0L)
+    return when {
+        b >= GIB -> {
+            val decimals = if (b < 10 * GIB) 100L else 10L
+            val scaled = (b * decimals + GIB / 2) / GIB // rounded to the chosen decimals
+            val whole = scaled / decimals
+            val frac = scaled % decimals
+            val text = if (frac == 0L) "$whole" else "$whole\u066B" + frac.toString().padStart(if (decimals == 100L) 2 else 1, '0').trimEnd('0')
+            "$text گیگابایت".toPersianDigits()
+        }
+        b >= MIB -> "${(b + MIB / 2) / MIB} مگابایت".toPersianDigits()
+        else -> "${(b + KIB / 2) / KIB} کیلوبایت".toPersianDigits()
+    }
+}

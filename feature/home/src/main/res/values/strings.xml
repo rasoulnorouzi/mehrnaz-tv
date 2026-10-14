@@ -8,6 +8,7 @@
         <item>سریال</item>
         <item>لیست من</item>
         <item>پروفایل</item>
+        <item>دانلودها</item>
         <item>تنظیمات</item>
     </string-array>
 
@@ -23,6 +24,8 @@
     <string name="home_menu_remove">حذف از ادامه تماشا</string>
     <string name="home_menu_cancel">انصراف</string>
 
+    <!-- Button on the full-screen error: go to the saved (offline) titles -->
+    <string name="home_open_downloads">دانلودها</string>
     <string name="home_error_offline">اتصال به اینترنت برقرار نیست</string>
     <string name="home_error_server_down">سرور در دسترس نیست. کمی بعد دوباره امتحان کنید</string>
     <string name="home_error_generic">خطایی پیش آمد</string>

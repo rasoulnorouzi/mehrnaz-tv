@@ -18,15 +18,15 @@ class HomeTabsTest {
     }
 
     @Test
-    fun `the top bar reads search, home, movies, series, my list, profile, settings`() {
+    fun `the top bar reads search, home, movies, series, my list, profile, downloads, settings`() {
         assertEquals(
-            listOf("جستجو", "خانه", "فیلم", "سریال", "لیست من", "پروفایل", "تنظیمات"),
+            listOf("جستجو", "خانه", "فیلم", "سریال", "لیست من", "پروفایل", "دانلودها", "تنظیمات"),
             tabLabels(),
         )
     }
 
     @Test
-    fun `every tab has a destination, in the same order, with profile between my list and settings`() {
+    fun `every tab has a destination, in the same order, with downloads between profile and settings`() {
         assertEquals(
             listOf(
                 HomeDestination.SEARCH,
@@ -35,6 +35,7 @@ class HomeTabsTest {
                 HomeDestination.SERIES,
                 HomeDestination.MY_LIST,
                 HomeDestination.PROFILE,
+                null, // دانلودها: the onOpenDownloads callback
                 HomeDestination.SETTINGS,
             ),
             TabDestinations,
@@ -56,5 +57,12 @@ class HomeTabsTest {
     fun `the profile destination sits under the profile label`() {
         val index = TabDestinations.indexOf(HomeDestination.PROFILE)
         assertEquals("پروفایل", tabLabels()[index])
+    }
+
+    @Test
+    fun `the downloads tab sits under the downloads label and is the only extra null`() {
+        assertEquals("دانلودها", tabLabels()[DOWNLOADS_TAB_INDEX])
+        assertNull(TabDestinations[DOWNLOADS_TAB_INDEX])
+        assertEquals(listOf(HOME_TAB_INDEX, DOWNLOADS_TAB_INDEX), TabDestinations.indices.filter { TabDestinations[it] == null })
     }
 }

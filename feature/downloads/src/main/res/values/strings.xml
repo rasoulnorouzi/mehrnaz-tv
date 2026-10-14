@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="downloads_title">دانلودها</string>
+    <!-- Sizes are passed in already formatted (Persian digits). -->
+    <string name="downloads_storage">دانلودها: %1$s · فضای خالی: %2$s</string>
+    <string name="downloads_empty">هنوز چیزی دانلود نکرده‌اید</string>
+
+    <string name="downloads_remove_all">حذف همه</string>
+    <string name="downloads_remove">حذف</string>
+    <string name="downloads_play">پخش</string>
+    <string name="downloads_retry">تلاش دوباره</string>
+    <string name="downloads_cancel">انصراف</string>
+
+    <!-- Status line of a row -->
+    <string name="downloads_status_queued">در صف دانلود</string>
+    <string name="downloads_status_downloading">در حال دانلود · %1$s٪</string>
+    <string name="downloads_status_downloading_unknown">در حال دانلود…</string>
+    <string name="downloads_status_paused">متوقف شد</string>
+    <string name="downloads_status_completed">آماده برای تماشا</string>
+    <string name="downloads_status_failed">خطا: %1$s</string>
+    <string name="downloads_fail_no_space">فضای کافی نیست</string>
+    <string name="downloads_fail_network">اتصال به اینترنت برقرار نیست</string>
+    <string name="downloads_fail_gone">این فایل دیگر در دسترس نیست</string>
+    <string name="downloads_fail_generic">دانلود ناموفق بود</string>
+    <string name="downloads_percent">%1$s٪</string>
+
+    <!-- "۱٫۲ گیگابایت از ۳٫۴ گیگابایت" while saving, "۳٫۴ گیگابایت" when ready -->
+    <string name="downloads_size_progress">%1$s از %2$s</string>
+    <string name="downloads_quality_audio">%1$s · %2$s</string>
+    <string name="downloads_audio_dubbed">دوبله</string>
+    <string name="downloads_audio_subtitled">زیرنویس</string>
+
+    <!-- Confirm dialogs -->
+    <string name="downloads_confirm_one_title">حذف دانلود؟</string>
+    <string name="downloads_confirm_one_body">«%1$s» از حافظهٔ تلویزیون پاک می‌شود.</string>
+    <string name="downloads_confirm_all_title">حذف همه دانلودها؟</string>
+    <string name="downloads_confirm_all_body">%1$s دانلود از حافظهٔ تلویزیون پاک می‌شود. این کار برگشت‌پذیر نیست.</string>
+</resources>
