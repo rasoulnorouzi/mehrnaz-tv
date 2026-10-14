@@ -119,6 +119,28 @@ class PhoneRemoteServerTest {
         assertEquals(404, call("DELETE", session.base() + "/text?t=$token").code)
     }
 
+    /**
+     * v1.4-6 regression: "the remote keyboard stops after one typing". The server itself must deliver every post
+     * (same text twice, clearing, retyping) as long as somebody keeps collecting and the server is not stopped.
+     * (The real cause was the QR dialog closing on the first text and stopping the server; see SearchScreen.)
+     */
+    @Test
+    fun everyPostIsDeliveredIncludingRepeatsAndClears() = runBlocking {
+        val server = newServer()
+        val session = server.start()!!
+        val received = mutableListOf<String>()
+        val collector = async(start = CoroutineStart.UNDISPATCHED) { server.text.collect { received += it } }
+        val sent = listOf("ab", "abc", "abc", "", "abc", "x y", "x y", "")
+        for ((i, text) in sent.withIndex()) {
+            val body = """{"text":"$text"}""".toByteArray(Charsets.UTF_8)
+            assertEquals("post #$i", 200, call("POST", session.base() + "/text?t=" + session.token(), body).code)
+            withTimeout(5000) { while (received.size <= i) kotlinx.coroutines.delay(5) }
+        }
+        collector.cancel()
+        assertEquals(sent, received)
+        assertTrue(server.start() === session || server.start()!!.url == session.url) // still the same live session
+    }
+
     @Test
     fun persianTextPostedAsUtf8ArrivesNormalisedOnTheFlow() = runBlocking {
         val server = newServer()

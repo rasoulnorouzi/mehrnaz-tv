@@ -48,9 +48,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Grid columns. 4 x 140 dp posters would leave the keyboard under 240 dp on the 960 dp canvas,
- * so the results use 3 columns at full poster size and the keyboard gets ~40 % of the width.
+ * so the results use 2 columns at full poster size and the keyboard gets ~50 % of the width (v1.4-5: bigger keys).
  */
-internal const val GRID_COLUMNS = 3
+internal const val GRID_COLUMNS = 2
 
 private val GridGap = 14.dp
 private val GridPadding = 12.dp

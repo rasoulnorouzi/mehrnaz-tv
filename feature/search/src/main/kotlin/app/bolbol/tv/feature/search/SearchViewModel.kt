@@ -19,10 +19,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 internal const val SEARCH_DEBOUNCE_MS = 400L
+
+/** Predictions follow typing faster than the search itself. */
+internal const val PREDICTION_DEBOUNCE_MS = 120L
+internal const val MAX_PREDICTIONS = 6
 
 internal enum class SearchPhase {
     /** Query shorter than [MIN_QUERY_LENGTH]: recent searches and a hint. */
@@ -40,6 +45,8 @@ internal data class SearchUiState(
     val query: String = "",
     val language: KeyboardLanguage = KeyboardLanguage.Persian,
     val recents: List<String> = emptyList(),
+    /** Completions for [query] shown above the keys (recent searches first, then known titles), best first. */
+    val predictions: List<String> = emptyList(),
     val phase: SearchPhase = SearchPhase.Idle,
     val items: List<TitleSummary> = emptyList(),
     /** Last page loaded for [items]. */
@@ -75,6 +82,7 @@ class SearchViewModel internal constructor(
     private val store: SearchStore,
     private val ioDispatcher: CoroutineDispatcher,
     private val debounceMs: Long,
+    private val predictionDebounceMs: Long = PREDICTION_DEBOUNCE_MS,
 ) : ViewModel() {
 
     constructor(catalog: CatalogRepository, context: Context) :
@@ -94,7 +102,12 @@ class SearchViewModel internal constructor(
     )
 
     private val requests = MutableStateFlow(Request(""))
+    private val typed = MutableStateFlow("")
     private var moreJob: Job? = null
+
+    /** Id of the key that had focus last, so coming back from details/results lands on it again. */
+    internal var lastKeyId: String = DEFAULT_KEY_ID
+        private set
 
     /** Normalised query that produced the current results (what "next page" and "recent" refer to). */
     private var activeQuery = ""
@@ -111,6 +124,38 @@ class SearchViewModel internal constructor(
         viewModelScope.launch {
             requests.collectLatest { process(it) }
         }
+        viewModelScope.launch {
+            typed.debounce(predictionDebounceMs).collectLatest { updatePredictions(it) }
+        }
+    }
+
+    internal fun onKeyFocused(id: String) {
+        lastKeyId = id
+    }
+
+    /** A prediction chip was chosen: fill the query with it and search right away. */
+    internal fun onPredictionClicked(text: String) {
+        setText(text, immediate = true, remember = true, language = detectLanguage(text))
+    }
+
+    private suspend fun updatePredictions(text: String) {
+        val query = normalizeQuery(text)
+        if (query.isEmpty()) {
+            _state.update { if (it.predictions.isEmpty()) it else it.copy(predictions = emptyList()) }
+            return
+        }
+        val fromRecents = _state.value.recents.filter { r ->
+            r.startsWith(query, ignoreCase = true) && !r.equals(query, ignoreCase = true)
+        }
+        val fromCatalog = try {
+            catalog.suggestions(query, MAX_PREDICTIONS)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList() // predictions are a nicety, never an error
+        }
+        val merged = (fromRecents + fromCatalog).distinctBy { it.lowercase() }.take(MAX_PREDICTIONS)
+        _state.update { if (it.predictions == merged) it else it.copy(predictions = merged) }
     }
 
     // region Input
@@ -154,6 +199,7 @@ class SearchViewModel internal constructor(
         language: KeyboardLanguage? = null,
     ) {
         _state.update { it.copy(query = text, language = language ?: it.language) }
+        typed.value = text
         requests.update { it.copy(query = normalizeQuery(text), immediate = immediate, remember = remember) }
     }
 
@@ -278,6 +324,9 @@ class SearchViewModel internal constructor(
     // endregion
 
     companion object {
+        /** Key focused first (ی on the Persian layout, g on the English one): the middle of the letters. */
+        const val DEFAULT_KEY_ID = "2.4"
+
         fun factory(catalog: CatalogRepository, context: Context): ViewModelProvider.Factory {
             val appContext = context.applicationContext ?: context
             return viewModelFactory {

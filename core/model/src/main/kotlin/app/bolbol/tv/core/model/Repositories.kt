@@ -21,6 +21,12 @@ interface CatalogRepository {
     suspend fun list(query: ListQuery, page: Int): Page<TitleSummary>
 
     suspend fun search(text: String, page: Int = 1): Page<TitleSummary>
+
+    /**
+     * Up to [limit] title completions for [prefix] (search keyboard predictions), best first. Built locally from
+     * titles already seen, never a network call. Default: none, so fakes keep compiling.
+     */
+    suspend fun suggestions(prefix: String, limit: Int = 6): List<String> = emptyList()
 }
 
 /** Local watch progress and history (Room). The server keeps none. */
