@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -27,7 +28,10 @@ import kotlinx.coroutines.launch
  */
 class DownloadsViewModel(private val repo: DownloadRepository) : ViewModel() {
 
-    val uiState: StateFlow<DownloadsUiState> = repo.downloads()
+    /** Bumped after a delete finishes: the files go after the row, so free space must be read again (v1.4 QA). */
+    private val storageRefresh = MutableStateFlow(0)
+
+    val uiState: StateFlow<DownloadsUiState> = combine(repo.downloads(), storageRefresh) { items, _ -> items }
         .conflate()
         .map { items ->
             val storage = try {
@@ -73,6 +77,7 @@ class DownloadsViewModel(private val repo: DownloadRepository) : ViewModel() {
                     is DownloadsConfirm.RemoveAll -> repo.removeAll()
                 }
             }
+            storageRefresh.update { it + 1 }
         }
     }
 

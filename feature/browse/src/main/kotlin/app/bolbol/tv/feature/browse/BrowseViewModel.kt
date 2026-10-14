@@ -81,9 +81,16 @@ class BrowseViewModel(
         if (shouldLoadMore(index, s.items.size, GRID_COLUMNS, paging.hasMore, busy)) loadMore()
     }
 
+    /**
+     * True while the grid is reloading because a chip was picked: the chip keeps focus then. Otherwise (first load,
+     * retry) the grid takes focus even if the chip row grabbed it while the page was still empty (v1.4 QA).
+     */
+    internal var reloadFromChip = false
+
     internal fun selectFilter(filter: BrowseFilter) {
         val s = _state.value
         if (filter !in filters || (filter == s.selected && s.phase != BrowsePhase.Error)) return
+        reloadFromChip = true
         activeQuery = query.withFilter(filter)
         _state.update { it.copy(selected = filter, selectedGenre = null) }
         loadFirstPage()
@@ -93,6 +100,7 @@ class BrowseViewModel(
     internal fun selectGenre(genre: Genre) {
         val s = _state.value
         if (genre !in s.genres || (genre == s.selectedGenre && s.phase != BrowsePhase.Error)) return
+        reloadFromChip = true
         activeQuery = query.withGenre(genre)
         _state.update { it.copy(selected = null, selectedGenre = genre) }
         loadFirstPage()

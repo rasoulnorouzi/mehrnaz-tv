@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -117,6 +118,7 @@ private val HeaderInset = BolbolSpacing.SafeHorizontal + 16.dp
 /** Room above the first row and below the last for the 1.08x focus scale and the focus border. */
 private val GridEdgePadding = 12.dp
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun BrowseHeader(
     state: BrowseUiState,
@@ -149,7 +151,14 @@ private fun BrowseHeader(
                 state = state,
                 onSelectFilter = onSelectFilter,
                 onSelectGenre = onSelectGenre,
-                modifier = Modifier.weight(1f).onFocusChanged { chipsHaveFocus.value = it.hasFocus },
+                modifier = Modifier
+                    .weight(1f)
+                    // Until the first page is on screen, focus may not enter the chips: otherwise it lands on a
+                    // random chip and scrolls the row (v1.4 QA). A picked chip keeps focus during its reload.
+                    .focusProperties {
+                        enter = { if (state.phase == BrowsePhase.Content) FocusRequester.Default else FocusRequester.Cancel }
+                    }
+                    .onFocusChanged { chipsHaveFocus.value = it.hasFocus },
             )
         }
     }
@@ -219,8 +228,11 @@ private fun BrowseGrid(
     val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = targetIndex - targetIndex % GRID_COLUMNS)
 
     LaunchedEffect(Unit) {
-        // Picking a chip reloads the grid; the chip must keep focus then.
-        if (restoreIndex >= 0 || !chipsHaveFocus.value) targetFocus.requestFocusWhenAttached()
+        // Picking a chip reloads the grid; the chip must keep focus then. On the first load the chip row may hold
+        // focus only because the grid was still empty, so the grid takes it (v1.4 QA: focus landed on a genre chip).
+        val keepChipFocus = viewModel.reloadFromChip && chipsHaveFocus.value
+        viewModel.reloadFromChip = false
+        if (restoreIndex >= 0 || !keepChipFocus) targetFocus.requestFocusWhenAttached()
     }
 
     val pivot = with(LocalDensity.current) { GridEdgePadding.toPx() }

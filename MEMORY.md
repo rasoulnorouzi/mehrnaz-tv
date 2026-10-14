@@ -74,6 +74,10 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
   an agent team. No corrections so far.
 
 ## Progress log
+- 2026-10-14: v1.4 built (5 agents) and QA'd on the Android 11 emulator; release APK ready, not yet published. Lessons: agent worktrees start from
+  origin/main, so push or tell agents to rebase onto local main first; `tools/tv.sh shot` can fail silently and leave an old file (use fresh
+  names); Android kills the app when "install unknown apps" is toggled and after a self-update; a PackageInstaller result PendingIntent must
+  target the receiver class explicitly; keying buttons by action loses D-pad focus when the label changes.
 - 2026-10-12: Planned v1.3 «فایل‌های من» (USB playback) with the user: docs/plan.md §v1.3, TODO v1.3-1…7. Nothing implemented yet.
 - 2026-10-11: v1.2.0 released (playback speed). Emulator lesson: 1080p can't be judged on the emulator (software decoder, 460 dropped frames, looks frozen) → test speed/timing at 480p; and OK on a player with no resume prompt pauses it (check the play/pause icon before calling video "frozen").
 - 2026-10-11: v1.1.0 released. 5 agents in worktrees (Opus: player episodes nav, quality switch; Sonnet: colours, CW menu, sync

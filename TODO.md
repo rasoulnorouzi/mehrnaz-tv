@@ -95,12 +95,13 @@ Last updated: 2026-10-14 (**v1.4 started**: in-app update, offline saving, genre
 
 ### v1.4: update in-app, offline saving, genres, search, fixes (🔄 started 2026-10-14; spec docs/plan.md §v1.4)
 - [x] 2026-10-14 · v1.4-0 Contract (DownloadRepository, UpdateRepository, Genre) + skeleton modules core:download, core:update, feature:downloads (M)
-- [ ] 🔄 v1.4-1 Download engine + DB v1→v2 + offline playback, and v1.4-7 «قسمت بعد» on the right (PE, Opus)
+- [x] 2026-10-14 · v1.4-1 Download engine (own resumable writer, one at a time, foreground service) + DB v1→v2 (tested migration) + offline playback; v1.4-7 «قسمت بعد» on the right (PE). Emulator: 480p episode saved in ~1 min, played with Wi-Fi off with saved subtitles, deleted
 - [x] 2026-10-14 · v1.4-2 Downloads UI (details «دانلود» + quality dialog with sizes/free space, red «حذف دانلود» with confirm, per-episode control, «دانلودها» tab + screen with «حذف»/«حذف همه», offline-start button) and v1.4-3 episode box that scrolls inside itself. Merged; awaiting engine wiring + device QA (UI)
 - [x] 2026-10-14 · v1.4-4 Genres: 23 movie + 17 series genres (ids from the site's genre pages, spot-checked; no API endpoint exists), one chip row «همه · ۲۵۰ برتر · … | ژانرها». Merged; tests pass; device QA pending (DE)
 - [x] 2026-10-14 · v1.4-5 Search keyboard (44 dp keys, prediction row from recents + a local title index; site index is 28.7 MB so not used) and v1.4-6 phone-remote fix (root cause: the QR panel was a Dialog that closed on the first text and stopped the phone server). Merged; tests pass; device QA pending (UI + M)
 - [x] 2026-10-14 · v1.4-8 In-app update: core:update (daily check, SHA-256, PackageInstaller, one-time permission), Settings › «به‌روزرسانی» (only there, user request), release.sh `--publish` + tools/serve-update.sh. Merged + wired; device QA pending (DE + M)
-- [ ] v1.4-9 Wiring, full emulator QA, release v1.4.0 (M + QA)
+- [x] 2026-10-14 · v1.4-9 Wiring + full emulator QA on MiTV_API30 (M): v1.4.0 over v1.2.0 keeps history; in-app update v1.4.0→v1.4.1 test build works (after 2 fixes); downloads → offline play → delete; search predictions; phone remote 5 texts in a row; genre/quick chips. Fixed in QA: install-result receiver, update-page focus, startup crash on a bad update URL, dev URL field focus trap, top bar «ت..», Latin digits, browse initial focus, free space after delete. Screens: shots/2026-10-14/
+- [ ] v1.4-10 Publish v1.4.0: push code to rasoulnorouzi/mehrnaz-tv + GitHub release with APK + update.json (waiting for the user's OK) (M)
 
 ### v1.3 «فایل‌های من»: USB movies and series (⏸ postponed by the user 2026-10-14; planned 2026-10-12)
 Full spec: `docs/plan.md` §v1.3. User's folders: `Show/Season N/episodes` or `Show/episodes`; files are MKV and MP4,
