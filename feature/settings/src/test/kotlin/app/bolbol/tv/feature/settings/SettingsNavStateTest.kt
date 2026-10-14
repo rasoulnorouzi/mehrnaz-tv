@@ -68,7 +68,7 @@ class SettingsNavStateTest {
     @Test
     fun everySectionButAboutHasControls() {
         assertEquals(
-            listOf(true, true, true, true, false),
+            listOf(true, true, true, true, true, false),
             SettingsSection.entries.map { it.hasControls },
         )
     }
