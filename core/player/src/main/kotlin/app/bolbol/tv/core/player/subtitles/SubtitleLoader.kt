@@ -6,7 +6,9 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Request
+import java.io.File
 import java.io.IOException
+import java.net.URI
 
 /** Thrown when a subtitle file can't be fetched or holds no usable cue. */
 class SubtitleLoadException(message: String, cause: Throwable? = null) : IOException(message, cause)
@@ -24,8 +26,12 @@ class SubtitleLoader(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val maxBytes: Long = MAX_BYTES,
 ) {
-    /** Cancellable: cancelling the caller cancels the HTTP call. Throws [SubtitleLoadException]. */
+    /**
+     * Cancellable: cancelling the caller cancels the HTTP call. Throws [SubtitleLoadException].
+     * A `file://` URL (a saved copy, v1.4 offline playback) is read from disk with the same size cap.
+     */
     suspend fun load(url: String): SubtitleTrack = withContext(dispatcher) {
+        if (url.startsWith("file:")) return@withContext loadFile(url)
         val request = try {
             Request.Builder().url(url).apply { userAgent?.let { header("User-Agent", it) } }.build()
         } catch (e: IllegalArgumentException) {
@@ -52,6 +58,25 @@ class SubtitleLoader(
         } finally {
             cancelHandle.dispose()
         }
+    }
+
+    private fun loadFile(url: String): SubtitleTrack {
+        val file = try {
+            File(URI(url))
+        } catch (e: IllegalArgumentException) {
+            throw SubtitleLoadException("bad file url", e)
+        }
+        val length = file.length()
+        if (!file.isFile) throw SubtitleLoadException("no file")
+        if (length > maxBytes) throw SubtitleLoadException("too large: $length B")
+        val text = try {
+            file.readText(Charsets.UTF_8)
+        } catch (e: IOException) {
+            throw SubtitleLoadException("read failed", e)
+        }
+        val track = VttParser.parse(text)
+        if (track.size == 0) throw SubtitleLoadException("no cues")
+        return track
     }
 
     companion object {

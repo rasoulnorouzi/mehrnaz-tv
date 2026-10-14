@@ -137,11 +137,12 @@ internal fun PlayerOverlay(
         ) {
             SeekBarRow(position, chrome)
             Spacer(Modifier.height(12.dp))
-            // RTL row, start (right) → end: «قسمت قبل» · play/pause · «قسمت بعد» · «قسمت‌ها» · «تنظیمات پخش».
+            // RTL row, start (right) → end: «قسمت بعد» · play/pause · «قسمت قبل» · «قسمت‌ها» · «تنظیمات پخش»
+            // (v1.4-7, user request: next on the right). Focus starts on play/pause; RIGHT reaches «قسمت بعد».
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 val playing = status.playWhenReady && !status.isEnded
                 if (episodeButtons.visible) {
-                    SkipEpisodeButton(forward = false, enabled = episodeButtons.hasPrevious, onClick = onPreviousEpisode)
+                    SkipEpisodeButton(forward = true, enabled = episodeButtons.hasNext, onClick = onNextEpisode)
                 }
                 Button(onClick = onTogglePlay, modifier = Modifier.focusRequester(chrome.playPauseFocus)) {
                     PlayPauseGlyph(playing, Modifier.size(14.dp))
@@ -149,7 +150,7 @@ internal fun PlayerOverlay(
                     Text(stringResource(if (playing) R.string.player_pause else R.string.player_play))
                 }
                 if (episodeButtons.visible) {
-                    SkipEpisodeButton(forward = true, enabled = episodeButtons.hasNext, onClick = onNextEpisode)
+                    SkipEpisodeButton(forward = false, enabled = episodeButtons.hasPrevious, onClick = onPreviousEpisode)
                 }
                 if (hasEpisodePanel) {
                     Button(onClick = onOpenEpisodes, modifier = Modifier.focusRequester(chrome.episodesFocus)) {
@@ -257,8 +258,9 @@ private fun PlayPauseGlyph(playing: Boolean, modifier: Modifier = Modifier) {
 }
 
 /**
- * «قسمت قبل» / «قسمت بعد» (v1.1-1). Series only; disabled (still drawn, so the row never shifts) at the
- * first / last episode. Opaque colours: no translucency over the video beyond the scrim.
+ * «قسمت بعد» / «قسمت قبل» (v1.1-1; sides swapped in v1.4-7). Series only; disabled (still drawn, so the row never
+ * shifts) at the last / first episode. «قسمت بعد» sits at the start of the row, «قسمت قبل» after play/pause, and each
+ * glyph is on the outer side of its label. Opaque colours: no translucency over the video beyond the scrim.
  */
 @Composable
 private fun SkipEpisodeButton(forward: Boolean, enabled: Boolean, onClick: () -> Unit) {
@@ -270,28 +272,28 @@ private fun SkipEpisodeButton(forward: Boolean, enabled: Boolean, onClick: () ->
             disabledContentColor = BolbolColors.TextSecondary,
         ),
     ) {
-        if (!forward) {
-            SkipGlyph(forward = false, Modifier.size(14.dp))
+        // Children run start → end: the start-side button («قسمت بعد») puts its glyph first, the end-side one last.
+        if (forward) {
+            SkipGlyph(towardStart = true, Modifier.size(14.dp))
             Spacer(Modifier.width(8.dp))
         }
         Text(stringResource(if (forward) R.string.player_next_episode else R.string.player_previous_episode))
-        if (forward) {
+        if (!forward) {
             Spacer(Modifier.width(8.dp))
-            SkipGlyph(forward = true, Modifier.size(14.dp))
+            SkipGlyph(towardStart = false, Modifier.size(14.dp))
         }
     }
 }
 
 /**
- * ⏭ / ⏮ drawn in the reading direction (unlike play/pause): in RTL «قسمت قبل» sits at the start (right)
- * and points right, «قسمت بعد» at the end (left) and points left; each glyph sits on the outer side of
- * its label.
+ * ⏭ / ⏮ pointing outward, away from play/pause (unlike play/pause, which is never mirrored): [towardStart] points to the
+ * start edge. In RTL «قسمت بعد» sits at the start (right) and points right, «قسمت قبل» at the end (left) and points left.
  */
 @Composable
-private fun SkipGlyph(forward: Boolean, modifier: Modifier = Modifier) {
+private fun SkipGlyph(towardStart: Boolean, modifier: Modifier = Modifier) {
     val color = LocalContentColor.current
     Canvas(modifier) {
-        val pointsRight = forward == (layoutDirection == LayoutDirection.Ltr)
+        val pointsRight = towardStart == (layoutDirection == LayoutDirection.Rtl)
         val bar = size.width * 0.2f
         val tip = size.width - bar
         val path = Path().apply {

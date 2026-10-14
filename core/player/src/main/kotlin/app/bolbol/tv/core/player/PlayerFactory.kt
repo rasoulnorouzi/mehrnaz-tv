@@ -7,6 +7,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -47,10 +48,12 @@ class PlayerFactory(
     /** Must be called on the main thread; the player's application looper is the caller's. */
     fun create(): ExoPlayer {
         val tracker = MediaTransferTracker(nowMs = SystemClock::elapsedRealtime)
-        val dataSourceFactory = OkHttpDataSource.Factory(mediaCallFactory).apply {
+        val httpDataSourceFactory = OkHttpDataSource.Factory(mediaCallFactory).apply {
             userAgent?.let { setUserAgent(it) }
             setTransferListener(tracker)
         }
+        // http(s) → OkHttp exactly as before; file:// (v1.4 saved copies, core:download) → FileDataSource.
+        val dataSourceFactory = DefaultDataSource.Factory(appContext, httpDataSourceFactory)
         val mediaSourceFactory = KeyframeStartMediaSourceFactory(
             DefaultMediaSourceFactory(dataSourceFactory).setLoadErrorHandlingPolicy(MediaLoadErrorPolicy()),
         )

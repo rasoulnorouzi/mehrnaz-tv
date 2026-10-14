@@ -147,3 +147,50 @@ data class ContinueWatchingRow(
     @Embedded val progress: ProgressEntity,
     @Embedded(prefix = "s_") val snapshot: TitleSnapshotEntity,
 )
+
+/**
+ * One saved (or saving) movie/episode (v1.4 offline saving, added in DB v2 by [Migrations.MIGRATION_1_2]). [key] is the
+ * WatchKey string like [ProgressEntity.key]. Title snapshot columns repeat [TitleSnapshotEntity]'s so the «دانلودها»
+ * screen paints with no internet; [posterUrl] is the remote poster (the local copy is [posterPath]). Stream columns are
+ * the chosen StreamOption ([url] = the remote file it is saved from). [status] / [failure] are DownloadStatus /
+ * DownloadFailure names. [videoPath] is the final file (written as `<videoPath>.part` until complete); [subtitlePath]
+ * and [posterPath] are null until saved. [validator] is the server's ETag or Last-Modified, sent as `If-Range` when a
+ * partial download resumes. Changing any column needs DB v3 + a migration (hard rule 11).
+ */
+@Entity(tableName = "download", indices = [Index("postId")])
+data class DownloadEntity(
+    @PrimaryKey @ColumnInfo(name = "key") val key: String,
+    val postId: Long,
+    val season: Int,
+    val episode: Int,
+    // --- title snapshot
+    /** TitleType name or null. */
+    val type: String?,
+    val title: String,
+    val faTitle: String,
+    val posterUrl: String?,
+    val backdropUrl: String?,
+    val year: Int?,
+    val imdbRating: Float?,
+    val hasDub: Boolean,
+    val hasSubtitle: Boolean,
+    val subtitleLine: String?,
+    // --- stream
+    val quality: Int,
+    /** AudioType name. */
+    val audio: String,
+    val url: String,
+    val subtitleUrl: String?,
+    val label: String,
+    val sizeText: String?,
+    // --- state
+    val status: String,
+    val bytesDownloaded: Long,
+    val totalBytes: Long?,
+    val failure: String?,
+    val createdAtMs: Long,
+    val videoPath: String,
+    val subtitlePath: String?,
+    val posterPath: String?,
+    val validator: String?,
+)

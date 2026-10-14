@@ -34,7 +34,8 @@ class DataGraph(
     private val appContext = context.applicationContext
     private val session by lazy { SessionStore(SharedPreferencesSessionStorage(appContext)) }
     private val network by lazy { NetworkModule(appContext, mirrors, imageHosts, tokenProvider = session) }
-    private val database by lazy { BolbolDatabase.create(appContext) }
+    /** Internal so module-level accessors (DownloadsAccess.kt) can hand out a DAO without growing this class. */
+    internal val database by lazy { BolbolDatabase.create(appContext) }
 
     /** Shared by the API, the image loader and the video player (disk cache, timeouts, API mirror + image CDN failover). */
     val okHttpClient: OkHttpClient by lazy { network.okHttpClient }

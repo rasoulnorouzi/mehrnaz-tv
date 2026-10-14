@@ -121,5 +121,13 @@ as update part"). The daily background check still runs, so the section already 
 **2026-10-14 · Offline saving is now in scope** (was out of scope because of 16 GB storage). Guard rails instead: the
 quality is asked every time with sizes and free space shown, a 300 MB free-space margin, one download at a time, and a
 clear «حذف» everywhere. DB v1 → v2 adds the download table (tested migration). USB files (v1.3) are postponed by the user.
+**2026-10-14 · Offline saving engine: own resumable OkHttp writer to one plain file per item** (v1.4-1; reasons in
+`core/download/README.md`). A saved copy is an ordinary `.mp4` played through `DefaultDataSource` (`file://`), so the
+streaming path, its LoadControl and memory budget are untouched and no `SimpleCache` is shared between modules; Room's
+`download` table (DB v2, tested `Migration(1,2)`) is the only source of truth. Range + `If-Range` resume, back-off retry,
+network-callback pause/resume, a `dataSync` foreground service and the 300 MB free-space rule are ours (unit-tested).
+- Rejected: Media3 `DownloadManager` + `DownloadService` + `SimpleCache` (second SQLite index to keep in step, 5 MB span
+  files, a cache instance the player must share, `CacheDataSource` in the playback path).
+- Revisit if: streams become HLS/DASH (then Media3's segment downloaders are worth it).
 **2026-10-14 · Genres come from a researched per-kind table** (movie and series genre ids differ, docs/api.md quirk 13),
 exposed as `CatalogRepository.genres(category)`, so the source can later move to an API endpoint without touching the UI.

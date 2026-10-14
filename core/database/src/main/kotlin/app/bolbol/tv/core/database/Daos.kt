@@ -218,3 +218,53 @@ abstract class MyListDao {
     @Query("UPDATE my_list SET pendingSync = 1 WHERE pendingSync = 0")
     abstract suspend fun markSyncedAsPendingAdd()
 }
+
+/** Offline saving (v1.4). Status values are DownloadStatus names; the engine in :core:download is the only writer. */
+@Dao
+interface DownloadDao {
+    /** Newest first. */
+    @Query("SELECT * FROM download ORDER BY createdAtMs DESC, `key` DESC")
+    fun observeAll(): Flow<List<DownloadEntity>>
+
+    @Query("SELECT * FROM download WHERE postId = :postId ORDER BY season, episode")
+    fun observeForTitle(postId: Long): Flow<List<DownloadEntity>>
+
+    @Query("SELECT * FROM download ORDER BY createdAtMs DESC, `key` DESC")
+    suspend fun all(): List<DownloadEntity>
+
+    @Query("SELECT * FROM download WHERE `key` = :key")
+    suspend fun get(key: String): DownloadEntity?
+
+    /** The oldest queued item: downloads run one at a time in the order they were asked for. */
+    @Query("SELECT * FROM download WHERE status = 'QUEUED' ORDER BY createdAtMs ASC, `key` ASC LIMIT 1")
+    suspend fun nextQueued(): DownloadEntity?
+
+    @Upsert
+    suspend fun upsert(entity: DownloadEntity)
+
+    @Query("UPDATE download SET bytesDownloaded = :bytes, totalBytes = :total WHERE `key` = :key")
+    suspend fun updateProgress(key: String, bytes: Long, total: Long?)
+
+    @Query("UPDATE download SET status = :status, failure = :failure WHERE `key` = :key")
+    suspend fun updateStatus(key: String, status: String, failure: String?)
+
+    @Query("UPDATE download SET validator = :validator WHERE `key` = :key")
+    suspend fun updateValidator(key: String, validator: String?)
+
+    @Query("UPDATE download SET subtitlePath = :subtitlePath, posterPath = :posterPath WHERE `key` = :key")
+    suspend fun updateSidecars(key: String, subtitlePath: String?, posterPath: String?)
+
+    /** App start: whatever was running or waiting for the network is queued again. Returns the rows changed. */
+    @Query("UPDATE download SET status = 'QUEUED', failure = NULL WHERE status IN ('DOWNLOADING', 'PAUSED')")
+    suspend fun requeueInterrupted(): Int
+
+    /** The network is back: downloads paused for it are queued again. Returns the rows changed. */
+    @Query("UPDATE download SET status = 'QUEUED', failure = NULL WHERE status = 'PAUSED'")
+    suspend fun requeuePaused(): Int
+
+    @Query("DELETE FROM download WHERE `key` = :key")
+    suspend fun delete(key: String)
+
+    @Query("DELETE FROM download")
+    suspend fun deleteAll()
+}

@@ -17,6 +17,7 @@ class DataGraph(context: Context, mirrors: List<String> = DEFAULT_MIRRORS, image
     val currentMirror: String; val currentImageHost: String
     fun setMirrors(mirrors: List<String>); fun setImageHosts(imageHosts: List<String>)
 }
+val DataGraph.downloadDao: DownloadDao  // v1.4 (DownloadsAccess.kt): for :core:download's DownloadRepositoryImpl
 ```
 Everything is created lazily; constructing `DataGraph` does no I/O. One Room DB (`bolbol.db`) and one
 OkHttp client per graph. Repository implementations are `internal`.

@@ -320,6 +320,7 @@ fun PlayerScreen(
                 onSubtitleSize = viewModel::setSubtitleSize,
                 onSubtitleShift = { deltaMs -> showOffsetToast(viewModel.shiftSubtitles(deltaMs)) },
                 onSubtitleReset = { showOffsetToast(viewModel.resetSubtitleOffset()) },
+                offline = screen.offline,
             )
         }
         error?.let { e ->

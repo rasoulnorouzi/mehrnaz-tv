@@ -75,4 +75,22 @@ class SubtitleLoaderTest {
         expectFailure { loader().load("not a url") }
         expectFailure { loader().load("http://127.0.0.1:1/closed-port.vtt") }
     }
+
+    // ---- saved copies (v1.4 offline playback): file:// URLs never touch the network ---------------------------------
+
+    @Test fun loadsASavedFile() = runBlocking {
+        val vtt = requireNotNull(javaClass.classLoader?.getResource("lego_one_piece_s01e01.vtt")).readBytes()
+        val file = java.io.File.createTempFile("subtitle", ".vtt").apply { writeBytes(vtt); deleteOnExit() }
+        val track = loader().load("file://" + file.absolutePath)
+        assertEquals(478, track.size)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test fun savedFileProblemsFail() {
+        val big = java.io.File.createTempFile("big", ".vtt").apply { writeText("WEBVTT\n\n" + "x".repeat(2_000)); deleteOnExit() }
+        assertTrue(expectFailure { loader(maxBytes = 1_000).load("file://" + big.absolutePath) }.message!!.startsWith("too large"))
+        assertEquals("no file", expectFailure { loader().load("file:///no/such/subtitle.vtt") }.message)
+        val empty = java.io.File.createTempFile("empty", ".vtt").apply { writeText("WEBVTT\n"); deleteOnExit() }
+        assertEquals("no cues", expectFailure { loader().load("file://" + empty.absolutePath) }.message)
+    }
 }

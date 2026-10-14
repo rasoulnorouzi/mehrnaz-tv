@@ -8,7 +8,7 @@ subtitle spec: `docs/subtitles.md`.
 ## Public API (package `app.bolbol.tv.core.player`)
 | Name | What |
 |---|---|
-| `PlayerFactory(context, callFactory, userAgent?)` `.create()` / `.subtitleLoader` | Builds the ExoPlayer: OkHttp data source on `MediaHttp.mediaClient` (the shared client's pool, no disk cache, 6 s/10 s timeouts) with a `MediaTransferTracker`, `MediaLoadErrorPolicy`, `KeyframeStartMediaSourceFactory`, decoder fallback, explicit `DefaultLoadControl`, movie audio attributes + focus, noisy-audio pause, `WAKE_MODE_NETWORK`, ±10 s increments, `TRACK_TYPE_TEXT` disabled. `subtitleLoader` uses the shared (cached) client. |
+| `PlayerFactory(context, callFactory, userAgent?)` `.create()` / `.subtitleLoader` | Builds the ExoPlayer: `DefaultDataSource` (http(s) → OkHttp, `file://` saved copies (v1.4) → `FileDataSource`); OkHttp data source on `MediaHttp.mediaClient` (the shared client's pool, no disk cache, 6 s/10 s timeouts) with a `MediaTransferTracker`, `MediaLoadErrorPolicy`, `KeyframeStartMediaSourceFactory`, decoder fallback, explicit `DefaultLoadControl`, movie audio attributes + focus, noisy-audio pause, `WAKE_MODE_NETWORK`, ±10 s increments, `TRACK_TYPE_TEXT` disabled. `subtitleLoader` uses the shared (cached) client. |
 | `PlayerTuning` | Every number below, with KDoc on why. |
 | `PlaybackController(player, watch, prefs, scope, subtitleLoader?, clock)` | One per screen. `start(request, stream, startMs, playWhenReady)`, `switchStream(stream, rememberGlobally)`, `retry()`, `play/pause/togglePlayPause()`, `seekTo/seekBy()`, `setScrubbing()`, `prewarmOtherStreams()`, `setSubtitleOffset(ms)`, `setSubtitleStyle(style)`, `setSpeed(speed)` (v1.2-1), `markCompleted()`, `onStart/onStop/onTrimMemory()`, `release()`. Flows: `status`, `position`, `subtitleLines`, `subtitleStyle`, `subtitleOffsetMs`, `events` (one-shot `PlayerEvent.SubtitleLoadFailed`), `diagnostics`, `error`, `switchingQuality`, `speed`. |
 | `PlaybackSpeeds` / `PlaybackSpeedMemory` | v1.2-1 playback speed: `CHOICES` 0.5 · 0.75 · 1 · 1.25 · 1.5 · 2 (`normalize` snaps, `isNormal`). `PlaybackSpeedMemory.Session` is the in-memory, per-app-session holder every controller reads (next episode, auto-next, quality/audio switch, retry and the background stop/start keep it; re-applied before each `prepare()`); never persisted, so a process restart is back to 1×. Media3 keeps the pitch natural. Seek steps, progress and the auto-next window use media time; the auto-next countdown uses real time. |
@@ -26,7 +26,7 @@ subtitle spec: `docs/subtitles.md`.
 ## Subtitle engine (package `…core.player.subtitles`, docs/subtitles.md §Engine)
 | Name | What |
 |---|---|
-| `SubtitleLoader(callFactory, userAgent?)` `.load(url)` | OkHttp GET on `Dispatchers.IO` (HTTP cache makes re-opens free), 2 MB cap (Content-Length and streamed), cancellable; throws `SubtitleLoadException` on HTTP errors, oversize, I/O, or zero cues. |
+| `SubtitleLoader(callFactory, userAgent?)` `.load(url)` | OkHttp GET on `Dispatchers.IO` (HTTP cache makes re-opens free), 2 MB cap (Content-Length and streamed), cancellable; throws `SubtitleLoadException` on HTTP errors, oversize, I/O, or zero cues. A `file://` URL (a saved copy's `subtitle.vtt`, v1.4) is read from disk with the same cap, no network. |
 | `VttParser.parse(text)` → `SubtitleTrack` | Pure, lenient WebVTT: BOM, optional header, `HH:MM:SS.mmm`/`MM:SS.mmm` (also `,`), cue settings ignored, NOTE/STYLE/REGION and identifiers skipped, tags stripped (text kept), entities decoded (`&amp; &lt; &gt; &nbsp; &lrm; &rlm;`, numeric), credit cues dropped, sorted. |
 | `SubtitleTrack(cues)` `.linesAt(ms)` | Immutable, start-sorted `SubtitleCue(startMs, endMs, lines)`; binary search + running max end (overlaps stack in start order); returns the cue's own list when one cue is active (no allocation). |
 | `SubtitleSync(scope, positionMs)` | `lines: StateFlow<List<String>>` at `position − offsetMs`; 100 ms ticker only while playing with a track and subtitles on; `update()` on seek/discontinuity/pause; emits only on change. |
@@ -59,7 +59,8 @@ Logcat `BolbolPlayer`: `subtitles: 1328 cues in 85ms` / `subtitle load failed: �
 ```kotlin
 val playerFactory = PlayerFactory(appContext, okHttpClient)            // AppGraph, once
 val vm: PlayerViewModel = viewModel(factory = PlayerViewModel.factory(
-    request, playerFactory = playerFactory, watchRepository, prefsRepository))   // player + subtitle loader
+    request, playerFactory = playerFactory, watchRepository, prefsRepository,
+    downloads = downloadRepository))   // player + subtitle loader; v1.4: plays a saved copy when there is one
 PlayerScreen(vm, onExit = { backStack.removeLast() },
     onPlayNext = { next -> /* replace this player entry with PlayerRoute(next) */ },
     showDiagnostics = settings.showPerformance)
@@ -71,6 +72,15 @@ The ViewModel owns the single ExoPlayer and releases it in `onCleared()` after t
 final progress save. `onPlayNext` is called after the episode was saved as completed and paused; replace
 the back-stack entry so this ViewModel (and its ExoPlayer) is cleared before the next player is created.
 The manifest here adds `WAKE_LOCK` (needed by `setWakeMode`).
+
+## Offline playback (v1.4)
+With `downloads` (core:model `DownloadRepository`, implemented in `:core:download`), `PlayerViewModel` asks
+`offlineMedia(request.key)` before choosing a stream (`PlaybackSource`, unit-tested). A COMPLETED download plays from
+`file:///…/video.mp4` with its saved `subtitle.vtt` (works with Wi-Fi off), under the same progress key, so resume,
+Continue Watching and auto-next behave as usual. The saved stream is the only one: the settings panel shows
+«نسخهٔ ذخیره‌شده: ۷۲۰ · زیرنویس» instead of the audio/quality choices, the error panel has no «کیفیت پایین‌تر», and no CDN
+host is pre-warmed. Same ExoPlayer, LoadControl and memory budget as streaming (no cache data source); a local file only
+fills the buffer faster. Auto-next to an episode that is not saved streams it as usual (needs internet).
 
 ## Reading diagnostics
 - **Overlay:** `PlayerScreen(showDiagnostics = true)` or DPAD_UP ×3 → TTFF, resolution + bitrate,

@@ -17,13 +17,13 @@ android {
 kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
 dependencies {
-    implementation(project(":core:model"))
-    implementation(project(":core:database"))
-    implementation(libs.media3.exoplayer)
-    implementation(libs.media3.database)
-    implementation(libs.media3.datasource.okhttp)
-    implementation(libs.okhttp)
+    api(project(":core:model"))
+    // DownloadRepositoryImpl(context, okHttpClient, dao) takes core:database's DownloadDao and OkHttp: public API.
+    api(project(":core:database"))
+    api(libs.okhttp)
+    // Own resumable writer (README.md §Engine): no Media3 DownloadManager/SimpleCache/media3-database needed.
     implementation(libs.kotlinx.coroutines.android)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }
