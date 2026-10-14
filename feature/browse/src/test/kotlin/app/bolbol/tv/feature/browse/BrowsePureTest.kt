@@ -2,6 +2,7 @@ package app.bolbol.tv.feature.browse
 
 import app.bolbol.tv.core.model.CatalogException
 import app.bolbol.tv.core.model.Category
+import app.bolbol.tv.core.model.Genre
 import app.bolbol.tv.core.model.ListQuery
 import app.bolbol.tv.core.model.Page
 import app.bolbol.tv.core.model.TitleSummary
@@ -146,6 +147,21 @@ class FilterMappingTest {
         assertEquals(ListQuery(Category.MOVIES, country = 1199), movies.withFilter(BrowseFilter.Iranian))
         assertEquals(ListQuery(Category.MOVIES, country = 1198), movies.withFilter(BrowseFilter.Turkish))
         assertEquals(ListQuery(Category.SERIES, imdbTop250 = true), series.withFilter(BrowseFilter.Top250))
+    }
+
+    @Test
+    fun `genre chips only on unfiltered movies and series tabs`() {
+        assertTrue(genresOfferedFor(movies))
+        assertTrue(genresOfferedFor(series))
+        assertFalse(genresOfferedFor(ListQuery(Category.MOVIES, country = 1199)))
+        assertFalse(genresOfferedFor(ListQuery(Category.SERIES, genre = 108)))
+        assertFalse(genresOfferedFor(ListQuery(Category.CARTOONS)))
+    }
+
+    @Test
+    fun `a genre maps to a genre-only query of its own kind`() {
+        assertEquals(ListQuery(Category.MOVIES, genre = 29), movies.withGenre(Genre(29, "اکشن")))
+        assertEquals(ListQuery(Category.SERIES, genre = 108), series.withGenre(Genre(108, "اکشن")))
     }
 
     @Test

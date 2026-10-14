@@ -1,6 +1,7 @@
 package app.bolbol.tv.feature.browse
 
 import app.bolbol.tv.core.model.Category
+import app.bolbol.tv.core.model.Genre
 import app.bolbol.tv.core.model.ListQuery
 
 /** Country taxonomy ids of the MOVIES list (docs/api.md §5.1: the home rows "ایرانی" / "ترکی"). */
@@ -34,6 +35,15 @@ internal fun quickFiltersFor(base: ListQuery): List<BrowseFilter> {
         else -> emptyList()
     }
 }
+
+/**
+ * True when [base] gets a genre chip row: an unfiltered MOVIES / SERIES query (same condition as the quick
+ * chips). Genre ids are per kind (docs/api.md quirk 13); the repository supplies the matching list.
+ */
+internal fun genresOfferedFor(base: ListQuery): Boolean = quickFiltersFor(base).isNotEmpty()
+
+/** The list query for [genre] on top of [this] screen base query: genre only, never stacked with a quick filter. */
+internal fun ListQuery.withGenre(genre: Genre): ListQuery = copy(genre = genre.id)
 
 /** The list query for [filter] on top of the screen's [base] query. */
 internal fun ListQuery.withFilter(filter: BrowseFilter): ListQuery = when (filter) {

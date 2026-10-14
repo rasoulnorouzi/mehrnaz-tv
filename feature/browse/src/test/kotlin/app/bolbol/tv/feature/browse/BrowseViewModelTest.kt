@@ -4,6 +4,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import app.bolbol.tv.core.model.CatalogException
 import app.bolbol.tv.core.model.CatalogRepository
 import app.bolbol.tv.core.model.Category
+import app.bolbol.tv.core.model.Genre
 import app.bolbol.tv.core.model.HomeFeed
 import app.bolbol.tv.core.model.ListQuery
 import app.bolbol.tv.core.model.Page
@@ -37,6 +38,17 @@ private class FakeCatalog(
     var failure: CatalogException? = null
     var gate: CompletableDeferred<Unit>? = null
     var emptyResult = false
+    var genreList: List<Genre> = listOf(Genre(29, "اکشن"), Genre(13, "درام"))
+    var genreFailure: Exception? = null
+    var genreGate: CompletableDeferred<Unit>? = null
+    val genreCalls = mutableListOf<Category>()
+
+    override suspend fun genres(category: Category): List<Genre> {
+        genreCalls += category
+        genreGate?.await()
+        genreFailure?.let { throw it }
+        return genreList
+    }
 
     override suspend fun list(query: ListQuery, page: Int): Page<TitleSummary> {
         calls += query to page
@@ -278,6 +290,80 @@ class BrowseViewModelTest {
         assertTrue(vm.state.value.filters.isEmpty())
         vm.selectFilter(BrowseFilter.Turkish)
         assertEquals(listOf(query to 1), catalog.calls)
+    }
+
+    @Test
+    fun `genres load next to the grid and choosing one reloads page one with that genre only`() {
+        val catalog = FakeCatalog()
+        val vm = viewModel(catalog)
+        assertEquals(listOf(Genre(29, "اکشن"), Genre(13, "درام")), vm.state.value.genres)
+        assertEquals(listOf(Category.MOVIES), catalog.genreCalls)
+
+        vm.selectFilter(BrowseFilter.Iranian)
+        vm.onItemFocused(6, 5)
+        vm.selectGenre(Genre(13, "درام"))
+
+        val s = vm.state.value
+        assertEquals(Genre(13, "درام"), s.selectedGenre)
+        assertNull(s.selected) // the quick chip is deselected: filters never stack
+        assertEquals(ListQuery(Category.MOVIES, genre = 13) to 1, catalog.calls.last())
+        assertEquals(1, s.page)
+        assertEquals(12, s.items.size)
+
+        // Paging keeps the genre; going back to a quick chip drops it.
+        vm.onItemFocused(6, 5)
+        assertEquals(ListQuery(Category.MOVIES, genre = 13) to 2, catalog.calls.last())
+        vm.selectFilter(BrowseFilter.All)
+        assertNull(vm.state.value.selectedGenre)
+        assertEquals(BrowseFilter.All, vm.state.value.selected)
+        assertEquals(movies to 1, catalog.calls.last())
+    }
+
+    @Test
+    fun `the grid does not wait for the genres`() {
+        val catalog = FakeCatalog().apply { genreGate = CompletableDeferred() }
+        val vm = viewModel(catalog)
+
+        assertEquals(BrowsePhase.Content, vm.state.value.phase)
+        assertTrue(vm.state.value.genres.isEmpty())
+        catalog.genreGate!!.complete(Unit)
+        assertEquals(2, vm.state.value.genres.size)
+    }
+
+    @Test
+    fun `series ask for the series genres and a genre failure only hides the genre chips`() {
+        val series = ListQuery(Category.SERIES)
+        val catalog = FakeCatalog().apply { genreFailure = IllegalStateException("boom") }
+        val vm = viewModel(catalog, series)
+
+        assertEquals(listOf(Category.SERIES), catalog.genreCalls)
+        assertTrue(vm.state.value.genres.isEmpty())
+        assertEquals(BrowsePhase.Content, vm.state.value.phase)
+        assertEquals(listOf(BrowseFilter.All, BrowseFilter.Top250), vm.state.value.filters)
+    }
+
+    @Test
+    fun `view-all queries and unknown genres are ignored`() {
+        val catalog = FakeCatalog()
+        val filtered = viewModel(catalog, ListQuery(Category.MOVIES, country = 1199))
+        assertTrue(catalog.genreCalls.isEmpty())
+        filtered.selectGenre(Genre(13, "درام"))
+        assertEquals(1, catalog.calls.size)
+
+        val vm = viewModel(catalog)
+        vm.selectGenre(Genre(999, "ناشناخته"))
+        assertEquals(2, catalog.calls.size) // only the two initial page-1 loads
+        assertNull(vm.state.value.selectedGenre)
+    }
+
+    @Test
+    fun `picking the selected genre again does not reload`() {
+        val catalog = FakeCatalog()
+        val vm = viewModel(catalog)
+        vm.selectGenre(Genre(29, "اکشن"))
+        val calls = catalog.calls.size
+        vm.selectGenre(Genre(29, "اکشن"))
+        assertEquals(calls, catalog.calls.size)
     }
 
     @Test

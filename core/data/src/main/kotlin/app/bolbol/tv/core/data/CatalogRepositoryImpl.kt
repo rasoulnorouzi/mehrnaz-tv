@@ -4,6 +4,8 @@ import app.bolbol.tv.core.database.HomeCacheDao
 import app.bolbol.tv.core.database.HomeCacheEntity
 import app.bolbol.tv.core.model.CatalogException
 import app.bolbol.tv.core.model.CatalogRepository
+import app.bolbol.tv.core.model.Category
+import app.bolbol.tv.core.model.Genre
 import app.bolbol.tv.core.model.HomeFeed
 import app.bolbol.tv.core.model.HomeSection
 import app.bolbol.tv.core.model.ListQuery
@@ -11,6 +13,7 @@ import app.bolbol.tv.core.model.Page
 import app.bolbol.tv.core.model.TitleDetails
 import app.bolbol.tv.core.model.TitleSummary
 import app.bolbol.tv.core.network.CatalogRemoteDataSource
+import app.bolbol.tv.core.network.GenreTable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -86,6 +89,8 @@ internal class CatalogRepositoryImpl(
     }
 
     override suspend fun suggestions(prefix: String, limit: Int): List<String> = suggestionIndex.suggest(prefix, limit)
+
+    override suspend fun genres(category: Category): List<Genre> = GenreTable.forCategory(category)
 
     /** Cached rows, or null when there is no cache, it is unreadable, or it no longer parses. */
     private suspend fun loadCachedSections(): List<HomeSection>? {
