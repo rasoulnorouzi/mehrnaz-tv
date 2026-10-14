@@ -14,6 +14,9 @@
     <string name="player_audio_dubbed">دوبله</string>
     <string name="player_audio_subtitled">زیرنویس</string>
     <string name="player_quality">کیفیت</string>
+    <!-- v1.4: a saved copy plays instead of the stream; it has no quality/audio choice. -->
+    <string name="player_saved_copy">نسخهٔ ذخیره&#8204;شده</string>
+    <string name="player_saved_copy_of">نسخهٔ ذخیره&#8204;شده: %1$s</string>
 
     <!-- Playback speed section of the settings panel (v1.2-1). -->
     <string name="player_speed">سرعت پخش</string>

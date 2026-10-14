@@ -8,6 +8,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.media3.exoplayer.ExoPlayer
 import app.bolbol.tv.core.model.AudioType
+import app.bolbol.tv.core.model.DownloadRepository
+import app.bolbol.tv.core.model.OfflineMedia
 import app.bolbol.tv.core.model.PlaybackPrefs
 import app.bolbol.tv.core.model.PlaybackProgress
 import app.bolbol.tv.core.model.PlaybackRequest
@@ -15,7 +17,6 @@ import app.bolbol.tv.core.model.PrefsRepository
 import app.bolbol.tv.core.model.StreamOption
 import app.bolbol.tv.core.model.WatchKey
 import app.bolbol.tv.core.model.WatchRepository
-import app.bolbol.tv.core.model.pick
 import app.bolbol.tv.core.player.AutoNextInput
 import app.bolbol.tv.core.player.AutoNextPolicy
 import app.bolbol.tv.core.player.AutoNextState
@@ -65,12 +66,20 @@ sealed interface PlayerPhase {
 
 data class PlayerScreenState(
     val phase: PlayerPhase = PlayerPhase.Loading,
+    /**
+     * Playing a saved copy (v1.4 offline saving): works with no internet, and the settings panel hides the
+     * quality/audio choices (there is only the saved one).
+     */
+    val offline: Boolean = false,
 )
 
 /**
  * Owns the screen's single [ExoPlayer] (created by [createPlayer], released in [onCleared]) and
  * its [PlaybackController]. Built with [factory] (manual DI, docs/decisions.md §Architecture).
  * Also runs the next-episode countdown (M2.2, rules in [AutoNextPolicy]).
+ *
+ * With [downloads] (v1.4), a COMPLETED download of [request]'s key is played instead of the network stream: the local
+ * file and its saved subtitle, the same progress key, no quality/audio switching ([PlayerScreenState.offline]).
  */
 class PlayerViewModel(
     val request: PlaybackRequest,
@@ -79,6 +88,7 @@ class PlayerViewModel(
     private val prefs: PrefsRepository,
     subtitleLoader: SubtitleLoader?,
     private val clock: PlaybackClock = PlaybackClock.System,
+    private val downloads: DownloadRepository? = null,
 ) : ViewModel() {
 
     /**
@@ -138,6 +148,10 @@ class PlayerViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PROGRESS_KEEP_MS), emptyList())
     }
 
+    /** What quality/audio switching may choose from: the request's streams, or only the saved copy when offline. */
+    private var source = PlaybackSource(request.streams, stream = null, offline = false)
+    private val streams: List<StreamOption> get() = source.streams
+
     /** Set once this screen is leaving for another episode: nothing else may leave or mark it completed. */
     private var leaving = false
 
@@ -150,9 +164,17 @@ class PlayerViewModel(
     }
 
     private suspend fun begin() {
-        val global = orNull("globalPrefs") { prefs.globalPrefs().first() } ?: PlaybackPrefs()
-        val titlePrefs = orNull("titlePrefs") { prefs.titlePrefs(request.key.postId) }
-        val stream = request.streams.pick(titlePrefs ?: global)
+        val offline: OfflineMedia? = downloads?.let { repo -> orNull("offlineMedia") { repo.offlineMedia(request.key) } }
+        source = offline?.let { PlaybackSource.saved(request, it) } ?: run {
+            val global = orNull("globalPrefs") { prefs.globalPrefs().first() } ?: PlaybackPrefs()
+            val titlePrefs = orNull("titlePrefs") { prefs.titlePrefs(request.key.postId) }
+            PlaybackSource.online(request, titlePrefs ?: global)
+        }
+        if (source.offline) {
+            Log.i(TAG, "playing the saved copy of ${request.key.asString()} (${source.stream?.quality}p/${source.stream?.audio})")
+            _screen.update { it.copy(offline = true) }
+        }
+        val stream = source.stream
         if (stream == null) {
             _screen.update { it.copy(phase = PlayerPhase.NoStreams) }
             return
@@ -164,14 +186,17 @@ class PlayerViewModel(
             is ResumeDecision.ResumeAt -> startPlaying(stream, decision.positionMs)
             is ResumeDecision.AskUser -> {
                 // Prepare behind the prompt so "continue" (the focused default) starts instantly.
-                controller.start(request, stream, decision.positionMs, playWhenReady = false)
+                controller.start(playRequest(), stream, decision.positionMs, playWhenReady = false)
                 _screen.update { it.copy(phase = PlayerPhase.AskResume(decision.positionMs)) }
             }
         }
     }
 
+    /** [request] with only the streams that may be played (the saved copy when offline: nothing to pre-warm). */
+    private fun playRequest(): PlaybackRequest = source.requestFor(request)
+
     private fun startPlaying(stream: StreamOption, positionMs: Long) {
-        controller.start(request, stream, positionMs)
+        controller.start(playRequest(), stream, positionMs)
         _screen.update { it.copy(phase = PlayerPhase.Playing) }
     }
 
@@ -186,13 +211,13 @@ class PlayerViewModel(
     fun selectAudio(audio: AudioType) {
         val current = controller.stream ?: return
         if (current.audio == audio) return
-        request.streams.forAudio(audio, current.quality)?.let { controller.switchStream(it) }
+        streams.forAudio(audio, current.quality)?.let { controller.switchStream(it) }
     }
 
     fun selectQuality(quality: Int) {
         val current = controller.stream ?: return
         if (current.quality == quality) return
-        request.streams.find(current.audio, quality)?.let { controller.switchStream(it) }
+        streams.find(current.audio, quality)?.let { controller.switchStream(it) }
     }
 
     /** «سرعت پخش» chip (v1.2-1). Returns the applied speed (for the toast); kept for the whole app session. */
@@ -306,14 +331,14 @@ class PlayerViewModel(
     // ---- errors, lifecycle ---------------------------------------------------------------------
 
     /** True when the error panel can offer the lower-quality button. */
-    fun canLowerQuality(): Boolean = controller.stream?.let { request.streams.nextLowerQuality(it) } != null
+    fun canLowerQuality(): Boolean = controller.stream?.let { streams.nextLowerQuality(it) } != null
 
     fun retry() = controller.retry()
 
     /** Error fallback: next lower quality, remembered for this title only. */
     fun lowerQuality() {
         val current = controller.stream ?: return
-        request.streams.nextLowerQuality(current)?.let { controller.switchStream(it, rememberGlobally = false) }
+        streams.nextLowerQuality(current)?.let { controller.switchStream(it, rememberGlobally = false) }
     }
 
     /** Called just before navigating away: stop sound now and save (release saves again, deduped). */
@@ -351,6 +376,7 @@ class PlayerViewModel(
          *   called once, on the main thread.
          * @param subtitleLoader pass `playerFactory.subtitleLoader` (shared OkHttp client + cache).
          *   Without it a private fallback client is used and a warning is logged.
+         * @param downloads v1.4: plays a completed download of the request's key instead of the stream.
          */
         fun factory(
             request: PlaybackRequest,
@@ -359,18 +385,26 @@ class PlayerViewModel(
             prefs: PrefsRepository,
             clock: PlaybackClock = PlaybackClock.System,
             subtitleLoader: SubtitleLoader? = null,
+            downloads: DownloadRepository? = null,
         ): ViewModelProvider.Factory = viewModelFactory {
-            initializer { PlayerViewModel(request, createPlayer, watch, prefs, subtitleLoader, clock) }
+            initializer { PlayerViewModel(request, createPlayer, watch, prefs, subtitleLoader, clock, downloads) }
         }
 
-        /** Preferred: player and subtitle loader from the app's single [PlayerFactory]. */
+        /** Preferred: player and subtitle loader from the app's single [PlayerFactory]; saved copies from [downloads]. */
         fun factory(
             request: PlaybackRequest,
             playerFactory: PlayerFactory,
             watch: WatchRepository,
             prefs: PrefsRepository,
-        ): ViewModelProvider.Factory =
-            factory(request, { playerFactory.create() }, watch, prefs, subtitleLoader = playerFactory.subtitleLoader)
+            downloads: DownloadRepository? = null,
+        ): ViewModelProvider.Factory = factory(
+            request,
+            { playerFactory.create() },
+            watch,
+            prefs,
+            subtitleLoader = playerFactory.subtitleLoader,
+            downloads = downloads,
+        )
 
         private val fallbackLoader by lazy { SubtitleLoader(OkHttpClient()) }
 

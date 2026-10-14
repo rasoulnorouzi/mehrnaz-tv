@@ -180,6 +180,8 @@ private fun PlaybackError.messageRes(): Int = when (kind) {
  * (±0.5 s steps with hold-to-repeat, «تنظیم مجدد», the current offset up to ±120 s). Changes apply live;
  * colour, box, position and weight live on the Settings page. Focus starts on the current audio.
  * Scrolls vertically when the sections don't fit (focus brings the row into view).
+ * A saved copy ([offline], v1.4) has no audio/quality choice: those sections become one «نسخهٔ ذخیره‌شده» line and
+ * focus starts on the current speed.
  */
 @Composable
 internal fun StreamPickerPanel(
@@ -196,6 +198,7 @@ internal fun StreamPickerPanel(
     onSubtitleShift: (deltaMs: Int) -> Unit,
     onSubtitleReset: () -> Unit,
     modifier: Modifier = Modifier,
+    offline: Boolean = false,
 ) {
     val firstFocus = remember { FocusRequester() }
     Box(modifier.fillMaxSize()) {
@@ -210,7 +213,12 @@ internal fun StreamPickerPanel(
         ) {
             Text(stringResource(R.string.player_settings), style = MaterialTheme.typography.titleMedium, color = BolbolColors.TextPrimary)
 
-            PickerSection(stringResource(R.string.player_audio)) {
+            if (offline) {
+                Spacer(Modifier.height(12.dp))
+                val savedText = current?.let { stringResource(R.string.player_saved_copy_of, streamLabel(it)) }
+                    ?: stringResource(R.string.player_saved_copy)
+                Text(savedText, style = MaterialTheme.typography.labelMedium, color = BolbolColors.TextSecondary)
+            } else PickerSection(stringResource(R.string.player_audio)) {
                 for (audio in streams.audioTypes()) {
                     val selected = audio == current?.audio
                     OptionButton(
@@ -221,7 +229,7 @@ internal fun StreamPickerPanel(
                     )
                 }
             }
-            if (current != null) {
+            if (current != null && !offline) {
                 PickerSection(stringResource(R.string.player_quality)) {
                     for (quality in streams.qualitiesFor(current.audio)) {
                         OptionButton(
@@ -232,7 +240,7 @@ internal fun StreamPickerPanel(
                     }
                 }
             }
-            SpeedSection(speed, onSpeed)
+            SpeedSection(speed, onSpeed, focusSelected = if (offline) firstFocus else null)
             if (current?.subtitleUrl != null) {
                 SubtitleSection(subtitleStyle, subtitleOffsetMs, onSubtitlesEnabled, onSubtitleSize, onSubtitleShift, onSubtitleReset)
             }
@@ -248,7 +256,7 @@ internal fun StreamPickerPanel(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SpeedSection(speed: Float, onSpeed: (Float) -> Unit) {
+private fun SpeedSection(speed: Float, onSpeed: (Float) -> Unit, focusSelected: FocusRequester? = null) {
     Spacer(Modifier.height(20.dp))
     Text(stringResource(R.string.player_speed), style = MaterialTheme.typography.labelMedium, color = BolbolColors.TextSecondary)
     Spacer(Modifier.height(8.dp))
@@ -259,10 +267,12 @@ private fun SpeedSection(speed: Float, onSpeed: (Float) -> Unit) {
         maxItemsInEachRow = SPEED_CHIPS_PER_ROW,
     ) {
         for (choice in PlaybackSpeeds.CHOICES) {
+            val selected = abs(choice - speed) < 0.001f
             OptionButton(
                 label = if (PlaybackSpeeds.isNormal(choice)) stringResource(R.string.player_speed_normal) else formatSpeedMultiplier(choice),
-                selected = abs(choice - speed) < 0.001f,
+                selected = selected,
                 onClick = { onSpeed(choice) },
+                modifier = if (selected && focusSelected != null) Modifier.focusRequester(focusSelected) else Modifier,
             )
         }
     }
