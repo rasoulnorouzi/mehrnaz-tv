@@ -429,3 +429,9 @@ of the title or of any word-start suffix of it; whole-title prefixes rank first,
 ك to ک, ZWNJ and punctuation to a space, Persian/Arabic digits to ASCII, Latin lower-case. The search screen adds recent
 searches in front and debounces by 120 ms. Because the index only knows titles seen so far, predictions get better the more the
 person browses and searches; the 28 MB `search-data.json` remains the option if a full catalogue index is ever wanted.
+
+## Genre lists for movies and series (v1.4-4, researched 2026-10-14)
+
+- There is no genre endpoint: `wp/v2/taxonomies` exposes only `category`/`post_tag`/menus, and `wp/v2/genres` is 404. The home HTML menu links `/genre/<slug>/` (movies, 24 genres) and `/seriegenre/<slug>/` (series, 17); the `<body class="... term-N">` of each archive page is the id used by `?genres=N`.
+- `GET /post/movies?genres=ID` and `/post/series?genres=ID` filter correctly (spot-checked: movies 376 has 58 pages, series 117 has 136, versus 2337/859 unfiltered). Movie genre 94637 (TV contest) has only 2 items and is dropped; the list items themselves carry no genre field.
+- The app ships a static table (`core/network` `GenreTable`: 23 movie genres, 17 series genres, ids never shared between kinds, quirk 13), served by `CatalogRepository.genres(category)`. Series lack موزیکال/ورزشی/وسترن/کوتاه/آهنگ/فیلم نوآر. Combining `genres` with `country`/`imdbtop250` stays unverified, so the UI applies one filter at a time. Raw notes: `research/genres/genre-ids-2026-10-14.md`.
