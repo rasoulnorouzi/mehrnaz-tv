@@ -93,16 +93,16 @@ Last updated: 2026-10-12 (**v1.3 «فایل‌های من» (USB playback) plann
 
 ## 📋 To do
 
-### v1.3 «فایل‌های من»: USB movies and series (📋 next update, planned 2026-10-12; start only when the user says "go")
-Full spec: `docs/plan.md` §v1.3. User's folders: `Show/Season N/episodes` or `Show/episodes`; files are MKV and MP4,
+### Later «فایل‌های من»: USB movies and series (⏸ postponed by the user 2026-10-14; planned 2026-10-12)
+Full spec: `docs/plan.md` §Later: «فایل‌های من». User's folders: `Show/Season N/episodes` or `Show/episodes`; files are MKV and MP4,
 with no subtitle, a sidecar `.srt`, or embedded soft subtitles.
-- [ ] v1.3-1 `core:model` contract for local titles (negative ids) + `LocalMediaRepository` (M)
-- [ ] v1.3-2 USB scan + series/season/episode detector + DB v1→v2 (2 new tables, tested migration) (DE)
-- [ ] v1.3-3 Local playback: `.srt` + Persian encoding detection, embedded subs drawn by our renderer, subtitle + audio menus, FFmpeg audio ext. if needed (PE)
-- [ ] v1.3-4 «فایل‌های من» screens: entry on home, grid, series + movie pages (UI)
-- [ ] v1.3-5 Continue Watching **both options** (A: one shared row with USB badge, B: separate «ادامه از فلش» row) + Settings switch; user picks on the TV, then remove the loser (UI + M)
-- [ ] v1.3-6 Wiring, `tools/tv.sh` USB access grant, emulator QA with a fake USB, signed release over v1.2.0 (M + QA)
-- [ ] 📺 v1.3-7 On the TV: USB format, "all files access" setting, AC3/DTS audio, 4K HEVC from USB (U + PA)
+- [ ] usb-1 `core:model` contract for local titles (negative ids) + `LocalMediaRepository` (M)
+- [ ] usb-2 USB scan + series/season/episode detector + DB v1→v2 (2 new tables, tested migration) (DE)
+- [ ] usb-3 Local playback: `.srt` + Persian encoding detection, embedded subs drawn by our renderer, subtitle + audio menus, FFmpeg audio ext. if needed (PE)
+- [ ] usb-4 «فایل‌های من» screens: entry on home, grid, series + movie pages (UI)
+- [ ] usb-5 Continue Watching **both options** (A: one shared row with USB badge, B: separate «ادامه از فلش» row) + Settings switch; user picks on the TV, then remove the loser (UI + M)
+- [ ] usb-6 Wiring, `tools/tv.sh` USB access grant, emulator QA with a fake USB, signed release over v1.2.0 (M + QA)
+- [ ] 📺 usb-7 On the TV: USB format, "all files access" setting, AC3/DTS audio, 4K HEVC from USB (U + PA)
 
 ### v1.x ideas / follow-ups
 - [ ] 📺 Check 2× at 1080p on the real TV (the emulator's software decoder can't; the MT9611 hardware decoder should) (PA)

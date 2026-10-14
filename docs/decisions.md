@@ -98,7 +98,7 @@ form `username`/`password` → `data.token`; `Authorization: Bearer`. Token stor
 membership is checked before toggling). **Progress sync:** push `current_time` (seconds) to the site's watch-list when the
 player closes; pull once per app start, filling titles/episodes missing locally or further on the server.
 
-## Local files (v1.3, planned)
+## Local files (planned, postponed 2026-10-14)
 **2026-10-12 · (planned) USB playback reuses the online pipeline via negative title ids.** Local titles get ids < 0 from a
 new `local_title` table, so progress, title snapshots, prefs, subtitle offsets, Continue Watching, Watch Next, auto-next and
 the episodes panel work without changes; a local file is keyed by USB volume UUID + relative path. DB v1 → v2 is additive
