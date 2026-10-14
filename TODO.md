@@ -98,7 +98,7 @@ Last updated: 2026-10-14 (**v1.4 started**: in-app update, offline saving, genre
 - [ ] 🔄 v1.4-1 Download engine + DB v1→v2 + offline playback, and v1.4-7 «قسمت بعد» on the right (PE, Opus)
 - [ ] 🔄 v1.4-2 Downloads UI (details button + dialog, «دانلودها» screen, «حذف») and v1.4-3 details episode box (UI)
 - [ ] 🔄 v1.4-4 Genres for movies and series (DE)
-- [ ] 🔄 v1.4-5 Search keyboard + prediction and v1.4-6 phone-remote typing bug (UI)
+- [x] 2026-10-14 · v1.4-5 Search keyboard (44 dp keys, prediction row from recents + a local title index; site index is 28.7 MB so not used) and v1.4-6 phone-remote fix (root cause: the QR panel was a Dialog that closed on the first text and stopped the phone server). Merged; tests pass; device QA pending (UI + M)
 - [ ] 🔄 v1.4-8 In-app update (core:update, Settings, release.sh → public repo) (DE)
 - [ ] v1.4-9 Wiring, full emulator QA, release v1.4.0 (M + QA)
 
