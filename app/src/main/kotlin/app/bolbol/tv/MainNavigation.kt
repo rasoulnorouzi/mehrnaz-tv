@@ -1,5 +1,7 @@
 package app.bolbol.tv
 
+import app.bolbol.tv.feature.downloads.DownloadsViewModel
+import app.bolbol.tv.feature.downloads.DownloadsScreen
 import app.bolbol.tv.feature.settings.SettingsSection
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -106,6 +108,7 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                         factory = DetailsViewModel.factory(
                             route.titleId, data.catalog, data.watch, data.prefs, myList = app.myListActions,
                             focusSeason = route.focusSeason, focusEpisode = route.focusEpisode,
+                            downloads = app.downloads,
                         ),
                     ),
                     onPlay = { key, start -> open(PlayerRoute(key.postId, key.season, key.episode, start)) },
@@ -192,6 +195,12 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                             setManifestUrlOverride = { app.updateSettings.manifestUrlOverride = it },
                         ),
                     ),
+                )
+            }
+            entry<DownloadsRoute> {
+                DownloadsScreen(
+                    viewModel = viewModel(factory = DownloadsViewModel.factory(app.downloads)),
+                    onPlay = { item -> open(PlayerRoute(item.key.postId, item.key.season, item.key.episode, PlayerRoute.ASK)) },
                 )
             }
             entry<ComingSoonRoute> { route -> ComingSoon(route.title) }

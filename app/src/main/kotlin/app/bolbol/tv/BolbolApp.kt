@@ -2,6 +2,9 @@ package app.bolbol.tv
 
 import androidx.core.content.pm.PackageInfoCompat
 import app.bolbol.tv.core.model.UpdateRepository
+import app.bolbol.tv.core.model.DownloadRepository
+import app.bolbol.tv.core.download.DownloadRepositoryImpl
+import app.bolbol.tv.core.data.downloadDao
 import app.bolbol.tv.core.update.UpdateRepositoryImpl
 import app.bolbol.tv.core.update.UpdateSettings
 import android.app.Application
@@ -47,6 +50,9 @@ class BolbolApp : Application(), SingletonImageLoader.Factory {
 
     /** App-level switches (performance overlay). */
     val appSettings: AppSettings by lazy { AppSettings(this) }
+
+    /** Offline saving (v1.4-1, core/download/README.md): one download at a time, saved files play with no internet. */
+    val downloads: DownloadRepository by lazy { DownloadRepositoryImpl(this, data.okHttpClient, data.downloadDao) }
 
     /** In-app update settings (developer manifest-URL override, last check). */
     val updateSettings: UpdateSettings by lazy { UpdateSettings(this) }
@@ -111,6 +117,8 @@ class BolbolApp : Application(), SingletonImageLoader.Factory {
             runCatching { data.pullProgress() }
             runCatching { data.account.syncMyList() }
         }
+        // Creating the repository resumes a download interrupted by an app restart.
+        appScope.launch { downloads }
         // In-app update: at most one manifest check a day; the result shows in Settings › «به‌روزرسانی» (user 2026-10-14).
         appScope.launch { runCatching { updates.check(force = false) } }
         appScope.launch {

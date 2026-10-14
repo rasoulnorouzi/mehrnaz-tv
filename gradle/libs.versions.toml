@@ -2,6 +2,7 @@
 # Bump with care: verify on the TV (see docs/perf-budget.md) after any upgrade.
 
 [versions]
+sqliteJdbc = "3.41.2.2"
 # Build
 agp = "9.4.1"
 kotlin = "2.4.21"
@@ -40,6 +41,7 @@ leakcanary = "2.14"
 junit = "4.13.2"
 
 [libraries]
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqliteJdbc" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivity" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidxLifecycle" }

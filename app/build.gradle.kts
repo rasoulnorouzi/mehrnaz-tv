@@ -17,8 +17,8 @@ android {
         applicationId = "app.mehrnaz.tv" // installed package; the code namespace stays app.bolbol.tv
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.4.0"
     }
 
     // Permanent release key lives OUTSIDE the repo (~/.bolboltv/keystore.properties, chmod 600).
@@ -87,6 +87,7 @@ dependencies {
     implementation(project(":feature:account"))
     implementation(project(":core:lanremote"))
     implementation(project(":core:update"))
+    implementation(project(":core:download"))
     implementation(project(":feature:downloads"))
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)

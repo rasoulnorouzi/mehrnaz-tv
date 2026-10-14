@@ -34,7 +34,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
     // MigrationTest: a real SQLite on the JVM (no device/Robolectric). TODO(manager): move to the version catalog.
-    testImplementation("org.xerial:sqlite-jdbc:3.41.2.2")
+    testImplementation(libs.sqlite.jdbc)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlinx.coroutines.test)

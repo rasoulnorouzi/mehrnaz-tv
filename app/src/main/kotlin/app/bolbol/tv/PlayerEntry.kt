@@ -1,5 +1,7 @@
 package app.bolbol.tv
 
+import kotlinx.coroutines.flow.first
+import app.bolbol.tv.core.model.DownloadStatus
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -38,13 +40,14 @@ fun PlayerEntry(
 ) {
     var attempt by remember { mutableIntStateOf(0) }
     val state by produceState<Resolve>(Resolve.Loading, route, attempt) {
+        val key = WatchKey(route.postId, route.season, route.episode)
+        val start = route.startPositionMs.takeIf { it >= 0 }
         value = try {
             val details = app.data.catalog.details(route.postId)
-            val start = route.startPositionMs.takeIf { it >= 0 }
-            details.playbackRequest(WatchKey(route.postId, route.season, route.episode), start)
-                ?.let { Resolve.Ready(it) } ?: Resolve.Failed
+            details.playbackRequest(key, start)?.let { Resolve.Ready(it) } ?: Resolve.Failed
         } catch (e: Exception) {
-            Resolve.Failed
+            // No internet (or the title vanished): a saved copy still plays (v1.4-1). No next/previous offline.
+            savedRequest(app, key, start)?.let { Resolve.Ready(it) } ?: Resolve.Failed
         }
     }
     when (val s = state) {
@@ -58,6 +61,7 @@ fun PlayerEntry(
                     playerFactory = app.playerFactory,
                     watch = app.data.watch,
                     prefs = app.data.prefs,
+                    downloads = app.downloads,
                 ),
             )
             val showPerf by app.appSettings.showPerformance.collectAsState()
@@ -71,3 +75,11 @@ fun PlayerEntry(
         }
     }
 }
+
+/** A [PlaybackRequest] built from a completed download alone (offline start from «دانلودها»). */
+private suspend fun savedRequest(app: BolbolApp, key: WatchKey, start: Long?): PlaybackRequest? =
+    runCatching {
+        app.downloads.downloadsForTitle(key.postId).first()
+            .firstOrNull { it.key == key && it.status == DownloadStatus.COMPLETED }
+            ?.let { PlaybackRequest(it.key, it.title, it.subtitleLine, listOf(it.stream), start, next = null) }
+    }.getOrNull()
