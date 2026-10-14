@@ -68,6 +68,8 @@ fun ErrorState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     retryLabel: String = "تلاش دوباره",
+    /** An optional second action under the retry button (e.g. Home's «دانلودها» for offline use). */
+    extraAction: (@Composable () -> Unit)? = null,
 ) {
     val retryFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { retryFocus.requestFocus() }
@@ -102,6 +104,10 @@ fun ErrorState(
             modifier = Modifier.focusRequester(retryFocus),
             icon = BolbolIcons.Refresh,
         )
+        if (extraAction != null) {
+            Spacer(Modifier.height(12.dp))
+            extraAction()
+        }
     }
 }
 

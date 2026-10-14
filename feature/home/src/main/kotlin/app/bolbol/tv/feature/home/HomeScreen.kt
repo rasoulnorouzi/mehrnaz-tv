@@ -57,6 +57,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import app.bolbol.tv.core.designsystem.AudioBadge
 import app.bolbol.tv.core.designsystem.BolbolColors
+import app.bolbol.tv.core.designsystem.BolbolIcons
 import app.bolbol.tv.core.designsystem.BolbolSpacing
 import app.bolbol.tv.core.designsystem.BolbolText
 import app.bolbol.tv.core.designsystem.ContentRow
@@ -68,6 +69,8 @@ import app.bolbol.tv.core.designsystem.MetaLine
 import app.bolbol.tv.core.designsystem.PosterCard
 import app.bolbol.tv.core.designsystem.PosterCardDefaults
 import app.bolbol.tv.core.designsystem.TopBar
+import app.bolbol.tv.core.designsystem.TvButton
+import app.bolbol.tv.core.designsystem.TvButtonStyle
 import app.bolbol.tv.core.designsystem.WideCard
 import app.bolbol.tv.core.designsystem.formatContinueSubtitleFa
 import app.bolbol.tv.core.designsystem.formatImdb
@@ -83,7 +86,13 @@ private const val HERO_FRACTION = 0.44f
 /** The top bar's selected tab: خانه. */
 internal const val HOME_TAB_INDEX = 1
 
-/** What each top bar tab does, in the order of `R.array.home_tabs`; null = this screen. */
+/** The «دانلودها» tab: opens the offline screen through `onOpenDownloads`, not through [HomeDestination]. */
+internal const val DOWNLOADS_TAB_INDEX = 6
+
+/**
+ * What each top bar tab does, in the order of `R.array.home_tabs`; null = this screen (خانه) or, at
+ * [DOWNLOADS_TAB_INDEX], the downloads callback.
+ */
 internal val TabDestinations: List<HomeDestination?> = listOf(
     HomeDestination.SEARCH,
     null,
@@ -91,6 +100,7 @@ internal val TabDestinations: List<HomeDestination?> = listOf(
     HomeDestination.SERIES,
     HomeDestination.MY_LIST,
     HomeDestination.PROFILE,
+    null, // دانلودها
     HomeDestination.SETTINGS,
 )
 
@@ -112,15 +122,25 @@ fun HomeScreen(
     onNavigate: (HomeDestination) -> Unit,
     modifier: Modifier = Modifier,
     onViewAll: (ListQuery, title: String) -> Unit = { _, _ -> },
+    /** The «دانلودها» tab and the error screen's «دانلودها» button (offline start). */
+    onOpenDownloads: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     Box(modifier.fillMaxSize().background(BolbolColors.Background)) {
         when (val current = state) {
-            HomeUiState.Loading -> HomeMessageLayout(onNavigate) { LoadingState() }
-            is HomeUiState.Error -> HomeMessageLayout(onNavigate) {
+            HomeUiState.Loading -> HomeMessageLayout(onNavigate, onOpenDownloads) { LoadingState() }
+            is HomeUiState.Error -> HomeMessageLayout(onNavigate, onOpenDownloads) {
                 ErrorState(
                     message = stringResource(current.error.messageRes()),
                     onRetry = { viewModel.retry() },
+                    extraAction = {
+                        TvButton(
+                            text = stringResource(R.string.home_open_downloads),
+                            onClick = onOpenDownloads,
+                            icon = BolbolIcons.Download,
+                            style = TvButtonStyle.Secondary,
+                        )
+                    },
                 )
             }
             is HomeUiState.Content -> {
@@ -139,6 +159,7 @@ fun HomeScreen(
                         onMarkWatched = { viewModel.markWatched(it) },
                         onRemove = { viewModel.removeFromContinueWatching(it) },
                         onNavigate = onNavigate,
+                        onOpenDownloads = onOpenDownloads,
                     )
                 }
             }
@@ -155,9 +176,13 @@ private fun HomeError.messageRes(): Int = when (this) {
 
 /** Top bar above a loading or error placeholder (the bar stays reachable, e.g. to open settings). */
 @Composable
-private fun HomeMessageLayout(onNavigate: (HomeDestination) -> Unit, content: @Composable () -> Unit) {
+private fun HomeMessageLayout(
+    onNavigate: (HomeDestination) -> Unit,
+    onOpenDownloads: () -> Unit,
+    content: @Composable () -> Unit,
+) {
     Column(Modifier.fillMaxSize()) {
-        HomeTopBar(onNavigate, Modifier.padding(top = BolbolSpacing.SafeVertical))
+        HomeTopBar(onNavigate, onOpenDownloads, Modifier.padding(top = BolbolSpacing.SafeVertical))
         Box(Modifier.weight(1f)) { content() }
     }
 }
@@ -167,13 +192,19 @@ private fun HomeMessageLayout(onNavigate: (HomeDestination) -> Unit, content: @C
  * is measured first and the tabs take the rest, so the two can never overlap.
  */
 @Composable
-private fun HomeTopBar(onNavigate: (HomeDestination) -> Unit, modifier: Modifier = Modifier) {
+private fun HomeTopBar(
+    onNavigate: (HomeDestination) -> Unit,
+    onOpenDownloads: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val labels = stringArrayResource(R.array.home_tabs).toList()
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         TopBar(
             items = labels,
             selectedIndex = HOME_TAB_INDEX,
-            onSelect = { index -> TabDestinations.getOrNull(index)?.let(onNavigate) },
+            onSelect = { index ->
+                if (index == DOWNLOADS_TAB_INDEX) onOpenDownloads() else TabDestinations.getOrNull(index)?.let(onNavigate)
+            },
             modifier = Modifier.weight(1f),
         )
         DedicationLine(Modifier.padding(end = BolbolSpacing.SafeHorizontal))
@@ -246,6 +277,7 @@ private fun HomeContent(
     onMarkWatched: (ContinueWatchingItem) -> Unit,
     onRemove: (ContinueWatchingItem) -> Unit,
     onNavigate: (HomeDestination) -> Unit,
+    onOpenDownloads: () -> Unit,
 ) {
     // Written on every focus change, read only by HeroSection: rows never recompose because of it.
     val heroTitle = remember { mutableStateOf<HeroInfo?>(HeroInfo(initial.title, initial.caption)) }
@@ -290,7 +322,7 @@ private fun HomeContent(
             Box(Modifier.fillMaxWidth().fillMaxHeight(HERO_FRACTION)) {
                 HeroSection(heroTitle, Modifier.fillMaxSize())
                 TopBarScrim(Modifier.align(Alignment.TopStart))
-                HomeTopBar(onNavigate, Modifier.padding(top = BolbolSpacing.SafeVertical))
+                HomeTopBar(onNavigate, onOpenDownloads, Modifier.padding(top = BolbolSpacing.SafeVertical))
             }
             CompositionLocalProvider(LocalBringIntoViewSpec provides NoAutoScrollSpec) {
                 LazyColumn(
