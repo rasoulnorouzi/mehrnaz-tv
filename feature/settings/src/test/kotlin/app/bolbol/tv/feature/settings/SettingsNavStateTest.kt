@@ -15,7 +15,7 @@ class SettingsNavStateTest {
     @Test
     fun sectionsAreInDocumentedOrderWithPersianLabels() {
         assertEquals(
-            listOf("زیرنویس", "پخش", "اتصال", "توسعه‌دهنده", "درباره"),
+            listOf("زیرنویس", "پخش", "اتصال", "به‌روزرسانی", "توسعه‌دهنده", "درباره"),
             SettingsSection.entries.map { it.label },
         )
     }

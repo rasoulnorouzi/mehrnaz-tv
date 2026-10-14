@@ -1,7 +1,7 @@
 package app.bolbol.tv.feature.settings
 
 /** Sections of the settings list, in display order (first = top of the list). */
-enum class SettingsSection { SUBTITLES, PLAYBACK, CONNECTION, DEVELOPER, ABOUT }
+enum class SettingsSection { SUBTITLES, PLAYBACK, CONNECTION, UPDATE, DEVELOPER, ABOUT }
 
 /** Persian label shown in the section list. */
 internal val SettingsSection.label: String
@@ -9,6 +9,7 @@ internal val SettingsSection.label: String
         SettingsSection.SUBTITLES -> "زیرنویس"
         SettingsSection.PLAYBACK -> "پخش"
         SettingsSection.CONNECTION -> "اتصال"
+        SettingsSection.UPDATE -> "به‌روزرسانی"
         SettingsSection.DEVELOPER -> "توسعه‌دهنده"
         SettingsSection.ABOUT -> "درباره"
     }

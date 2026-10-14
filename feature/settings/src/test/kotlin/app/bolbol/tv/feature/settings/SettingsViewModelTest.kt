@@ -5,6 +5,9 @@ import app.bolbol.tv.core.model.PlaybackPrefs
 import app.bolbol.tv.core.model.PrefsRepository
 import app.bolbol.tv.core.model.SubtitleBackground
 import app.bolbol.tv.core.model.SubtitleStyle
+import app.bolbol.tv.core.model.UpdateRepository
+import app.bolbol.tv.core.model.UpdateState
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -122,6 +125,50 @@ class SettingsViewModelTest {
         dispatcher.scheduler.advanceTimeBy(SettingsViewModel.RESET_NOTICE_MS + 1)
         dispatcher.scheduler.runCurrent()
         assertFalse(vm.mirrorResetDone.value)
+    }
+
+    private class FakeUpdates : UpdateRepository {
+        override val state = MutableStateFlow<UpdateState>(UpdateState.Idle)
+        val checks = mutableListOf<Boolean>()
+        var downloads = 0
+        var permissionOpened = 0
+        override suspend fun check(force: Boolean) { checks += force }
+        override suspend fun downloadAndInstall() { downloads++ }
+        override fun openInstallPermissionSettings() { permissionOpened++ }
+    }
+
+    @Test
+    fun updateActionsGoToTheRepositoryAndStateIsPassedThrough() {
+        val updates = FakeUpdates()
+        var saved = "https://old"
+        val vm = SettingsViewModel(
+            prefs = prefs,
+            appSettings = appSettings,
+            currentMirror = { mirror },
+            resetMirrors = {},
+            versionName = "1.4.0",
+            updates = updates,
+            updateScope = CoroutineScope(Dispatchers.Unconfined),
+            manifestUrlOverride = { saved },
+            setManifestUrlOverride = { saved = it },
+        )
+        vm.checkForUpdate(force = false)
+        vm.checkForUpdate(force = true)
+        vm.downloadAndInstall()
+        vm.openInstallPermissionSettings()
+        assertEquals(listOf(false, true), updates.checks)
+        assertEquals(1, updates.downloads)
+        assertEquals(1, updates.permissionOpened)
+
+        updates.state.value = UpdateState.UpToDate("1.4.0")
+        assertEquals(UpdateState.UpToDate("1.4.0"), vm.updateState.value)
+
+        assertEquals("https://old", vm.manifestUrl.value)
+        vm.onManifestUrl("  http://10.0.2.2:8000/update.json ")
+        assertEquals("http://10.0.2.2:8000/update.json", vm.manifestUrl.value)
+        assertEquals("http://10.0.2.2:8000/update.json", saved)
+        vm.onManifestUrl("")
+        assertEquals("", saved)
     }
 
     @Test
