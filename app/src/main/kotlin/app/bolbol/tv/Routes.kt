@@ -34,7 +34,10 @@ import kotlinx.serialization.Serializable
     val imdbTop250: Boolean = false,
 ) : NavKey
 
-@Serializable data object SettingsRoute : NavKey
+@Serializable data class SettingsRoute(val section: String = "SUBTITLES") : NavKey
+
+/** «دانلودها» (v1.4-2). */
+@Serializable data object DownloadsRoute : NavKey
 
 @Serializable data object SearchRoute : NavKey
 

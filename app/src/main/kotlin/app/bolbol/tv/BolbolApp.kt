@@ -1,5 +1,9 @@
 package app.bolbol.tv
 
+import androidx.core.content.pm.PackageInfoCompat
+import app.bolbol.tv.core.model.UpdateRepository
+import app.bolbol.tv.core.update.UpdateRepositoryImpl
+import app.bolbol.tv.core.update.UpdateSettings
 import android.app.Application
 import android.content.ComponentCallbacks2
 import app.bolbol.tv.core.data.DataGraph
@@ -44,6 +48,26 @@ class BolbolApp : Application(), SingletonImageLoader.Factory {
     /** App-level switches (performance overlay). */
     val appSettings: AppSettings by lazy { AppSettings(this) }
 
+    /** In-app update settings (developer manifest-URL override, last check). */
+    val updateSettings: UpdateSettings by lazy { UpdateSettings(this) }
+
+    /**
+     * In-app update (v1.4-8, docs/update.md). Plain client (no mirror interceptor, no cache): the files live on
+     * github.com. Shares the connection pool with the API client.
+     */
+    val updates: UpdateRepository by lazy {
+        val plain = data.okHttpClient.newBuilder().apply {
+            interceptors().clear()
+            networkInterceptors().clear()
+        }.cache(null).build()
+        UpdateRepositoryImpl(this, plain, versionCode, manifestUrlProvider = { updateSettings.manifestUrl() }, settings = updateSettings)
+    }
+
+    val versionCode: Int by lazy {
+        runCatching { PackageInfoCompat.getLongVersionCode(packageManager.getPackageInfo(packageName, 0)).toInt() }
+            .getOrDefault(0)
+    }
+
     val versionName: String by lazy {
         runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?"
     }
@@ -87,6 +111,8 @@ class BolbolApp : Application(), SingletonImageLoader.Factory {
             runCatching { data.pullProgress() }
             runCatching { data.account.syncMyList() }
         }
+        // In-app update: at most one manifest check a day; the result shows in Settings › «به‌روزرسانی» (user 2026-10-14).
+        appScope.launch { runCatching { updates.check(force = false) } }
         appScope.launch {
             data.watch.continueWatching().debounce(2_000).collect { publisher.publish(it) }
         }

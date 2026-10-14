@@ -86,6 +86,8 @@ dependencies {
     implementation(project(":feature:search"))
     implementation(project(":feature:account"))
     implementation(project(":core:lanremote"))
+    implementation(project(":core:update"))
+    implementation(project(":feature:downloads"))
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)

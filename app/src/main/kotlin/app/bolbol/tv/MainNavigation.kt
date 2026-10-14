@@ -1,5 +1,6 @@
 package app.bolbol.tv
 
+import app.bolbol.tv.feature.settings.SettingsSection
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -86,6 +87,7 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                     onViewAll = { q, title ->
                         open(BrowseRoute(title, q.category.name, q.country, q.genre, q.imdbTop250))
                     },
+                    onOpenDownloads = { open(DownloadsRoute) },
                     onNavigate = { dest ->
                         when (dest) {
                             HomeDestination.MOVIES -> open(BrowseRoute("فیلم‌ها", Category.MOVIES.name))
@@ -93,7 +95,7 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                             HomeDestination.SEARCH -> open(SearchRoute)
                             HomeDestination.MY_LIST -> open(AccountRoute)
                             HomeDestination.PROFILE -> open(ProfileRoute)
-                            HomeDestination.SETTINGS -> open(SettingsRoute)
+                            HomeDestination.SETTINGS -> open(SettingsRoute())
                         }
                     },
                 )
@@ -174,8 +176,9 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                     ),
                 )
             }
-            entry<SettingsRoute> {
+            entry<SettingsRoute> { route ->
                 SettingsScreen(
+                    initialSection = SettingsSection.valueOf(route.section),
                     viewModel = viewModel(
                         factory = SettingsViewModel.factory(
                             prefs = data.prefs,
@@ -183,6 +186,10 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                             currentMirror = { data.currentMirror },
                             resetMirrors = { data.resetServers() },
                             versionName = app.versionName,
+                            updates = app.updates,
+                            updateScope = app.appScope,
+                            manifestUrlOverride = { app.updateSettings.manifestUrlOverride },
+                            setManifestUrlOverride = { app.updateSettings.manifestUrlOverride = it },
                         ),
                     ),
                 )

@@ -34,6 +34,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-14: The update button belongs in Settings as its own part titled «به‌روزرسانی» (not a Home banner).
 - 2026-10-14: "Don't want the local file (USB) yet, postpone." New wishes, implement now ("let's go planning and implementation"): update
   from inside the app (no more sending APKs), offline saving with a very clear remove button, better movie/series categories
   (chose: genres), better search keyboard with prediction, phone remote page stops typing after one text, «قسمت بعد» should

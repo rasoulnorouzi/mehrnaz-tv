@@ -116,6 +116,8 @@ once a day, verifies the SHA-256, installs with `PackageInstaller` (one-time "in
 `tools/release.sh`, so data survives. The APK is publicly downloadable by URL; it holds no secrets (login is typed on the TV).
 - Rejected: reading the private repo (would need a token in the app); serving from the PC on Wi-Fi (PC must be on);
   upload from the phone page (the APK still has to reach the phone first).
+**2026-10-14 · The update button lives only in Settings › «به‌روزرسانی»** (user: "update button should come in settings
+as update part"). The daily background check still runs, so the section already shows «نسخهٔ … آماده است» when opened.
 **2026-10-14 · Offline saving is now in scope** (was out of scope because of 16 GB storage). Guard rails instead: the
 quality is asked every time with sizes and free space shown, a 300 MB free-space margin, one download at a time, and a
 clear «حذف» everywhere. DB v1 → v2 adds the download table (tested migration). USB files (v1.3) are postponed by the user.

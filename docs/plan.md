@@ -169,7 +169,7 @@ copy when present (works with no internet; quality/dub switching hidden). Offlin
 | v1.4-5 | Search keyboard redesign + prediction row (completions from titles + recents) | UI | typing «باز» shows predictions; picking one searches; screenshots |
 | v1.4-6 | Bug: phone remote page stops typing after the first text | UI (same agent as v1.4-5) | send text 3+ times in a row from the phone page; unit test for the cause |
 | v1.4-7 | Player: «قسمت بعد» on the right (start), «قسمت قبل» on the left | PE (same agent as v1.4-1) | screenshot; D-pad order matches |
-| v1.4-8 | In-app update: `core:update` + Settings «به‌روزرسانی» + Home banner + `tools/release.sh` publishing to the public repo | DE | emulator: v1.4.0 → v1.4.1 test build updates in-app, data kept |
+| v1.4-8 | In-app update: `core:update` + Settings «به‌روزرسانی» (only there, user 2026-10-14: no Home banner) + `tools/release.sh` publishing to the public repo | DE | emulator: v1.4.0 → v1.4.1 test build updates in-app, data kept |
 | v1.4-9 | Wiring, full emulator QA (install over v1.2.0, download → offline → delete, update flow), release v1.4.0 | M + QA | report + screenshots; signed APK |
 
 ## Out of scope (for now)
