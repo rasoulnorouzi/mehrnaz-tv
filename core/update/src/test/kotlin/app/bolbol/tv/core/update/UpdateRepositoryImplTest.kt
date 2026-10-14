@@ -104,6 +104,25 @@ class UpdateRepositoryImplTest {
         assertEquals(now, store.lastCheckMillis)
     }
 
+    /** v1.4 QA: ",w" left in the developer override crashed the app at start. It must just fail. */
+    @Test fun malformedManifestUrlFailsWithoutThrowing() = runBlocking {
+        val bad = UpdateRepositoryImpl(
+            client = OkHttpClient(), currentVersionCode = 4, currentVersionName = "1.4.0",
+            manifestUrlProvider = { ",w" }, store = store, installer = installer,
+            downloadDir = File(dir, "updates"), freeSpace = { free }, clock = { now }, installResults = results,
+            scope = CoroutineScope(Dispatchers.Unconfined + scopeJob), io = Dispatchers.Unconfined,
+        )
+        bad.check(force = true)
+        assertEquals(UpdateFailure.BAD_MANIFEST, (bad.state.value as UpdateState.Failed).failure)
+    }
+
+    @Test fun malformedApkUrlFailsTheDownloadWithoutThrowing() = runBlocking {
+        serveUpdate(manifestJson(url = "not a url"))
+        repo.check(force = true)
+        repo.downloadAndInstall()
+        assertTrue(repo.state.value is UpdateState.Failed)
+    }
+
     @Test fun sameOrOlderVersionIsUpToDate() = runBlocking {
         serveUpdate(manifestJson(code = 4))
         repo.check(force = true)

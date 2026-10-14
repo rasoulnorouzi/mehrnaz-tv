@@ -67,7 +67,7 @@ fun TopBar(
                 // Only point at the selected tab when it exists (an unattached requester would throw).
                 if (selectedIndex in items.indices) selectedRequester else FocusRequester.Default,
             ),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         items.forEachIndexed { index, label ->
@@ -109,7 +109,7 @@ private fun TopBarTab(
     ) {
         Box(
             Modifier
-                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .padding(horizontal = 12.dp, vertical = 6.dp)
                 .drawBehind {
                     if (selected) {
                         val thickness = 3.dp.toPx()

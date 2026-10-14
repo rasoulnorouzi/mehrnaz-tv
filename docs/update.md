@@ -36,3 +36,11 @@ Cleartext HTTP to `10.0.2.2` needs a network security config in `:app` (debug on
 `<domain-config cleartextTrafficPermitted="true"><domain>10.0.2.2</domain></domain-config>`.
 Grant the install permission on the emulator with
 `adb shell appops set app.mehrnaz.tv REQUEST_INSTALL_PACKAGES allow`.
+
+## Learned on the Android 11 emulator (2026-10-14, v1.4 QA)
+- Turning on «Install unknown apps» for «مهرناز» makes Android **close the app** (`REQUEST_INSTALL_PACKAGES changed`).
+  The user reopens it and presses «دانلود و نصب» again; the Persian explanation says so.
+- After the install, Android closes the app again (normal for a self-update); the status text tells the user to reopen it.
+- The PackageInstaller result `PendingIntent` must name `InstallResultReceiver` explicitly (the receiver has no intent
+  filter); with only action + package the confirmation screen never appeared.
+- Verified: v1.4.0 → v1.4.1 test build through Settings › «به‌روزرسانی», Android's confirm dialog, history kept.

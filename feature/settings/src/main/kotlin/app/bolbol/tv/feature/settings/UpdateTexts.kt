@@ -32,7 +32,7 @@ internal const val RETRY_LABEL = "تلاش دوباره"
 
 internal const val PERMISSION_EXPLANATION =
     "برای نصب نسخهٔ تازه، اندروید باید اجازه بدهد «مهرناز» برنامه نصب کند. این کار فقط یک بار لازم است. " +
-        "دکمهٔ زیر را بزنید، گزینهٔ «اجازه دادن از این منبع» را روشن کنید، با دکمهٔ بازگشت برگردید و دوباره «دانلود و نصب» را بزنید."
+        "دکمهٔ زیر را بزنید، کلید کنار «مهرناز» را روشن کنید. اندروید برنامه را می‌بندد؛ «مهرناز» را دوباره باز کنید و در «تنظیمات › به‌روزرسانی» دکمهٔ «دانلود و نصب» را بزنید."
 
 internal fun updateUi(state: UpdateState): UpdateUi = when (state) {
     UpdateState.Idle -> UpdateUi(
@@ -48,19 +48,19 @@ internal fun updateUi(state: UpdateState): UpdateUi = when (state) {
         buttons = listOf(UpdateButton(CHECK_LABEL, UpdateAction.CHECK)),
     )
     is UpdateState.Available -> UpdateUi(
-        status = "نسخهٔ ${state.update.versionName} آماده است.",
+        status = "نسخهٔ ${state.update.versionName.toPersianDigits()} آماده است.",
         highlight = true,
         notes = state.update.notesFa,
         size = sizeLabel(state.update),
         buttons = listOf(UpdateButton(DOWNLOAD_LABEL, UpdateAction.DOWNLOAD)),
     )
     is UpdateState.Downloading -> UpdateUi(
-        status = "در حال دانلود نسخهٔ ${state.update.versionName}…",
+        status = "در حال دانلود نسخهٔ ${state.update.versionName.toPersianDigits()}…",
         highlight = true,
         buttons = listOf(UpdateButton("دانلود ${percentLabel(state.percent)}", UpdateAction.NONE)),
     )
     is UpdateState.Installing -> UpdateUi(
-        status = "در حال نصب… صفحهٔ تأیید اندروید را تأیید کنید.",
+        status = "در حال نصب… در صفحهٔ اندروید «Install» را بزنید. بعد از نصب، «مهرناز» بسته می‌شود؛ دوباره بازش کنید.",
         highlight = true,
         buttons = listOf(UpdateButton("نصب…", UpdateAction.NONE)),
     )

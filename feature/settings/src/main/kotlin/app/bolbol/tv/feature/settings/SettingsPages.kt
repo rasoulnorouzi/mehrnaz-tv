@@ -1,5 +1,7 @@
 package app.bolbol.tv.feature.settings
 
+import app.bolbol.tv.core.designsystem.toPersianDigits
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -181,7 +183,7 @@ internal fun UpdatePage(
                 maxLines = 1,
             )
             // Version names are data (Latin digits and letters), like release years.
-            BolbolText(text = versionName, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+            BolbolText(text = versionName.toPersianDigits(), style = MaterialTheme.typography.bodyLarge, maxLines = 1)
         }
         BolbolText(
             text = ui.status,
@@ -206,7 +208,9 @@ internal fun UpdatePage(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ui.buttons.forEachIndexed { index, button ->
-                key(button.action) {
+                // Keyed by position, not action: «دانلود و نصب» → «دانلود ۴۵٪» → «نصب…» must stay the same focused
+                // node, or focus falls back to the section list and the page jumps to «زیرنویس» (v1.4 QA).
+                key(index) {
                     TvButton(
                         text = button.label,
                         // A no-op (not disabled) button while busy: it keeps the D-pad focus.
@@ -246,7 +250,7 @@ internal fun DeveloperPage(
             style = MaterialTheme.typography.bodyMedium,
             color = BolbolColors.TextSecondary,
         )
-        UrlField(value = manifestUrl, onValueChange = onManifestUrl, modifier = Modifier.widthIn(max = 520.dp))
+        // Two buttons only: a free-text field trapped D-pad focus on the TV (found in v1.4 QA).
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             TvButton(
                 text = "نشانی اصلی",
@@ -267,48 +271,6 @@ internal fun DeveloperPage(
     }
 }
 
-private val FieldShape = RoundedCornerShape(BolbolSpacing.CardRadius)
-
-/** One-line URL field: always left to right; D-pad focus draws the ring, OK opens the keyboard. */
-@Composable
-private fun UrlField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier) {
-    var focused by remember { mutableStateOf(false) }
-    // Edited locally and saved on every keystroke; the saved value is only the starting point.
-    var text by remember { mutableStateOf(value) }
-    BasicTextField(
-        value = text,
-        onValueChange = { text = it; onValueChange(it) },
-        modifier = modifier
-            .fillMaxWidth()
-            .onFocusChanged { focused = it.isFocused }
-            .background(BolbolColors.Surface, FieldShape)
-            .border(
-                BolbolSpacing.FocusBorder,
-                if (focused) BolbolColors.FocusRing else BolbolColors.Outline,
-                FieldShape,
-            )
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodyMedium.copy(
-            color = BolbolColors.TextPrimary,
-            textDirection = TextDirection.Ltr,
-        ),
-        cursorBrush = SolidColor(BolbolColors.Accent),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
-        decorationBox = { inner ->
-            Box {
-                if (text.isEmpty()) {
-                    BolbolText(
-                        text = "https://…",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = BolbolColors.TextSecondary,
-                    )
-                }
-                inner()
-            }
-        },
-    )
-}
 
 /** Settings → درباره. Nothing here takes focus. */
 @Composable
@@ -326,7 +288,7 @@ internal fun AboutPage(versionName: String, modifier: Modifier = Modifier) {
                 color = BolbolColors.TextSecondary,
             )
             // Version names are data (Latin digits and letters), like release years.
-            BolbolText(text = versionName, style = MaterialTheme.typography.bodyMedium)
+            BolbolText(text = versionName.toPersianDigits(), style = MaterialTheme.typography.bodyMedium)
         }
         DedicationLine(style = MaterialTheme.typography.bodyMedium)
         BolbolText(

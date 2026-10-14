@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default Android rules (HTTPS only, system CAs), with one exception: plain HTTP to 10.0.2.2, which is the
+     emulator's alias for the development PC (tools/serve-update.sh, docs/update.md). Unreachable from a real TV. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

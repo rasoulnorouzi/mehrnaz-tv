@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -192,8 +193,10 @@ class UpdateRepositoryImpl internal constructor(
     }
 
     private suspend fun fetchManifest(): String = withContext(io) {
+        // A malformed URL (e.g. a bad developer override) must fail like a bad manifest, never crash the app.
+        val url = manifestUrlProvider().trim().toHttpUrlOrNull() ?: throw ManifestHttpError(400)
         val request = Request.Builder()
-            .url(manifestUrlProvider())
+            .url(url)
             .cacheControl(CacheControl.FORCE_NETWORK)
             .header("Accept", "application/json")
             .build()
@@ -248,7 +251,8 @@ class UpdateRepositoryImpl internal constructor(
     }
 
     private suspend fun download(update: AppUpdate, part: File, digest: MessageDigest) {
-        val request = Request.Builder().url(update.apkUrl).build()
+        val url = update.apkUrl.trim().toHttpUrlOrNull() ?: throw IOException("bad apk url")
+        val request = Request.Builder().url(url).build()
         downloadClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val body = response.body

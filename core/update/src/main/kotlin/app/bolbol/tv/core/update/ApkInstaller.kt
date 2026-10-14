@@ -77,7 +77,9 @@ internal class PackageApkInstaller(context: Context) : ApkInstaller {
     private fun resultSender(sessionId: Int) = PendingIntent.getBroadcast(
         context,
         sessionId,
-        Intent(ACTION_INSTALL_RESULT).setPackage(context.packageName),
+        // Explicit component: the receiver has no intent filter, so an action/package-only intent never reaches it
+        // (v1.4 QA on Android 11: the confirmation screen never appeared).
+        Intent(ACTION_INSTALL_RESULT).setClass(context, InstallResultReceiver::class.java),
         PendingIntent.FLAG_UPDATE_CURRENT or if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0,
     ).intentSender
 

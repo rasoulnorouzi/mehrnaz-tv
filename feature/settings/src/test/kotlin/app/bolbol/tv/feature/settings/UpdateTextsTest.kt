@@ -35,7 +35,7 @@ class UpdateTextsTest {
 
     @Test fun availableOffersDownloadWithNotesAndSize() {
         val ui = updateUi(UpdateState.Available(update))
-        assertEquals("نسخهٔ 1.4.1 آماده است.", ui.status)
+        assertEquals("نسخهٔ ۱.۴.۱ آماده است.", ui.status)
         assertEquals("رفع چند ایراد", ui.notes)
         assertEquals("حجم: ۳۱ مگابایت", ui.size)
         assertEquals(listOf(UpdateButton("دانلود و نصب", UpdateAction.DOWNLOAD)), ui.buttons)
