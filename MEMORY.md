@@ -4,6 +4,7 @@ Living memory for this project. Update it at the end of every session or milesto
 Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 
 ## ▶ Current status
+- **v1.5.0 released 2026-10-25** (versionCode 5): search uses the site's daily `search-data.json` on the TV (new titles found without updates); mirrors learn domain moves.
 - **v1.2.0 released 2026-10-11** (versionCode 3, playback speed; GitHub release; APK `dist/mehrnaz-tv-v1.2.0.apk` sent). Before: v1.1.0 (code 2), v1.0.0.
 - **v1.4.0 released 2026-10-14** (versionCode 4; https://github.com/rasoulnorouzi/mehrnaz-tv/releases/tag/v1.4.0). Next releases: bump version, `tools/release.sh --publish --notes "…"` → in-app update. Was: **v1.4** (docs/plan.md §v1.4): in-app update, offline saving, genres, search keyboard, fixes. v1.3 USB postponed.
 - **Next:** whatever the user reports from the TV; 📺 items (quality-switch measurement on the TV, perf vs the official app,
@@ -34,6 +35,9 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-24: (angry) New titles such as "Carrie 2026" were missing in search; "it should be fully automated, not coding and updating each
+  time". Root cause was the API search, not stale lists. Lesson: verify "new content" paths against the live site, and prefer
+  data the site already maintains (its daily index) over our own copies. Also: the user judges by this session's work only.
 - 2026-10-14: The user made the GitHub repo **public** and asked for a nicer name → renamed to `rasoulnorouzi/mehrnaz-tv`; in-app updates come from its Releases (no separate releases repo). History checked: no secrets.
 - 2026-10-14: The update button belongs in Settings as its own part titled «به‌روزرسانی» (not a Home banner).
 - 2026-10-14: "Don't want the local file (USB) yet, postpone." New wishes, implement now ("let's go planning and implementation"): update
@@ -74,6 +78,8 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
   an agent team. No corrections so far.
 
 ## Progress log
+- 2026-10-25: v1.5.0. Emulator lesson: the PC's adb key changed on 2026-10-21, so old AVDs show "unauthorized"; made MiTV_API30_QA
+  (fresh, trusts the key). The old MiTV_API30 also holds another project's app ("Rass_player"), so don't wipe it.
 - 2026-10-14: v1.4 built (5 agents) and QA'd on the Android 11 emulator; release APK ready, not yet published. Lessons: agent worktrees start from
   origin/main, so push or tell agents to rebase onto local main first; `tools/tv.sh shot` can fail silently and leave an old file (use fresh
   names); Android kills the app when "install unknown apps" is toggled and after a self-update; a PackageInstaller result PendingIntent must

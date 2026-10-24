@@ -6,7 +6,7 @@ Task numbers match `docs/plan.md`. Owner: M = manager (Opus) · PE = player-engi
 UI = tv-ui-engineer (Sonnet) · DE = data-engineer (Sonnet) · QA = qa-device (Sonnet) ·
 PA = perf-analyst (Sonnet) · R = researcher (Sonnet) · C = chores (Haiku) · U = you (the user)
 
-Last updated: 2026-10-14 (**v1.4.0 released**: in-app update, offline saving, genres, search keyboard + prediction, phone-remote typing bug, player prev/next swap, details episode box; USB files postponed) · 2026-10-12 (**v1.3 «فایل‌های من» (USB playback) planned**, not started) · 2026-10-11 (**v1.2.0 released**: playback speed; before that **v1.1.0**: prev/next, episodes panel, CW «go to page», faster quality switch, 3 colours, 0.5 s sync only)
+Last updated: 2026-10-25 (**v1.5.0 released**: search finds new titles by itself) · 2026-10-14 (**v1.4.0 released**: in-app update, offline saving, genres, search keyboard + prediction, phone-remote typing bug, player prev/next swap, details episode box; USB files postponed) · 2026-10-12 (**v1.3 «فایل‌های من» (USB playback) planned**, not started) · 2026-10-11 (**v1.2.0 released**: playback speed; before that **v1.1.0**: prev/next, episodes panel, CW «go to page», faster quality switch, 3 colours, 0.5 s sync only)
 📺 = needs the real TV (waits until the TV is available; everything else uses the emulator)
 
 ---
@@ -98,7 +98,7 @@ Last updated: 2026-10-14 (**v1.4.0 released**: in-app update, offline saving, ge
 - [x] 2026-10-24 · Fix: on-device copy of the site's daily `search-data.json` (4.2 MB gz, 304 when unchanged, every 12 h,
   checked at start + every 6 h), local search + predictions, API fallback; mirrors learn domain moves from redirects;
   tests (network streaming/304/failover/redirect-learning, index refresh/ranking/fallback) (M)
-- [ ] v1.5.0: emulator QA (search "carrie" → Carrie 2026; in-app update 1.4.0 → 1.5.0 from GitHub), release (M)
+- [x] 2026-10-25 · v1.5.0 QA on a fresh Android 11 TV emulator (MiTV_API30_QA; the old one no longer trusts the PC adb key): v1.4.0 search "carrie" has no 2026 series (bug reproduced) → v1.5.0 over it finds «کری / Carrie 2026» first, "dustfall" too, opens and plays with subtitles; released (M)
 
 ### v1.4: update in-app, offline saving, genres, search, fixes (🔄 started 2026-10-14; spec docs/plan.md §v1.4)
 - [x] 2026-10-14 · v1.4-0 Contract (DownloadRepository, UpdateRepository, Genre) + skeleton modules core:download, core:update, feature:downloads (M)
