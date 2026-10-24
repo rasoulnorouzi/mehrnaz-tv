@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
@@ -18,6 +19,8 @@ android {
     buildFeatures {
         compose = true
     }
+    // Screenshot tests (docs/screenshot-tests.md): Robolectric needs the merged resources (fonts).
+    testOptions { unitTests.isIncludeAndroidResources = true }
 }
 
 kotlin {
@@ -41,4 +44,9 @@ dependencies {
     debugImplementation(libs.androidx.activity.compose)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

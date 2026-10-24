@@ -102,5 +102,15 @@ data class HomeSection(
     val viewAll: ListQuery?,
 )
 
-/** Home feed; [fromCache] is true while showing cached rows before the network refresh lands. */
-data class HomeFeed(val sections: List<HomeSection>, val fromCache: Boolean)
+/**
+ * Home feed; [fromCache] is true while showing cached rows before the network refresh lands.
+ * [refreshFailed] is true on the final emission when the network refresh failed and only cached rows
+ * could be shown (the UI says so instead of silently showing old rows).
+ */
+data class HomeFeed(val sections: List<HomeSection>, val fromCache: Boolean, val refreshFailed: Boolean = false)
+
+/** A genre or country of the catalogue (`{id, name}` in the API). Ids are per kind (docs/api.md quirk 13). */
+data class Term(val id: Int, val name: String)
+
+/** Filter choices a category page can offer for one [Category]. */
+data class CategoryFilters(val genres: List<Term>, val countries: List<Term>)

@@ -21,6 +21,9 @@ interface CatalogRepository {
     suspend fun list(query: ListQuery, page: Int): Page<TitleSummary>
 
     suspend fun search(text: String, page: Int = 1): Page<TitleSummary>
+
+    /** Genres and countries a category page can filter by (v1.3). Default: none, for fakes. */
+    suspend fun filters(category: Category): CategoryFilters = CategoryFilters(emptyList(), emptyList())
 }
 
 /** Local watch progress and history (Room). The server keeps none. */

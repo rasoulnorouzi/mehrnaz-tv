@@ -51,10 +51,11 @@ Disney+/Prime (season tabs + episode list, Skip Intro, next-episode countdown), 
      when held), audio/subtitle/quality menu, subtitle size, next episode.
    - Resume dialog on start: "ادامه از ۴۷:۱۲" (focused) / "از ابتدا".
    - Next-episode card at the last ~30 s / credits with a 10 s countdown.
-   - Controls row (RTL, start → end): movies «پخش/توقف» · «تنظیمات پخش»; **series** «قسمت قبل» · «پخش/توقف» ·
-     «قسمت بعد» · «قسمت‌ها» · «تنظیمات پخش» (v1.1-1/v1.1-4). «قسمت قبل/بعد» are always drawn for a series (the row
-     never shifts) and **disabled** at the first / last episode; their ⏮/⏭ glyphs follow the reading direction
-     (in RTL «قسمت قبل» points right, «قسمت بعد» left, each on the outer side of its label), unlike play/pause.
+   - Controls row (RTL, start → end): movies «پخش/توقف» · «تنظیمات پخش»; **series** [transport group] ·
+     «قسمت‌ها» · «تنظیمات پخش» (v1.1-1/v1.1-4). The transport group is laid out **left-to-right like the seek bar**
+     (v1.3, user request 2026-10-14): «قسمت قبل» on the left · «پخش/توقف» · «قسمت بعد» on the **right**, with the
+     usual ⏮ / ⏭ glyphs on the outer side of each label. «قسمت قبل/بعد» are always drawn for a series (the row
+     never shifts) and **disabled** at the first / last episode.
      The remote's **MEDIA_PREVIOUS / MEDIA_NEXT** do the same. A manual switch saves this episode's position
      (not marked completed), replaces the player entry (one ExoPlayer; Back still returns to details) and the new
      episode opens with the resume prompt if it has saved progress. Auto-next (card) keeps: completed + start at 0.

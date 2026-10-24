@@ -137,19 +137,25 @@ internal fun PlayerOverlay(
         ) {
             SeekBarRow(position, chrome)
             Spacer(Modifier.height(12.dp))
-            // RTL row, start (right) → end: «قسمت قبل» · play/pause · «قسمت بعد» · «قسمت‌ها» · «تنظیمات پخش».
+            // RTL row, start (right) → end: [transport group] · «قسمت‌ها» · «تنظیمات پخش».
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 val playing = status.playWhenReady && !status.isEnded
-                if (episodeButtons.visible) {
-                    SkipEpisodeButton(forward = false, enabled = episodeButtons.hasPrevious, onClick = onPreviousEpisode)
-                }
-                Button(onClick = onTogglePlay, modifier = Modifier.focusRequester(chrome.playPauseFocus)) {
-                    PlayPauseGlyph(playing, Modifier.size(14.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(if (playing) R.string.player_pause else R.string.player_play))
-                }
-                if (episodeButtons.visible) {
-                    SkipEpisodeButton(forward = true, enabled = episodeButtons.hasNext, onClick = onNextEpisode)
+                // The transport group is laid out left-to-right like the seek bar above it (v1.3, user request):
+                // «قسمت قبل» on the left, play/pause, «قسمت بعد» on the RIGHT, with the usual ⏮ / ⏭ glyphs.
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (episodeButtons.visible) {
+                            SkipEpisodeButton(forward = false, enabled = episodeButtons.hasPrevious, onClick = onPreviousEpisode)
+                        }
+                        Button(onClick = onTogglePlay, modifier = Modifier.focusRequester(chrome.playPauseFocus)) {
+                            PlayPauseGlyph(playing, Modifier.size(14.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(if (playing) R.string.player_pause else R.string.player_play))
+                        }
+                        if (episodeButtons.visible) {
+                            SkipEpisodeButton(forward = true, enabled = episodeButtons.hasNext, onClick = onNextEpisode)
+                        }
+                    }
                 }
                 if (hasEpisodePanel) {
                     Button(onClick = onOpenEpisodes, modifier = Modifier.focusRequester(chrome.episodesFocus)) {
@@ -283,9 +289,9 @@ private fun SkipEpisodeButton(forward: Boolean, enabled: Boolean, onClick: () ->
 }
 
 /**
- * ⏭ / ⏮ drawn in the reading direction (unlike play/pause): in RTL «قسمت قبل» sits at the start (right)
- * and points right, «قسمت بعد» at the end (left) and points left; each glyph sits on the outer side of
- * its label.
+ * ⏭ / ⏮ follow the layout direction they are drawn in. The controls draw them in an LTR group (v1.3), so
+ * «قسمت قبل» sits on the left and points left, «قسمت بعد» on the right and points right; each glyph sits on
+ * the outer side of its label.
  */
 @Composable
 private fun SkipGlyph(forward: Boolean, modifier: Modifier = Modifier) {
