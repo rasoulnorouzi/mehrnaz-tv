@@ -28,4 +28,20 @@ interface CatalogRemoteDataSource {
 
     /** Blank text returns an empty page without a request. */
     suspend fun search(text: String, page: Int = 1): Page<TitleSummary>
+
+    /**
+     * Streams the website's own search index (all ~38k titles, rebuilt by the site every day) into [sink], one title
+     * at a time, without holding the whole file in memory. [ifModifiedSince] is the `Last-Modified` of the copy we
+     * already have; the answer is then [SearchIndexFetch.NotModified] and [sink] is not called. Blocking I/O: call it
+     * off the main thread. Default: not supported (fakes).
+     */
+    suspend fun fetchSearchIndex(ifModifiedSince: String?, sink: (TitleSummary) -> Unit): SearchIndexFetch =
+        SearchIndexFetch.NotModified
+}
+
+/** Result of [CatalogRemoteDataSource.fetchSearchIndex]. */
+sealed interface SearchIndexFetch {
+    data object NotModified : SearchIndexFetch
+    /** Every entry went to the sink; [lastModified] is the server's header for the next conditional request. */
+    data class Updated(val lastModified: String?, val count: Int) : SearchIndexFetch
 }

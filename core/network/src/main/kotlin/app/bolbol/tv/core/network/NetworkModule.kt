@@ -28,7 +28,15 @@ class NetworkModule(
     private val tokenProvider: TokenProvider = TokenProvider { null },
 ) {
     private val appContext = context.applicationContext
-    private val mirrorList = MirrorList(mirrors)
+    private val learnedPrefs = appContext.getSharedPreferences(LEARNED_PREFS, Context.MODE_PRIVATE)
+
+    /** Hosts the site moved to (learned from redirects, newest first) + the built-in list. */
+    private val mirrorList = MirrorList(
+        (learnedPrefs.getString(LEARNED_KEY, null).orEmpty().lines() + mirrors).map { it.trim() }.filter { it.isNotEmpty() }
+            .distinctBy { it.removeSuffix("/").substringAfter("://") },
+    ).also { list ->
+        list.onLearned = { all -> learnedPrefs.edit().putString(LEARNED_KEY, (all - mirrors.toSet()).joinToString("\n")).apply() }
+    }
     private val imageHostList = MirrorList(imageHosts)
 
     val okHttpClient: OkHttpClient by lazy {
@@ -66,6 +74,9 @@ class NetworkModule(
     fun setImageHosts(imageHosts: List<String>) = imageHostList.update(imageHosts)
 
     companion object {
+        private const val LEARNED_PREFS = "bolbol_mirrors"
+        private const val LEARNED_KEY = "learned"
+
         /**
          * Site roots of the API mirrors, in order of preference (docs/api.md section 1). The last two are the hosts the
          * official TV app uses (docs/auth.md section 0); both serve the same `mapi/v1` JSON.
@@ -101,6 +112,7 @@ internal fun createOkHttpClient(
         .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .addInterceptor(MirrorInterceptor(mirrors))
+        .addInterceptor(SearchIndexInterceptor(mirrors))
         .addInterceptor(ImageCdnInterceptor(imageHosts))
         // Network interceptor: sees the real mirror of every attempt and every redirect hop (see AuthTokenInterceptor).
         .addNetworkInterceptor(AuthTokenInterceptor(mirrors, tokens))

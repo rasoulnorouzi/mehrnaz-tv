@@ -179,4 +179,5 @@ internal object NoService : BolboljanService {
     override suspend fun search(text: String, page: Int) = error("unused")
     override suspend fun detail(id: Long) = error("unused")
     override suspend fun playerLinks(id: Long) = error("unused")
+    override suspend fun searchIndex(ifModifiedSince: String?, cacheControl: String) = error("unused")
 }

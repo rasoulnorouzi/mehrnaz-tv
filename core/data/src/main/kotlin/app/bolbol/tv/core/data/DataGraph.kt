@@ -1,5 +1,6 @@
 package app.bolbol.tv.core.data
 
+import java.io.File
 import android.content.Context
 import app.bolbol.tv.core.database.BolbolDatabase
 import app.bolbol.tv.core.model.AccountRepository
@@ -40,9 +41,21 @@ class DataGraph(
     /** Shared by the API, the image loader and the video player (disk cache, timeouts, API mirror + image CDN failover). */
     val okHttpClient: OkHttpClient by lazy { network.okHttpClient }
 
-    val catalog: CatalogRepository by lazy {
-        CatalogRepositoryImpl(network.catalog, RoomHomeCacheStore(database.homeCacheDao()))
+    private val catalogImpl by lazy {
+        CatalogRepositoryImpl(
+            network.catalog,
+            RoomHomeCacheStore(database.homeCacheDao()),
+            searchIndex = LocalSearchIndex(File(appContext.filesDir, "search"), network.catalog, Dispatchers.IO),
+        )
     }
+
+    val catalog: CatalogRepository get() = catalogImpl
+
+    /**
+     * Keeps the on-device copy of the site's search index current (at most every 12 h; a 304 when unchanged).
+     * Call from background work after the first frame. New titles then appear in search without an app update.
+     */
+    suspend fun refreshSearchIndex(force: Boolean = false): Boolean = catalogImpl.refreshSearchIndex(force)
 
     private val watchImpl by lazy { WatchRepositoryImpl(database.watchDao()) }
 

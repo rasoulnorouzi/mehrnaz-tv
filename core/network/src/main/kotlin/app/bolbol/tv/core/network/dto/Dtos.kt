@@ -277,3 +277,28 @@ internal object DownloadEntryListSerializer :
     MapOrListSerializer<DownloadEntryDto>(DownloadEntryDto.serializer(), withKeys = true)
 internal object PlayerEntryListSerializer :
     MapOrListSerializer<PlayerEntryDto>(PlayerEntryDto.serializer(), withKeys = true)
+
+// ---------------------------------------------------------------------------------------------
+// Site search index: GET /wp-content/uploads/search-data.json (docs/api.md "Search index")
+// ---------------------------------------------------------------------------------------------
+
+/** One entry of the website's own typeahead index (a top-level JSON array of ~38k of these, rebuilt daily). */
+@Serializable
+internal data class SearchIndexEntryDto(
+    @SerialName("post_id")
+    @Serializable(with = LenientLongSerializer::class) val postId: Long = 0,
+    /** `"movies"` or `"series"`. */
+    @Serializable(with = LenientStringSerializer::class) val type: String = "",
+    @Serializable(with = LenientStringSerializer::class) val title: String = "",
+    @SerialName("fa_title")
+    @Serializable(with = LenientStringSerializer::class) val faTitle: String = "",
+    /** Site-relative poster path, 207x310. */
+    @Serializable(with = LenientStringSerializer::class) val thumb: String = "",
+    @Serializable(with = LenientStringSerializer::class) val year: String = "",
+    @SerialName("imdb_rate")
+    @Serializable(with = LenientStringSerializer::class) val imdbRate: String = "",
+    @SerialName("has_dubbed")
+    @Serializable(with = FlagSerializer::class) val hasDubbed: Boolean = false,
+    @SerialName("has_subtitle")
+    @Serializable(with = FlagSerializer::class) val hasSubtitle: Boolean = false,
+)

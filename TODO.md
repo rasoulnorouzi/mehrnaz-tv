@@ -93,6 +93,13 @@ Last updated: 2026-10-14 (**v1.4.0 released**: in-app update, offline saving, ge
 
 ## 📋 To do
 
+### v1.5: search finds new titles by itself (🔄 2026-10-24, user report: "Carrie 2026" missing)
+- [x] 2026-10-24 · Cause: API `post/search` misses new titles by Latin name (empty `normalized_title`); lists are fresh (M)
+- [x] 2026-10-24 · Fix: on-device copy of the site's daily `search-data.json` (4.2 MB gz, 304 when unchanged, every 12 h,
+  checked at start + every 6 h), local search + predictions, API fallback; mirrors learn domain moves from redirects;
+  tests (network streaming/304/failover/redirect-learning, index refresh/ranking/fallback) (M)
+- [ ] v1.5.0: emulator QA (search "carrie" → Carrie 2026; in-app update 1.4.0 → 1.5.0 from GitHub), release (M)
+
 ### v1.4: update in-app, offline saving, genres, search, fixes (🔄 started 2026-10-14; spec docs/plan.md §v1.4)
 - [x] 2026-10-14 · v1.4-0 Contract (DownloadRepository, UpdateRepository, Genre) + skeleton modules core:download, core:update, feature:downloads (M)
 - [x] 2026-10-14 · v1.4-1 Download engine (own resumable writer, one at a time, foreground service) + DB v1→v2 (tested migration) + offline playback; v1.4-7 «قسمت بعد» on the right (PE). Emulator: 480p episode saved in ~1 min, played with Wi-Fi off with saved subtitles, deleted

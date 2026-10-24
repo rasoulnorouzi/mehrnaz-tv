@@ -1,5 +1,9 @@
 package app.bolbol.tv.core.network
 
+import app.bolbol.tv.core.network.dto.SearchIndexEntryDto
+import kotlinx.serialization.json.decodeToSequence
+import kotlinx.serialization.json.DecodeSequenceMode
+import kotlinx.serialization.ExperimentalSerializationApi
 import app.bolbol.tv.core.model.CatalogException
 import app.bolbol.tv.core.model.Category
 import app.bolbol.tv.core.model.HomeSection
@@ -16,6 +20,7 @@ import app.bolbol.tv.core.network.mapper.emptyPage
 import app.bolbol.tv.core.network.mapper.toDetails
 import app.bolbol.tv.core.network.mapper.toHomeSections
 import app.bolbol.tv.core.network.mapper.toPage
+import app.bolbol.tv.core.network.mapper.toSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -92,6 +97,21 @@ internal class RetrofitCatalogRemote(
             emptyPage(page)
         }
     }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    override suspend fun fetchSearchIndex(ifModifiedSince: String?, sink: (TitleSummary) -> Unit): SearchIndexFetch =
+        guarded {
+            val response = service.searchIndex(ifModifiedSince)
+            if (response.code() == 304) return@guarded SearchIndexFetch.NotModified
+            if (!response.isSuccessful) throw HttpException(response)
+            val body = response.body() ?: throw IOException("empty search index")
+            var count = 0
+            body.use { b ->
+                json.decodeToSequence(b.byteStream(), SearchIndexEntryDto.serializer(), DecodeSequenceMode.ARRAY_WRAPPED)
+                    .forEach { dto -> dto.toSummary(images)?.let { sink(it); count++ } }
+            }
+            SearchIndexFetch.Updated(response.headers()["Last-Modified"], count)
+        }
 
     private fun Category.path(): String = when (this) {
         Category.MOVIES -> "movies"

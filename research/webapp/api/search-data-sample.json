@@ -1,0 +1,115 @@
+[
+    {
+        "post_id": 624982,
+        "type": "series",
+        "title": "سریال Dustfall",
+        "fa_title": "گرد و غبار",
+        "normalized_title": "",
+        "link": "/series/624982/",
+        "thumb": "/wp-content/uploads/2026/10/0-26263200-1792535083-207x310.webp",
+        "year": 2026,
+        "imdb_rate": 7.7,
+        "genres": [
+            "جنایی",
+            "درام",
+            "رازآلود",
+            "هیجان انگیز"
+        ],
+        "countries": [
+            "استرالیا"
+        ],
+        "has_dubbed": false,
+        "has_subtitle": true,
+        "post_date": "2026-10-23 18:35:45",
+        "post_modified": "0000-00-00 00:00:00"
+    },
+    {
+        "post_id": 624084,
+        "type": "series",
+        "title": "سریال Carrie",
+        "fa_title": "کری",
+        "normalized_title": "",
+        "link": "/series/624084/",
+        "thumb": "/wp-content/uploads/2026/10/0-82688300-1791429742-207x310.webp",
+        "year": 2026,
+        "imdb_rate": 7.6,
+        "genres": [
+            "ترسناک",
+            "درام"
+        ],
+        "countries": [
+            "آمریکا",
+            "کانادا"
+        ],
+        "has_dubbed": false,
+        "has_subtitle": true,
+        "post_date": "2026-10-23 18:34:39",
+        "post_modified": "0000-00-00 00:00:00"
+    },
+    {
+        "post_id": 189358,
+        "type": "movies",
+        "title": " فیلم Carrie 2013",
+        "fa_title": "کری",
+        "normalized_title": "فیلم carrie 2013",
+        "link": "/movies/189358/",
+        "thumb": "/wp-content/uploads/2026/06/0-88093100-1780520416-210x310.webp",
+        "year": 2013,
+        "imdb_rate": 5.8,
+        "genres": [
+            "ترسناک",
+            "درام",
+            "هیجان انگیز"
+        ],
+        "countries": [
+            "آمریکا"
+        ],
+        "has_dubbed": true,
+        "has_subtitle": true,
+        "post_date": "2026-07-11 08:47:57",
+        "post_modified": "0000-00-00 00:00:00"
+    },
+    {
+        "post_id": 625112,
+        "type": "series",
+        "title": "سریال Inside the Circle",
+        "fa_title": "درون حلقه",
+        "normalized_title": "",
+        "link": "/series/625112/",
+        "thumb": "/wp-content/uploads/2026/10/0-54088500-1792705487-207x310.webp",
+        "year": 2026,
+        "imdb_rate": 5.1,
+        "genres": [],
+        "countries": [
+            "مکزیک"
+        ],
+        "has_dubbed": false,
+        "has_subtitle": true,
+        "post_date": "2026-10-23 18:35:54",
+        "post_modified": "0000-00-00 00:00:00"
+    },
+    {
+        "post_id": 625029,
+        "type": "series",
+        "title": "سریال The Blame",
+        "fa_title": "تقصیر ",
+        "normalized_title": "",
+        "link": "/series/625029/",
+        "thumb": "/wp-content/uploads/2026/10/0-75747900-1792621474-210x242.webp",
+        "year": 2026,
+        "imdb_rate": 6.8,
+        "genres": [
+            "جنایی",
+            "درام",
+            "رازآلود",
+            "هیجان انگیز"
+        ],
+        "countries": [
+            "انگلیس"
+        ],
+        "has_dubbed": false,
+        "has_subtitle": true,
+        "post_date": "2026-10-23 18:35:52",
+        "post_modified": "0000-00-00 00:00:00"
+    }
+]

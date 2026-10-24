@@ -4,7 +4,10 @@ import app.bolbol.tv.core.network.dto.DetailEnvelopeDto
 import app.bolbol.tv.core.network.dto.PagedEnvelopeDto
 import app.bolbol.tv.core.network.dto.PlayerLinksEnvelopeDto
 import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.Streaming
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -44,4 +47,15 @@ internal interface BolboljanService {
      */
     @GET("post/player-links")
     suspend fun playerLinks(@Query("id") id: Long): PlayerLinksEnvelopeDto
+
+    /**
+     * The website's daily typeahead index (~28 MB JSON, ~4 MB gzipped; OkHttp asks for gzip by itself). `no-store`
+     * keeps the 30-day `immutable` answer out of the shared HTTP cache; [ifModifiedSince] gives a 304 when unchanged.
+     */
+    @Streaming
+    @GET("/wp-content/uploads/search-data.json")
+    suspend fun searchIndex(
+        @Header("If-Modified-Since") ifModifiedSince: String?,
+        @Header("Cache-Control") cacheControl: String = "no-store",
+    ): Response<ResponseBody>
 }

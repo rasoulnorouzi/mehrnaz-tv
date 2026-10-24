@@ -135,3 +135,13 @@ network-callback pause/resume, a `dataSync` foreground service and the 300 MB fr
 - Revisit if: streams become HLS/DASH (then Media3's segment downloaders are worth it).
 **2026-10-14 · Genres come from a researched per-kind table** (movie and series genre ids differ, docs/api.md quirk 13),
 exposed as `CatalogRepository.genres(category)`, so the source can later move to an API endpoint without touching the UI.
+
+## Search and mirrors without app updates (v1.5)
+**2026-10-24 · Search uses an on-device copy of the site's daily `search-data.json`** (user: new titles such as "Carrie 2026"
+were not findable; "it should be fully automated"). The API search misses new titles by their Latin name. The 28.7 MB index
+is 4.2 MB gzipped and answers 304 when unchanged, so a refresh every 12 h is cheap; it is streamed to a compact file and
+scanned per query (no big in-memory structure on the 2 GB TV, no DB migration). API search stays as the fallback.
+- Rejected: Room table + FTS (schema migration for a cache that is rebuilt daily); holding the index in memory (~10 MB on
+  a 2 GB TV); searching only by Persian titles through the API (the user types Latin names).
+**2026-10-24 · Mirrors learn redirects.** A domain move announced by a redirect is adopted and saved automatically.
+- Revisit if: the site moves without redirects; then a mirror list published with the releases (`update.json`) is next.

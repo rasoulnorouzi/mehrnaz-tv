@@ -1,5 +1,7 @@
 package app.bolbol.tv.core.network.mapper
 
+import app.bolbol.tv.core.network.dto.SearchIndexEntryDto
+
 import app.bolbol.tv.core.model.Category
 import app.bolbol.tv.core.model.Page
 import app.bolbol.tv.core.model.Person
@@ -89,3 +91,25 @@ internal fun PagedEnvelopeDto.toPage(
 }
 
 internal fun emptyPage(page: Int): Page<TitleSummary> = Page(emptyList(), page, page)
+
+/** Site search-index entry -> [TitleSummary] (no backdrop in the index). Null for entries without an id. */
+internal fun SearchIndexEntryDto.toSummary(images: ImageUrls = ImageUrls.Default): TitleSummary? {
+    if (postId <= 0L) return null
+    val kind = when (type.trim().lowercase()) {
+        "series", "serie" -> TitleType.SERIES
+        "movies", "movie" -> TitleType.MOVIE
+        else -> parseType(type)
+    }
+    return TitleSummary(
+        id = postId,
+        type = kind,
+        title = cleanTitle(title),
+        faTitle = faTitle.decodeHtmlEntities().trim(),
+        posterUrl = images.normalize(thumb),
+        backdropUrl = null,
+        year = parseYear(year),
+        imdbRating = parseImdb(imdbRate),
+        hasDub = hasDubbed,
+        hasSubtitle = hasSubtitle,
+    )
+}

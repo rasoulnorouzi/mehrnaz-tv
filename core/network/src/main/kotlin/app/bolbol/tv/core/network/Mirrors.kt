@@ -41,6 +41,24 @@ internal class MirrorList(mirrors: List<String>) {
 
     fun snapshot(): State = state
 
+    /** Called with the new list whenever [learn] adds a host (persist it so it survives restarts). */
+    @Volatile var onLearned: ((List<String>) -> Unit)? = null
+
+    /**
+     * A mirror redirected to [host], i.e. the site moved: put [host] first and make it the good host. No-op when it
+     * is already in the list. Returns true when the list changed.
+     */
+    @Synchronized
+    fun learn(host: HttpUrl): Boolean {
+        val current = state.urls
+        if (current.any { it.host == host.host && it.port == host.port }) return false
+        val origin = host.newBuilder().encodedPath("/").query(null).fragment(null).build()
+        val next = listOf(origin) + current
+        state = State(next)
+        onLearned?.invoke(next.map { it.toString() })
+        return true
+    }
+
     /** The host requests currently start with. */
     fun current(): HttpUrl = state.let { it.urls[it.good] }
 
@@ -74,9 +92,15 @@ internal abstract class HostFailoverInterceptor(
     /** Null when the response is a usable answer, otherwise a short reason. The body must not be consumed. */
     protected abstract fun problem(response: Response): String?
 
+    /** Hook after a usable answer (e.g. learn the host a mirror redirected to). */
+    protected open fun onUsable(hosts: MirrorList, request: okhttp3.Request, response: Response) {}
+
+    /** Whether this interceptor handles a request with this encoded path. */
+    protected open fun handles(path: String): Boolean = path.startsWith(pathPrefix)
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
-        if (!original.url.encodedPath.startsWith(pathPrefix)) return chain.proceed(original)
+        if (!handles(original.url.encodedPath)) return chain.proceed(original)
 
         val state = hosts.snapshot()
         val count = state.urls.size
@@ -99,6 +123,7 @@ internal abstract class HostFailoverInterceptor(
             val problem = problem(response)
             if (problem == null) {
                 state.good = index
+                onUsable(hosts, request, response)
                 return response
             }
             reached = true
@@ -114,6 +139,16 @@ internal abstract class HostFailoverInterceptor(
  * JSON 4xx answers (404 "not found", 400 ...) are real API answers and are returned untouched.
  */
 internal class MirrorInterceptor(mirrors: MirrorList) : HostFailoverInterceptor(mirrors, API_PATH_PREFIX) {
+
+    /**
+     * When a mirror redirected the API call to another host that answered with the API (the site moved domain),
+     * remember that host as the new first mirror, so the app follows the site without an app update (v1.5).
+     */
+    override fun onUsable(hosts: MirrorList, request: okhttp3.Request, response: Response) {
+        val finalUrl = response.request.url
+        val moved = finalUrl.host != request.url.host || finalUrl.port != request.url.port
+        if (moved && finalUrl.encodedPath.startsWith(API_PATH_PREFIX)) hosts.learn(finalUrl)
+    }
 
     override fun problem(response: Response): String? {
         if (response.code in 500..599) return "HTTP ${response.code}"
@@ -138,10 +173,26 @@ internal class MirrorInterceptor(mirrors: MirrorList) : HostFailoverInterceptor(
  */
 internal class ImageCdnInterceptor(hosts: MirrorList) : HostFailoverInterceptor(hosts, IMAGE_PATH_PREFIX) {
 
+    /** The site's search index lives under uploads too, but on the API mirrors ([SearchIndexInterceptor]). */
+    override fun handles(path: String): Boolean = super.handles(path) && path != SEARCH_INDEX_PATH
+
     override fun problem(response: Response): String? {
         if (!response.isSuccessful) return "HTTP ${response.code}"
         val contentType = response.body.contentType() ?: return null // no label: trust the 2xx
         if (contentType.type == "image" || contentType.subtype == "octet-stream") return null
         return "not an image ($contentType)"
     }
+}
+
+internal const val SEARCH_INDEX_PATH = "/wp-content/uploads/search-data.json"
+
+/**
+ * The site's daily search index (`search-data.json`, v1.5): served by the API mirrors (not the image CDNs), so it
+ * fails over across the same mirror list. 2xx and 304 (unchanged) are usable; anything else tries the next mirror.
+ */
+internal class SearchIndexInterceptor(mirrors: MirrorList) : HostFailoverInterceptor(mirrors, SEARCH_INDEX_PATH) {
+    override fun handles(path: String): Boolean = path == SEARCH_INDEX_PATH
+
+    override fun problem(response: Response): String? =
+        if (response.isSuccessful || response.code == 304) null else "HTTP ${response.code}"
 }

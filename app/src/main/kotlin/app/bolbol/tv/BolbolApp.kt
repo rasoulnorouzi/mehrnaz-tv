@@ -117,6 +117,15 @@ class BolbolApp : Application(), SingletonImageLoader.Factory {
             runCatching { data.pullProgress() }
             runCatching { data.account.syncMyList() }
         }
+        // Search index: the site's own list of every title, refreshed by itself (≤ every 12 h, 304 when unchanged),
+        // so titles added after this build are searchable without an app update.
+        // Re-checked every 6 h too: a TV app can stay open for days.
+        appScope.launch {
+            while (true) {
+                runCatching { data.refreshSearchIndex() }
+                kotlinx.coroutines.delay(6 * 60 * 60 * 1000L)
+            }
+        }
         // Creating the repository resumes a download interrupted by an app restart.
         appScope.launch { downloads }
         // In-app update: at most one manifest check a day; the result shows in Settings › «به‌روزرسانی» (user 2026-10-14).

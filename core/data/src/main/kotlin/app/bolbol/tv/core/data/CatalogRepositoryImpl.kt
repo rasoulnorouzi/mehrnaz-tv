@@ -47,6 +47,9 @@ internal class RoomHomeCacheStore(private val dao: HomeCacheDao) : HomeCacheStor
  *   while a long-running process still picks up new episodes.
  * - Everything runs on [io].
  */
+/** Page size of local search results (the grid loads more when the last rows get focus). */
+private const val LOCAL_PAGE_SIZE = 24
+
 internal class CatalogRepositoryImpl(
     private val remote: CatalogRemoteDataSource,
     private val homeCache: HomeCacheStore,
@@ -54,6 +57,8 @@ internal class CatalogRepositoryImpl(
     private val clock: () -> Long = System::currentTimeMillis,
     detailsCacheSize: Int = DETAILS_CACHE_SIZE,
     detailsTtlMs: Long = DETAILS_TTL_MS,
+    /** The site's own daily search index on disk (v1.5); null in tests that don't need it. */
+    private val searchIndex: LocalSearchIndex? = null,
 ) : CatalogRepository {
 
     private val suggestionIndex = TitleSuggestionIndex(io)
@@ -83,12 +88,26 @@ internal class CatalogRepositoryImpl(
     override suspend fun list(query: ListQuery, page: Int): Page<TitleSummary> =
         withContext(io) { remote.list(query, page).also { suggestionIndex.add(it.items) } }
 
+    /**
+     * The on-device copy of the site's index first (it has every title, also ones added after this build: the API
+     * search misses new titles by their Latin name); the API search when there is no index yet or it finds nothing.
+     */
     override suspend fun search(text: String, page: Int): Page<TitleSummary> {
         if (text.isBlank()) return Page(emptyList(), page = 1, totalPages = 1)
+        val local = searchIndex?.search(text)
+        if (!local.isNullOrEmpty()) {
+            val totalPages = (local.size + LOCAL_PAGE_SIZE - 1) / LOCAL_PAGE_SIZE
+            val items = local.drop((page - 1).coerceAtLeast(0) * LOCAL_PAGE_SIZE).take(LOCAL_PAGE_SIZE)
+            return Page(items, page = page, totalPages = totalPages)
+        }
         return withContext(io) { remote.search(text.trim(), page).also { suggestionIndex.add(it.items) } }
     }
 
-    override suspend fun suggestions(prefix: String, limit: Int): List<String> = suggestionIndex.suggest(prefix, limit)
+    override suspend fun suggestions(prefix: String, limit: Int): List<String> =
+        searchIndex?.suggest(prefix, limit)?.takeIf { it.isNotEmpty() } ?: suggestionIndex.suggest(prefix, limit)
+
+    /** Refreshes the on-device search index if it is older than half a day (called once per app start). */
+    suspend fun refreshSearchIndex(force: Boolean = false): Boolean = searchIndex?.refreshIfStale(force) ?: false
 
     override suspend fun genres(category: Category): List<Genre> = GenreTable.forCategory(category)
 

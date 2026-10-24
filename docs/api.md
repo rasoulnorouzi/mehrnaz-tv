@@ -435,3 +435,26 @@ person browses and searches; the 28 MB `search-data.json` remains the option if 
 - There is no genre endpoint: `wp/v2/taxonomies` exposes only `category`/`post_tag`/menus, and `wp/v2/genres` is 404. The home HTML menu links `/genre/<slug>/` (movies, 24 genres) and `/seriegenre/<slug>/` (series, 17); the `<body class="... term-N">` of each archive page is the id used by `?genres=N`.
 - `GET /post/movies?genres=ID` and `/post/series?genres=ID` filter correctly (spot-checked: movies 376 has 58 pages, series 117 has 136, versus 2337/859 unfiltered). Movie genre 94637 (TV contest) has only 2 items and is dropped; the list items themselves carry no genre field.
 - The app ships a static table (`core/network` `GenreTable`: 23 movie genres, 17 series genres, ids never shared between kinds, quirk 13), served by `CatalogRepository.genres(category)`. Series lack موزیکال/ورزشی/وسترن/کوتاه/آهنگ/فیلم نوآر. Combining `genres` with `country`/`imdbtop250` stays unverified, so the UI applies one filter at a time. Raw notes: `research/genres/genre-ids-2026-10-14.md`.
+
+## Search index: the site's own `search-data.json` (v1.5, found 2026-10-24)
+**Problem found by the user:** "Carrie 2026" (series 624084, added after v1.4.0) was on the site but not findable in the app.
+**Cause:** `GET /post/search` matches new posts only by their Persian title. Their `normalized_title` is empty, so a Latin
+query ("carrie", "dustfall", "inside the circle") misses every recent title. The API itself is fresh: list endpoints show them.
+**Fix:** the app keeps its own copy of the website's typeahead index:
+- `GET /wp-content/uploads/search-data.json` on the API mirrors (not the image CDNs): a top-level array of ~38.5k entries
+  `{post_id, type: "movies"|"series", title, fa_title, normalized_title, link, thumb (207x310, site-relative), year,
+  imdb_rate, genres[], countries[], has_dubbed, has_subtitle, post_date, post_modified}`; sample:
+  `research/webapp/api/search-data-sample.json`. Rebuilt by the site daily (Last-Modified 2026-10-24 03:19 GMT).
+- 28.7 MB raw, **4.2 MB gzipped** (OkHttp asks for gzip), `If-Modified-Since` → **304**, `Range` works; served by
+  euploadi.com, uuploadi.ir, playgen.ir. Its `Cache-Control: max-age=2592000, immutable` must not reach the HTTP cache:
+  the request sends `Cache-Control: no-store` (`SearchIndexInterceptor` fails over across the API mirrors).
+- `core:data` `LocalSearchIndex`: refresh at app start and every 6 h while open (download only if the copy is > 12 h old,
+  conditional), streamed into `filesDir/search/search-index-v1.tsv` (one line per title, normalised key first), swapped
+  in atomically; an empty or failed download never replaces a good copy. Search scans the file line by line (all query
+  words in title + Persian title + year; prefix > word start > contains; newest first), 24 per page; the API search
+  is the fallback when there is no index yet or it finds nothing. Predictions use it too.
+
+## Mirrors that move (v1.5)
+`MirrorInterceptor` learns a new domain by itself: when a mirror redirects an API call to another host that answers with
+the API, that host becomes the first mirror and is saved (`SharedPreferences bolbol_mirrors`), so a domain change on the
+site needs no app update. A mirror that dies without a redirect is still covered by failover to the other built-in hosts.
