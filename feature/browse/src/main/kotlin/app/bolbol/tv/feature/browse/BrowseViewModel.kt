@@ -5,7 +5,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import app.bolbol.tv.core.model.CatalogFilter
 import app.bolbol.tv.core.model.CatalogRepository
+import app.bolbol.tv.core.model.Page
+import app.bolbol.tv.core.model.TitleSummary
+import app.bolbol.tv.core.model.TitleType
 import app.bolbol.tv.core.model.Genre
 import app.bolbol.tv.core.model.ListQuery
 import kotlinx.coroutines.CancellationException
@@ -28,6 +32,11 @@ import kotlinx.coroutines.launch
  * - Changing the chip reloads from page 1 (the previous request is cancelled).
  * - Remembers the last focused poster so the screen can restore focus after details.
  *
+ * v1.6 local mode: when [type] or [initialFilter] is given the grid is answered by `catalog.browse(filter, page)` from the
+ * on-device index, with a filter bar (genre / country / decade / dubbed / sort). If the index is not downloaded yet
+ * (`browse` returns null) the screen silently falls back to the API page above (chips). Filter changes reload from
+ * page 1; the filter lives here, so it survives details and back.
+ *
  * Create with [factory] (manual DI, docs/decisions.md §Architecture); keep one per tab / "view all"
  * entry so state survives navigation to details and back.
  */
@@ -35,11 +44,23 @@ class BrowseViewModel(
     private val query: ListQuery,
     title: String,
     private val catalog: CatalogRepository,
+    type: TitleType? = null,
+    initialFilter: CatalogFilter? = null,
 ) : ViewModel() {
 
-    private val filters = quickFiltersFor(query)
+    private val apiFilters = quickFiltersFor(query)
+    private val startFilter: CatalogFilter? =
+        if (type == null && initialFilter == null) null
+        else (initialFilter ?: CatalogFilter()).let { if (type != null) it.copy(type = type) else it }
     private val _state = MutableStateFlow(
-        BrowseUiState(title = title, filters = filters, selected = BrowseFilter.All, phase = BrowsePhase.Loading),
+        BrowseUiState(
+            title = title,
+            // Local mode shows its own bar; the API chips only appear if the index turns out to be missing.
+            filters = if (startFilter == null) apiFilters else emptyList(),
+            selected = BrowseFilter.All,
+            phase = BrowsePhase.Loading,
+            filter = startFilter,
+        ),
     )
     internal val state: StateFlow<BrowseUiState> = _state.asStateFlow()
 
@@ -56,7 +77,67 @@ class BrowseViewModel(
 
     init {
         loadFirstPage()
+        if (startFilter == null) {
+            if (genresOfferedFor(query)) loadGenres()
+        } else {
+            loadFacets(startFilter.type)
+        }
+    }
+
+    /** Picker choices; independent of the grid. Null (no index / failure) just leaves the pickers hidden. */
+    private fun loadFacets(type: TitleType?) {
+        if (type == null) return
+        viewModelScope.launch {
+            val facets = try {
+                catalog.facets(type)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            _state.update { if (it.filter == null) it else it.copy(facets = facets) }
+        }
+    }
+
+    /** The index is missing: become the plain API page (chips + genres) for good. */
+    private fun fallBackToApi() {
+        _state.update { it.copy(filter = null, facets = null, filters = apiFilters, selected = BrowseFilter.All) }
         if (genresOfferedFor(query)) loadGenres()
+    }
+
+    private fun applyFilter(next: CatalogFilter) {
+        val s = _state.value
+        if (s.filter == null || next == s.filter) return
+        reloadFromChip = true
+        _state.update { it.copy(filter = next) }
+        loadFirstPage()
+    }
+
+    /** Picks [option] in the [kind] picker. */
+    internal fun pick(kind: FilterKind, option: PickerOption) {
+        val f = _state.value.filter ?: return
+        applyFilter(f.withOption(kind, option))
+    }
+
+    internal fun toggleDubbed() {
+        val f = _state.value.filter ?: return
+        applyFilter(f.copy(dubbedOnly = !f.dubbedOnly))
+    }
+
+    internal fun clearFilters() {
+        val f = _state.value.filter ?: return
+        applyFilter(f.cleared())
+    }
+
+    /** One page of the current mode. Null only for a later local page when the index vanished. */
+    private suspend fun fetch(page: Int): Page<TitleSummary> {
+        val f = _state.value.filter
+        if (f != null) {
+            val local = catalog.browse(f, page)
+            if (local != null) return local
+            if (page == 1) fallBackToApi() else throw IllegalStateException("index gone")
+        }
+        return catalog.list(activeQuery, page)
     }
 
     /** Separate coroutine: the chips may appear a moment after the grid, never delay it. A failure just means no genre chips. */
@@ -89,7 +170,7 @@ class BrowseViewModel(
 
     internal fun selectFilter(filter: BrowseFilter) {
         val s = _state.value
-        if (filter !in filters || (filter == s.selected && s.phase != BrowsePhase.Error)) return
+        if (s.filter != null || filter !in apiFilters || (filter == s.selected && s.phase != BrowsePhase.Error)) return
         reloadFromChip = true
         activeQuery = query.withFilter(filter)
         _state.update { it.copy(selected = filter, selectedGenre = null) }
@@ -99,7 +180,7 @@ class BrowseViewModel(
     /** Reloads the grid from page 1 for [genre] (replaces any quick chip; the API's combined-filter behaviour is unverified). */
     internal fun selectGenre(genre: Genre) {
         val s = _state.value
-        if (genre !in s.genres || (genre == s.selectedGenre && s.phase != BrowsePhase.Error)) return
+        if (s.filter != null || genre !in s.genres || (genre == s.selectedGenre && s.phase != BrowsePhase.Error)) return
         reloadFromChip = true
         activeQuery = query.withGenre(genre)
         _state.update { it.copy(selected = null, selectedGenre = genre) }
@@ -119,7 +200,7 @@ class BrowseViewModel(
             while (true) {
                 val requested = paging.nextPage
                 val result = try {
-                    catalog.list(activeQuery, requested)
+                    fetch(requested)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -154,7 +235,7 @@ class BrowseViewModel(
         }
         job = viewModelScope.launch {
             try {
-                val result = catalog.list(activeQuery, 1)
+                val result = fetch(1)
                 ensureActive()
                 paging = paging.append(1, result)
                 _state.update {
@@ -174,7 +255,13 @@ class BrowseViewModel(
     }
 
     companion object {
-        fun factory(query: ListQuery, title: String, catalog: CatalogRepository): ViewModelProvider.Factory =
-            viewModelFactory { initializer { BrowseViewModel(query, title, catalog) } }
+        fun factory(
+            query: ListQuery,
+            title: String,
+            catalog: CatalogRepository,
+            type: TitleType? = null,
+            initialFilter: CatalogFilter? = null,
+        ): ViewModelProvider.Factory =
+            viewModelFactory { initializer { BrowseViewModel(query, title, catalog, type, initialFilter) } }
     }
 }
