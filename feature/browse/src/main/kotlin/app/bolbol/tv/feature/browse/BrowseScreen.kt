@@ -16,7 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed as listItemsIndexed
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -28,6 +31,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +60,8 @@ import app.bolbol.tv.core.designsystem.PosterCard
 import app.bolbol.tv.core.designsystem.SelectableChip
 import app.bolbol.tv.core.designsystem.TvButton
 import app.bolbol.tv.core.designsystem.TvButtonStyle
+import app.bolbol.tv.core.designsystem.TvDialog
+import app.bolbol.tv.core.model.CatalogFilter
 import app.bolbol.tv.core.model.Genre
 import app.bolbol.tv.core.model.TitleSummary
 
@@ -81,6 +87,7 @@ fun BrowseScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     // Written by the chips' focus callback, read only inside effects: never recomposes anything.
     val chipsHaveFocus = remember { mutableStateOf(false) }
+    var picker by remember { mutableStateOf<FilterKind?>(null) }
 
     Column(
         modifier
@@ -93,12 +100,22 @@ fun BrowseScreen(
             onSelectFilter = viewModel::selectFilter,
             onSelectGenre = viewModel::selectGenre,
             chipsHaveFocus = chipsHaveFocus,
+            onOpenPicker = { picker = it },
+            onToggleDubbed = viewModel::toggleDubbed,
+            onClear = viewModel::clearFilters,
         )
         Box(Modifier.fillMaxWidth().weight(1f)) {
             when (state.phase) {
                 BrowsePhase.Loading -> LoadingState()
                 BrowsePhase.Error -> ErrorState(message = state.error ?: MESSAGE_UNKNOWN, onRetry = viewModel::retry)
-                BrowsePhase.Empty -> EmptyState(message = "موردی برای نمایش وجود ندارد.")
+                BrowsePhase.Empty -> {
+                    val f = state.filter
+                    if (f == null) {
+                        EmptyState(message = "موردی برای نمایش وجود ندارد.")
+                    } else {
+                        NoMatchState(canClear = f.isActive(), chipsHaveFocus = chipsHaveFocus, onClear = viewModel::clearFilters)
+                    }
+                }
                 BrowsePhase.Content -> BrowseGrid(
                     items = state.items,
                     loadingMore = state.loadingMore,
@@ -109,6 +126,20 @@ fun BrowseScreen(
                 )
             }
         }
+    }
+    val kind = picker
+    val filter = state.filter
+    if (kind != null && filter != null) {
+        FilterPicker(
+            kind = kind,
+            filter = filter,
+            options = remember(kind, state.facets) { pickerOptions(kind, state.facets) },
+            onPick = { option ->
+                picker = null
+                viewModel.pick(kind, option)
+            },
+            onDismiss = { picker = null },
+        )
     }
 }
 
@@ -125,7 +156,14 @@ private fun BrowseHeader(
     onSelectFilter: (BrowseFilter) -> Unit,
     onSelectGenre: (Genre) -> Unit,
     chipsHaveFocus: MutableState<Boolean>,
+    onOpenPicker: (FilterKind) -> Unit,
+    onToggleDubbed: () -> Unit,
+    onClear: () -> Unit,
 ) {
+    if (state.filter != null) {
+        LocalHeader(state, chipsHaveFocus, onOpenPicker, onToggleDubbed, onClear)
+        return
+    }
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = HeaderInset, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -337,3 +375,148 @@ private suspend fun FocusRequester.requestFocusWhenAttached() {
 }
 
 private const val FOCUS_ATTEMPTS = 5
+
+// --- v1.6 local mode: filter bar, picker, empty state ---------------------------------------------------------
+
+/** Title + summary on one line, the filter bar (one D-pad row) under it. */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun LocalHeader(
+    state: BrowseUiState,
+    chipsHaveFocus: MutableState<Boolean>,
+    onOpenPicker: (FilterKind) -> Unit,
+    onToggleDubbed: () -> Unit,
+    onClear: () -> Unit,
+) {
+    val filter = state.filter ?: return
+    Column(Modifier.fillMaxWidth().padding(horizontal = HeaderInset, vertical = 4.dp)) {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            BolbolText(
+                text = state.title,
+                style = MaterialTheme.typography.headlineSmall,
+                color = BolbolColors.TextPrimary,
+                maxLines = 1,
+            )
+            BolbolText(
+                text = localSubtitle(state),
+                modifier = Modifier.weight(1f).heightIn(min = 18.dp).padding(bottom = 4.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = BolbolColors.TextSecondary,
+                maxLines = 1,
+            )
+        }
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRestorer()
+                // Same rule as the API chips: focus enters once there is something to land next to; also while empty,
+                // so «پاک کردن» / another filter stays reachable.
+                .focusProperties {
+                    enter = {
+                        if (state.phase == BrowsePhase.Content || state.phase == BrowsePhase.Empty) FocusRequester.Default
+                        else FocusRequester.Cancel
+                    }
+                }
+                .onFocusChanged { chipsHaveFocus.value = it.hasFocus },
+            contentPadding = PaddingValues(vertical = 6.dp, horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (state.facets != null) {
+                items(FACET_KINDS, key = { "p-${it.name}" }, contentType = { "chip" }) { kind ->
+                    SelectableChip(
+                        text = filter.buttonLabel(kind) + " ▾",
+                        selected = filter.isSet(kind),
+                        onClick = { onOpenPicker(kind) },
+                    )
+                }
+            }
+            item(key = "dubbed", contentType = "chip") {
+                SelectableChip(text = LABEL_DUBBED, selected = filter.dubbedOnly, onClick = onToggleDubbed)
+            }
+            item(key = "p-${FilterKind.Sort.name}", contentType = "chip") {
+                SelectableChip(
+                    text = filter.buttonLabel(FilterKind.Sort) + " ▾",
+                    selected = filter.isSet(FilterKind.Sort),
+                    onClick = { onOpenPicker(FilterKind.Sort) },
+                )
+            }
+            if (filter.isActive()) {
+                item(key = "clear", contentType = "chip") {
+                    SelectableChip(text = LABEL_CLEAR, selected = false, onClick = onClear)
+                }
+            }
+        }
+    }
+}
+
+/** Pickers that need the facets; the row is genre, country, year, [dubbed toggle], sort, [clear]. */
+private val FACET_KINDS = listOf(FilterKind.Genre, FilterKind.Country, FilterKind.Decade)
+
+/** Side-panel style list: focus starts on the current value, Back closes, OK picks. */
+@Composable
+private fun FilterPicker(
+    kind: FilterKind,
+    filter: CatalogFilter,
+    options: List<PickerOption>,
+    onPick: (PickerOption) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val current = remember(kind) { filter.selectedIndex(kind, options) }
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = (current - 2).coerceAtLeast(0))
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocusWhenAttached() }
+    TvDialog(onDismiss = onDismiss, width = 420.dp) {
+        BolbolText(
+            text = kind.title,
+            style = MaterialTheme.typography.titleMedium,
+            color = BolbolColors.TextPrimary,
+            maxLines = 1,
+        )
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().heightIn(max = 340.dp),
+            state = listState,
+            contentPadding = PaddingValues(vertical = 4.dp, horizontal = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            listItemsIndexed(options, key = { i, o -> "$i-${o.label}" }, contentType = { _, _ -> "option" }) { index, option ->
+                SelectableChip(
+                    text = option.label,
+                    selected = filter.isSelected(kind, option),
+                    onClick = { onPick(option) },
+                    modifier = Modifier.fillMaxWidth().then(if (index == current) Modifier.focusRequester(focus) else Modifier),
+                )
+            }
+        }
+    }
+}
+
+/** «چیزی با این فیلترها پیدا نشد» with a «پاک کردن فیلترها» button that takes focus unless the filter bar holds it. */
+@Composable
+private fun NoMatchState(canClear: Boolean, chipsHaveFocus: State<Boolean>, onClear: () -> Unit) {
+    val focus = remember { FocusRequester() }
+    if (canClear) {
+        LaunchedEffect(Unit) { if (!chipsHaveFocus.value) focus.requestFocusWhenAttached() }
+    }
+    Column(
+        Modifier.fillMaxSize().padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+    ) {
+        BolbolText(
+            text = MESSAGE_NO_MATCH,
+            style = MaterialTheme.typography.titleMedium,
+            color = BolbolColors.TextSecondary,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
+        if (canClear) {
+            TvButton(
+                text = LABEL_CLEAR_FILTERS,
+                onClick = onClear,
+                modifier = Modifier.focusRequester(focus),
+                style = TvButtonStyle.Secondary,
+            )
+        }
+    }
+}

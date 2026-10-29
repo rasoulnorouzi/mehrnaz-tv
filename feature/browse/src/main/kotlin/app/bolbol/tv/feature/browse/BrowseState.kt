@@ -2,6 +2,8 @@ package app.bolbol.tv.feature.browse
 
 import app.bolbol.tv.core.designsystem.toPersianDigits
 import app.bolbol.tv.core.model.CatalogException
+import app.bolbol.tv.core.model.CatalogFacets
+import app.bolbol.tv.core.model.CatalogFilter
 import app.bolbol.tv.core.model.Genre
 import app.bolbol.tv.core.model.TitleSummary
 
@@ -31,6 +33,10 @@ internal data class BrowseUiState(
     val loadingMore: Boolean = false,
     /** Persian message when fetching a later page failed; the grid keeps its items and offers a retry. */
     val loadMoreError: String? = null,
+    /** v1.6: non-null = local-index mode (filter bar, `CatalogRepository.browse`); null = the API page with chips. */
+    val filter: CatalogFilter? = null,
+    /** Picker choices of local mode; null until loaded (the genre / country / year buttons stay hidden then). */
+    val facets: CatalogFacets? = null,
 )
 
 /** Small line under the title: "صفحه ۲ از ۸۵۹", or the item count when everything fits one page. */
