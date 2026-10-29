@@ -17,8 +17,8 @@ android {
         applicationId = "app.mehrnaz.tv" // installed package; the code namespace stays app.bolbol.tv
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 5
-        versionName = "1.5.0"
+        versionCode = 6
+        versionName = "1.5.1"
     }
 
     // Permanent release key lives OUTSIDE the repo (~/.bolboltv/keystore.properties, chmod 600).

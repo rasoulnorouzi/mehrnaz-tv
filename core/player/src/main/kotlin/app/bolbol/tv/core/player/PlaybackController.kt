@@ -150,6 +150,8 @@ class PlaybackController(
     private var ttffStartMs = NOT_MEASURING
     private var ttffIsSwitch = false
     private var droppedFrames = 0L
+    /** Reloads the stream in place when playback keeps dropping frames (v1.5.1, [StutterGuard]). */
+    private val stutterGuard = StutterGuard()
     private var decoderName: String? = null
     private var bandwidthEstimate = -1L
     private var tickJob: Job? = null
@@ -191,6 +193,7 @@ class PlaybackController(
             reason: Int,
         ) {
             subtitleSync.update()
+            stutterGuard.restartWindow() // a seek drops frames on purpose
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -300,7 +303,10 @@ class PlaybackController(
         markedCompleted = false
         savePolicy.reset(clock.elapsedRealtimeMs(), start)
         beginTtff(isSwitch = false)
-        player.setMediaItem(stream.toMediaItem(request), start)
+        stutterGuard.reset()
+        // Resuming mid-film starts at the keyframe before the saved spot, like a quality switch: an exact start makes the
+        // TV decode up to 10 s of hidden frames first, which on the MT9611 could leave playback choppy (v1.5.1).
+        player.setMediaItem(stream.toMediaItem(request, keyframeStart = start > 0), start)
         player.playWhenReady = playWhenReady
         applySpeed()
         player.prepare()
@@ -328,6 +334,7 @@ class PlaybackController(
         savePolicy.reset(clock.elapsedRealtimeMs(), position)
         beginTtff(isSwitch = true)
         beginSwitch(from, stream, position)
+        stutterGuard.restartWindow()
         // Keyframe start (KeyframeStart): the first picture needs no hidden decoding of up to 10 s of frames.
         player.setMediaItem(stream.toMediaItem(request, keyframeStart = true), position)
         player.playWhenReady = play
@@ -468,10 +475,7 @@ class PlaybackController(
     fun onStart(): Boolean {
         if (released || !stoppedByLifecycle) return false
         stoppedByLifecycle = false
-        if (_error.value == null) {
-            applySpeed()
-            player.prepare()
-        }
+        if (_error.value == null) reloadInPlace("screen visible again")
         return true
     }
 
@@ -705,6 +709,25 @@ class PlaybackController(
         }
     }
 
+    /**
+     * Rebuilds the current stream at the current position from the keyframe before it (what a quality switch does,
+     * without changing quality): fresh decoder, fresh source. Used when the screen becomes visible again after
+     * [onStop] and when [StutterGuard] sees choppy playback. Keeps play/pause, speed and subtitles.
+     */
+    private fun reloadInPlace(reason: String) {
+        val request = request ?: return
+        val stream = stream ?: return
+        if (released) return
+        val position = player.currentPosition.coerceAtLeast(0)
+        val play = player.playWhenReady
+        Log.i(TAG, "reload in place ($reason) at ${position}ms")
+        stutterGuard.restartWindow()
+        player.setMediaItem(stream.toMediaItem(request, keyframeStart = true), position)
+        player.playWhenReady = play
+        applySpeed()
+        player.prepare()
+    }
+
     private fun startTicker() {
         if (tickJob?.isActive == true) return
         tickJob = scope.launch {
@@ -722,6 +745,10 @@ class PlaybackController(
         publishPosition()
         publishDiagnostics()
         if (player.isPlaying) saveProgress(SaveReason.TICK)
+        val playingSmoothly = player.isPlaying && !_switchingQuality.value
+        if (stutterGuard.onTick(clock.elapsedRealtimeMs(), playingSmoothly, droppedFrames, player.videoFormat?.frameRate ?: 0f)) {
+            reloadInPlace("stutter: dropped frames")
+        }
     }
 
     private fun publishStatus() {
