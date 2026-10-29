@@ -3,6 +3,8 @@ package app.bolbol.tv.feature.home
 import androidx.compose.runtime.Immutable
 import app.bolbol.tv.core.designsystem.formatContinueSubtitleFa
 import app.bolbol.tv.core.model.CatalogException
+import app.bolbol.tv.core.model.CatalogFilter
+import app.bolbol.tv.core.model.LocalHomeRow
 import app.bolbol.tv.core.model.ContinueWatchingItem
 import app.bolbol.tv.core.model.HomeSection
 import app.bolbol.tv.core.model.ListQuery
@@ -45,7 +47,10 @@ sealed interface HomeRow {
         val title: String,
         val items: List<TitleSummary>,
         val viewAll: ListQuery? = null,
+        /** On-device rows (id prefixed `local-`): their «مشاهده همه» opens the browse page with this filter. */
+        val localViewAll: CatalogFilter? = null,
     ) : HomeRow {
+        val hasViewAll: Boolean get() = viewAll != null || localViewAll != null
         override val size: Int get() = items.size
         override fun titleAt(index: Int): TitleSummary = items[index]
     }
@@ -111,14 +116,17 @@ internal fun Throwable.toHomeError(): HomeError = when (this) {
 }
 
 private const val SECTION_ROW_PREFIX = "section:"
+private const val LOCAL_ROW_PREFIX = "local-"
 
 /**
  * Joins the server rows and the local Continue Watching list into what the screen shows.
- * - Continue Watching comes first and is hidden when empty.
+ * - Continue Watching comes first and is hidden when empty; the on-device [localRows] follow it, then the server rows.
  * - Empty server rows are dropped, and duplicate ids are removed (LazyList keys must be unique).
  * - A failed feed is an error even if Continue Watching has entries: without the catalogue nothing can play.
  */
-internal fun buildHomeUiState(feed: FeedState, continueWatching: List<ContinueWatchingItem>): HomeUiState =
+internal fun buildHomeUiState(feed: FeedState, continueWatching: List<ContinueWatchingItem>,
+    localRows: List<LocalHomeRow> = emptyList(),
+): HomeUiState =
     when (feed) {
         FeedState.Loading -> HomeUiState.Loading
         is FeedState.Failed -> HomeUiState.Error(feed.error)
@@ -127,6 +135,13 @@ internal fun buildHomeUiState(feed: FeedState, continueWatching: List<ContinueWa
             val resumable = continueWatching.distinctBy { it.title.id }
             if (resumable.isNotEmpty()) rows += HomeRow.ContinueWatching(resumable)
             val seen = HashSet<String>()
+            for (local in localRows) {
+                val rowId = LOCAL_ROW_PREFIX + local.id
+                val items = local.items.distinctBy { it.id }
+                if (items.isNotEmpty() && seen.add(rowId)) {
+                    rows += HomeRow.Titles(rowId, local.title, items, localViewAll = local.viewAll)
+                }
+            }
             for (section in feed.sections) {
                 val rowId = SECTION_ROW_PREFIX + section.id
                 val items = section.items.distinctBy { it.id }
@@ -146,7 +161,7 @@ internal fun List<HomeRow>.resolveInitialFocus(remembered: FocusTarget?): Initia
         val rowIndex = indexOfFirst { it.id == remembered.rowId }
         if (rowIndex >= 0 && this[rowIndex].size > 0) {
             val row = this[rowIndex]
-            if (remembered.isViewAll && row is HomeRow.Titles && row.viewAll != null) {
+            if (remembered.isViewAll && row is HomeRow.Titles && row.hasViewAll) {
                 val last = row.size - 1
                 return InitialFocus(rowIndex, row.size, row.id, row.titleAt(last), viewAll = true)
             }
