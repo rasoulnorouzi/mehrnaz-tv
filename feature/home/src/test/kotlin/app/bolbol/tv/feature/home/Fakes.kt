@@ -42,6 +42,13 @@ internal fun resumable(
 
 internal class FakeCatalog(private val source: () -> Flow<HomeFeed>) : CatalogRepository {
     var homeCalls = 0
+    var localRows: suspend (List<Long>) -> List<app.bolbol.tv.core.model.LocalHomeRow> = { emptyList() }
+    val localCalls = mutableListOf<List<Long>>()
+    override suspend fun localHomeRows(watchedIds: List<Long>): List<app.bolbol.tv.core.model.LocalHomeRow> {
+        localCalls += watchedIds
+        return localRows(watchedIds)
+    }
+
     override fun homeFeed(): Flow<HomeFeed> {
         homeCalls++
         return source()
@@ -71,3 +78,6 @@ internal class FakeWatch(initial: List<ContinueWatchingItem> = emptyList()) : Wa
         hidden += postId
     }
 }
+
+internal fun localRow(id: String, vararg ids: Long, viewAll: app.bolbol.tv.core.model.CatalogFilter? = null) =
+    app.bolbol.tv.core.model.LocalHomeRow(id = id, title = "Local $id", items = ids.map { title(it) }, viewAll = viewAll)

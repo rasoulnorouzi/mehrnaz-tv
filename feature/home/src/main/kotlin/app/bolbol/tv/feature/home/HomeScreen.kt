@@ -76,6 +76,7 @@ import app.bolbol.tv.core.designsystem.formatContinueSubtitleFa
 import app.bolbol.tv.core.designsystem.formatImdb
 import app.bolbol.tv.core.designsystem.rememberDebouncedValue
 import app.bolbol.tv.core.model.ContinueWatchingItem
+import app.bolbol.tv.core.model.CatalogFilter
 import app.bolbol.tv.core.model.ListQuery
 import app.bolbol.tv.core.model.TitleSummary
 import kotlinx.coroutines.launch
@@ -122,6 +123,8 @@ fun HomeScreen(
     onNavigate: (HomeDestination) -> Unit,
     modifier: Modifier = Modifier,
     onViewAll: (ListQuery, title: String) -> Unit = { _, _ -> },
+    /** «مشاهده همه» of an on-device row (v1.6): open the browse page with this filter. */
+    onViewAllLocal: (CatalogFilter, title: String) -> Unit = { _, _ -> },
     /** The «دانلودها» tab and the error screen's «دانلودها» button (offline start). */
     onOpenDownloads: () -> Unit = {},
 ) {
@@ -156,6 +159,7 @@ fun HomeScreen(
                         onResume = onResume,
                         onOpenTitleAt = onOpenTitleAt,
                         onViewAll = onViewAll,
+                        onViewAllLocal = onViewAllLocal,
                         onMarkWatched = { viewModel.markWatched(it) },
                         onRemove = { viewModel.removeFromContinueWatching(it) },
                         onNavigate = onNavigate,
@@ -274,6 +278,7 @@ private fun HomeContent(
     onResume: (ContinueWatchingItem) -> Unit,
     onOpenTitleAt: (ContinueWatchingItem) -> Unit,
     onViewAll: (ListQuery, String) -> Unit,
+    onViewAllLocal: (CatalogFilter, String) -> Unit,
     onMarkWatched: (ContinueWatchingItem) -> Unit,
     onRemove: (ContinueWatchingItem) -> Unit,
     onNavigate: (HomeDestination) -> Unit,
@@ -348,6 +353,7 @@ private fun HomeContent(
                             onOpenTitle = onOpenTitle,
                             onResume = onResume,
                             onViewAll = onViewAll,
+                            onViewAllLocal = onViewAllLocal,
                             onOpenMenu = { item, trigger ->
                                 menu = OpenMenu(item, heldSelect = trigger == ActionTrigger.LONG_PRESS)
                             },
@@ -400,6 +406,7 @@ private fun HomeRowItem(
     onOpenTitle: (TitleSummary) -> Unit,
     onResume: (ContinueWatchingItem) -> Unit,
     onViewAll: (ListQuery, String) -> Unit,
+    onViewAllLocal: (CatalogFilter, String) -> Unit,
     onOpenMenu: (ContinueWatchingItem, ActionTrigger) -> Unit,
 ) {
     // Only the row focus restoration points at starts scrolled to the remembered card.
@@ -444,7 +451,8 @@ private fun HomeRowItem(
                 )
             }
             val viewAll = row.viewAll
-            if (viewAll != null) {
+            val localViewAll = row.localViewAll
+            if (row.hasViewAll) {
                 item(key = VIEW_ALL_KEY, contentType = CONTENT_TYPE_VIEW_ALL) {
                     // Back from the grid: focus returns to this card (the ViewModel remembers it).
                     val owner = gate.owns(row.id, VIEW_ALL_FOCUS_ID)
@@ -453,7 +461,10 @@ private fun HomeRowItem(
                         LaunchedEffect(request) { gate.perform(request) }
                     }
                     ViewAllCard(
-                        onClick = { onViewAll(viewAll, row.title) },
+                        onClick = {
+                            if (viewAll != null) onViewAll(viewAll, row.title)
+                            else if (localViewAll != null) onViewAllLocal(localViewAll, row.title)
+                        },
                         onFocused = { onViewAllFocused(row.id) },
                         modifier = if (owner) Modifier.focusRequester(gate.requester) else Modifier,
                     )

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -173,5 +174,46 @@ class HomeViewModelTest {
         vm.removeFromContinueWatching(watch.items.value.single())
 
         assertTrue(watch.markedWatched.isEmpty() && watch.hidden.isEmpty())
+    }
+
+    private fun vmWith(catalog: FakeCatalog, watch: FakeWatch) =
+        HomeViewModel(catalog, watch, computeDispatcher = UnconfinedTestDispatcher())
+
+    @Test fun localRowsGoBetweenContinueWatchingAndApiRowsAndDoNotBlockTheFirstFrame() = runTest {
+        val catalog = FakeCatalog { flow { emit(feed(section("a", 1))) } }
+        catalog.localRows = { listOf(localRow("rec", 5, 6, viewAll = app.bolbol.tv.core.model.CatalogFilter()), localRow("empty")) }
+        val vm = vmWith(catalog, FakeWatch(listOf(resumable(9), resumable(8))))
+        collect(vm)
+        // Debounce has not elapsed: the feed and Continue Watching are already on screen.
+        assertEquals(listOf(HomeRow.CONTINUE_ROW_ID, "section:a"), vm.rows().map { it.id })
+        assertTrue(catalog.localCalls.isEmpty())
+
+        advanceTimeBy(500)
+        assertEquals(listOf(HomeRow.CONTINUE_ROW_ID, "local-rec", "section:a"), vm.rows().map { it.id })
+        assertEquals(listOf(listOf(9L, 8L)), catalog.localCalls)
+        assertTrue((vm.rows()[1] as HomeRow.Titles).hasViewAll)
+    }
+
+    @Test fun continueWatchingChangeRecomputesAndAFailureKeepsTheOldRows() = runTest {
+        val catalog = FakeCatalog { flow { emit(feed(section("a", 1))) } }
+        var n = 0
+        catalog.localRows = { n++; if (n == 1) listOf(localRow("rec", 5)) else throw IllegalStateException("x") }
+        val watch = FakeWatch()
+        val vm = vmWith(catalog, watch)
+        collect(vm)
+        advanceTimeBy(500)
+        assertEquals(listOf("local-rec", "section:a"), vm.rows().map { it.id })
+
+        watch.items.value = listOf(resumable(7))
+        advanceTimeBy(500)
+        assertEquals(listOf(listOf<Long>(), listOf(7L)), catalog.localCalls)
+        assertEquals(listOf(HomeRow.CONTINUE_ROW_ID, "local-rec", "section:a"), vm.rows().map { it.id })
+    }
+
+    @Test fun focusOnALocalRowCardIsRestored() {
+        val rows = (buildHomeUiState(FeedState.Loaded(listOf(section("a", 1))), emptyList(), listOf(localRow("rec", 5, 6))) as HomeUiState.Content).rows
+        val focus = rows.resolveInitialFocus(FocusTarget("local-rec", 6))!!
+        assertEquals(0, focus.rowIndex)
+        assertEquals(1, focus.itemIndex)
     }
 }
