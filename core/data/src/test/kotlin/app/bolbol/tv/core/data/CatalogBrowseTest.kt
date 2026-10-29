@@ -102,7 +102,7 @@ class CatalogBrowseTest {
         assertTrue(3L in forYou.items.map { it.id })
         assertTrue(forYou.items.none { it.id == 6L || it.id == 4L })
         assertEquals(listOf(1L, 4L, 2L), rows.getValue("local-week").items.map { it.id })
-        assertEquals(2L, rows.getValue("local-dubbed").items.first().id)
+        assertEquals(4L, rows.getValue("local-dubbed").items.first().id) // newest added dubbed
     }
 
     @Test fun noHistoryMeansNoForYouRow() = runBlocking {
