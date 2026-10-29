@@ -4,6 +4,10 @@ import app.bolbol.tv.core.database.HomeCacheDao
 import app.bolbol.tv.core.database.HomeCacheEntity
 import app.bolbol.tv.core.model.CatalogException
 import app.bolbol.tv.core.model.CatalogRepository
+import app.bolbol.tv.core.model.TitleType
+import app.bolbol.tv.core.model.LocalHomeRow
+import app.bolbol.tv.core.model.CatalogFacets
+import app.bolbol.tv.core.model.CatalogFilter
 import app.bolbol.tv.core.model.Category
 import app.bolbol.tv.core.model.Genre
 import app.bolbol.tv.core.model.HomeFeed
@@ -105,6 +109,42 @@ internal class CatalogRepositoryImpl(
 
     override suspend fun suggestions(prefix: String, limit: Int): List<String> =
         searchIndex?.suggest(prefix, limit)?.takeIf { it.isNotEmpty() } ?: suggestionIndex.suggest(prefix, limit)
+
+    // v1.6 categories and Home rows, from the same on-device index ----------------------------------------------
+
+    private val browseLock = Any()
+    private var browseCache: Triple<Long, CatalogFilter, List<TitleSummary>>? = null
+    private val facetsCache = HashMap<Pair<Long, TitleType>, CatalogFacets>()
+
+    override suspend fun browse(filter: CatalogFilter, page: Int): Page<TitleSummary>? {
+        val index = searchIndex ?: return null
+        val version = index.version
+        val cached = synchronized(browseLock) { browseCache?.takeIf { it.first == version && it.second == filter }?.third }
+        val all = cached ?: index.browse(filter)?.also { list ->
+            synchronized(browseLock) { browseCache = Triple(version, filter, list) }
+        } ?: return null
+        val totalPages = ((all.size + LOCAL_PAGE_SIZE - 1) / LOCAL_PAGE_SIZE).coerceAtLeast(1)
+        val items = all.drop((page - 1).coerceAtLeast(0) * LOCAL_PAGE_SIZE).take(LOCAL_PAGE_SIZE)
+        return Page(items, page = page, totalPages = totalPages)
+    }
+
+    override suspend fun facets(type: TitleType): CatalogFacets? {
+        val index = searchIndex ?: return null
+        val key = index.version to type
+        synchronized(browseLock) { facetsCache[key] }?.let { return it }
+        return index.facets(type)?.also { synchronized(browseLock) { facetsCache[key] = it } }
+    }
+
+    override suspend fun localHomeRows(watchedIds: List<Long>): List<LocalHomeRow> {
+        val index = searchIndex ?: return emptyList()
+        return try {
+            LocalHomeRows.build(index, watchedIds, clock())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     /** Refreshes the on-device search index if it is older than half a day (called once per app start). */
     suspend fun refreshSearchIndex(force: Boolean = false): Boolean = searchIndex?.refreshIfStale(force) ?: false

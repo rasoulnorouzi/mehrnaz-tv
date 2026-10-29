@@ -1,11 +1,16 @@
 package app.bolbol.tv.core.data
 
+import app.bolbol.tv.core.model.CatalogFacets
+import app.bolbol.tv.core.model.CatalogFilter
+import app.bolbol.tv.core.model.CatalogSort
 import app.bolbol.tv.core.model.TitleSummary
 import app.bolbol.tv.core.model.TitleType
 import app.bolbol.tv.core.network.CatalogRemoteDataSource
+import app.bolbol.tv.core.network.IndexedTitle
 import app.bolbol.tv.core.network.SearchIndexFetch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -13,17 +18,14 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * On-device copy of the website's own search index (v1.5, docs/api.md "Search index").
+ * On-device copy of the website's own daily index of every title (v1.5 search, v1.6 categories; docs/api.md
+ * "Search index"). The app refreshes it by itself, so new titles, filters and recommendations need no app update.
  *
- * Why: the API's `post/search` misses new titles by their Latin name (their `normalized_title` is empty), so a
- * series added after a release (e.g. "Carrie 2026") could not be found. The site rebuilds `search-data.json` every
- * day with all ~38k titles, so the app refreshes its copy by itself: no code change or app update for new titles.
- *
- * - [refreshIfStale] downloads at most every [maxAgeMs], conditionally (`If-Modified-Since` → 304 costs nothing,
- *   a change costs ~4 MB gzipped), streams it into a compact tab-separated file (one title per line, a normalised
- *   search key first) and swaps it in atomically. Nothing big is ever held in memory (2 GB TV).
- * - [search] scans that file line by line: every query word must appear in the key (title + Persian title + year);
- *   whole-key prefix first, then word-start matches, then the rest; newest post first inside each group.
+ * - [refreshIfStale] downloads at most every [maxAgeMs], conditionally (304 when unchanged, ~4 MB gzipped otherwise),
+ *   streams it into a compact tab-separated file (one title per line, normalised search key first) and swaps it in
+ *   atomically. Nothing big is held in memory (2 GB TV).
+ * - [search] matches every query word against title + Persian title + year.
+ * - [browse] / [facets] / [entries] scan the same file for the «فیلم» / «سریال» filters and the Home rows.
  */
 internal class LocalSearchIndex(
     private val dir: File,
@@ -35,6 +37,10 @@ internal class LocalSearchIndex(
     private val file get() = File(dir, FILE_NAME)
     private val metaFile get() = File(dir, META_NAME)
     private val refreshLock = Mutex()
+
+    /** Changes whenever a new copy is swapped in (lets callers drop their caches). */
+    @Volatile var version: Long = 0L
+        private set
 
     /** True once a downloaded index exists on disk. */
     fun isReady(): Boolean = file.isFile && file.length() > 0
@@ -48,6 +54,8 @@ internal class LocalSearchIndex(
             try {
                 val tmp = File(dir, "$FILE_NAME.tmp")
                 dir.mkdirs()
+                File(dir, LEGACY_FILE_NAME).delete()
+                File(dir, LEGACY_META_NAME).delete()
                 val since = meta?.lastModified?.takeIf { isReady() }
                 val result = tmp.bufferedWriter(Charsets.UTF_8).use { out ->
                     remote.fetchSearchIndex(since) { title -> out.write(encode(title)); out.write('\n'.code) }
@@ -66,6 +74,7 @@ internal class LocalSearchIndex(
                             file.delete()
                             if (!tmp.renameTo(file)) return@withLock false
                         }
+                        version = clock()
                         writeMeta(Meta(result.lastModified, clock()))
                     }
                 }
@@ -85,31 +94,22 @@ internal class LocalSearchIndex(
         val tokens = normalizeForIndex(query).split(' ').filter { it.isNotEmpty() }
         if (tokens.isEmpty()) return@withContext emptyList()
         val whole = tokens.joinToString(" ")
-        val hits = ArrayList<Hit>()
-        var lineNo = 0
-        try {
-            file.bufferedReader(Charsets.UTF_8).useLines { lines ->
-                for (line in lines) {
-                    if (++lineNo % 2000 == 0) ensureActive()
-                    val keyEnd = line.indexOf('\t')
-                    if (keyEnd <= 0) continue
-                    val key = line.substring(0, keyEnd)
-                    if (tokens.any { !key.contains(it) }) continue
-                    val rank = when {
-                        key.startsWith(whole) -> 0
-                        key.startsWith(tokens[0]) || key.contains(" " + tokens[0]) -> 1
-                        else -> 2
-                    }
-                    hits += Hit(rank, line)
-                }
+        val hits = ArrayList<Pair<Int, String>>()
+        val ok = scanLines { line ->
+            val keyEnd = line.indexOf('\t')
+            if (keyEnd <= 0) return@scanLines
+            val key = line.substring(0, keyEnd)
+            if (tokens.any { !key.contains(it) }) return@scanLines
+            val rank = when {
+                key.startsWith(whole) -> 0
+                key.startsWith(tokens[0]) || key.contains(" " + tokens[0]) -> 1
+                else -> 2
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return@withContext null
+            hits += rank to line
         }
+        if (!ok) return@withContext null
         hits.asSequence()
-            .mapNotNull { hit -> decode(hit.line)?.let { hit.rank to it } }
+            .mapNotNull { (rank, line) -> decode(line)?.let { rank to it.summary } }
             .sortedWith(compareBy<Pair<Int, TitleSummary>> { it.first }.thenByDescending { it.second.id })
             .map { it.second }
             .take(limit)
@@ -128,7 +128,64 @@ internal class LocalSearchIndex(
             .toList()
     }
 
-    private data class Hit(val rank: Int, val line: String)
+    /** Titles matching [filter] in its sort order, at most [limit]; null when there is no index yet. */
+    suspend fun browse(filter: CatalogFilter, limit: Int = MAX_BROWSE): List<TitleSummary>? = withContext(io) {
+        val now = clock() / 1000
+        val matches = ArrayList<IndexedTitle>()
+        val ok = scanEntries { if (filter.matches(it, now)) matches += it }
+        if (!ok) return@withContext null
+        sortEntries(matches, filter.sort).take(limit).map { it.summary }
+    }
+
+    /** Genre / country / decade choices for [type], most common first; null when there is no index yet. */
+    suspend fun facets(type: TitleType): CatalogFacets? = withContext(io) {
+        val genres = HashMap<String, Int>()
+        val countries = HashMap<String, Int>()
+        val decades = HashSet<Int>()
+        var dubbed = 0
+        var total = 0
+        val ok = scanEntries { e ->
+            if (e.summary.type != type) return@scanEntries
+            total++
+            if (e.summary.hasDub) dubbed++
+            e.genres.forEach { genres[it] = (genres[it] ?: 0) + 1 }
+            e.countries.forEach { countries[it] = (countries[it] ?: 0) + 1 }
+            decadeOf(e.summary.year)?.let(decades::add)
+        }
+        if (!ok) return@withContext null
+        CatalogFacets(
+            genres = genres.entries.filter { it.value >= MIN_FACET_COUNT }.sortedByDescending { it.value }.map { it.key },
+            countries = countries.entries.filter { it.value >= MIN_FACET_COUNT }.sortedByDescending { it.value }
+                .map { it.key }.take(MAX_COUNTRIES),
+            decades = decades.sortedDescending(),
+            dubbedCount = dubbed,
+            total = total,
+        )
+    }
+
+    /** Every entry, for callers that compute several things in one pass (Home rows). Null without an index. */
+    suspend fun entries(visit: (IndexedTitle) -> Unit): Boolean = withContext(io) { scanEntries(visit) }
+
+    private suspend fun scanEntries(visit: (IndexedTitle) -> Unit): Boolean = scanLines { line -> decode(line)?.let(visit) }
+
+    private suspend fun scanLines(visit: (String) -> Unit): Boolean {
+        if (!isReady()) return false
+        val context = currentCoroutineContext()
+        return try {
+            var n = 0
+            file.bufferedReader(Charsets.UTF_8).useLines { lines ->
+                for (line in lines) {
+                    if (++n % 2000 == 0) context.ensureActive()
+                    visit(line)
+                }
+            }
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     private data class Meta(val lastModified: String?, val fetchedAt: Long)
 
@@ -148,27 +205,71 @@ internal class LocalSearchIndex(
     }
 
     internal companion object {
-        const val FILE_NAME = "search-index-v1.tsv"
-        const val META_NAME = "search-index-v1.meta"
+        /** v2 (v1.6) adds genres, countries and the date added; the v1 file is deleted and downloaded again. */
+        const val FILE_NAME = "search-index-v2.tsv"
+        const val META_NAME = "search-index-v2.meta"
+        private const val LEGACY_FILE_NAME = "search-index-v1.tsv"
+        private const val LEGACY_META_NAME = "search-index-v1.meta"
         const val MAX_AGE_MS = 12L * 60 * 60 * 1000
         const val MAX_RESULTS = 240
+        /** Browse keeps at most this many results per filter (100 pages of 24). */
+        const val MAX_BROWSE = 2400
+        private const val MIN_FACET_COUNT = 5
+        private const val MAX_COUNTRIES = 40
 
-        /** key, id, type (m/s/-), title, faTitle, year, imdb, poster, dub (0/1), sub (0/1). */
-        fun encode(t: TitleSummary): String {
-            val key = normalizeForIndex(listOf(t.title, t.faTitle, t.year?.toString().orEmpty()).joinToString(" "))
-            val type = when (t.type) { TitleType.MOVIE -> "m"; TitleType.SERIES -> "s"; null -> "-" }
+        fun decadeOf(year: Int?): Int? = when {
+            year == null || year < 1870 -> null
+            year < 1980 -> CatalogFilter.OLDER
+            else -> year / 10 * 10
+        }
+
+        fun CatalogFilter.matches(e: IndexedTitle, nowEpochSec: Long): Boolean {
+            val s = e.summary
+            if (type != null && s.type != type) return false
+            if (dubbedOnly && !s.hasDub) return false
+            if (genre != null && genre !in e.genres) return false
+            if (country != null && country !in e.countries) return false
+            if (decade != null && decadeOf(s.year) != decade) return false
+            val min = minImdb
+            if (min != null && (s.imdbRating ?: 0f) < min) return false
+            val days = addedWithinDays
+            if (days != null) {
+                if (e.addedAtEpochSec <= 0 || nowEpochSec - e.addedAtEpochSec > days * 86_400L) return false
+            }
+            return true
+        }
+
+        fun sortEntries(list: List<IndexedTitle>, sort: CatalogSort): List<IndexedTitle> = when (sort) {
+            // Date added, then post id (both grow with time on the site).
+            CatalogSort.NEWEST_ADDED -> list.sortedWith(
+                compareByDescending<IndexedTitle> { it.addedAtEpochSec }.thenByDescending { it.summary.id },
+            )
+            CatalogSort.TOP_IMDB -> list.sortedWith(
+                compareByDescending<IndexedTitle> { it.summary.imdbRating ?: -1f }.thenByDescending { it.summary.year ?: 0 },
+            )
+            CatalogSort.NEWEST_YEAR -> list.sortedWith(
+                compareByDescending<IndexedTitle> { it.summary.year ?: 0 }.thenByDescending { it.addedAtEpochSec },
+            )
+        }
+
+        /** key, id, type, title, faTitle, year, imdb, poster, dub, sub, genres (|), countries (|), added (epoch s). */
+        fun encode(t: IndexedTitle): String {
+            val s = t.summary
+            val key = normalizeForIndex(listOf(s.title, s.faTitle, s.year?.toString().orEmpty()).joinToString(" "))
+            val type = when (s.type) { TitleType.MOVIE -> "m"; TitleType.SERIES -> "s"; null -> "-" }
             return listOf(
-                key, t.id.toString(), type, t.title, t.faTitle, t.year?.toString().orEmpty(),
-                t.imdbRating?.toString().orEmpty(), t.posterUrl.orEmpty(), if (t.hasDub) "1" else "0",
-                if (t.hasSubtitle) "1" else "0",
+                key, s.id.toString(), type, s.title, s.faTitle, s.year?.toString().orEmpty(),
+                s.imdbRating?.toString().orEmpty(), s.posterUrl.orEmpty(), if (s.hasDub) "1" else "0",
+                if (s.hasSubtitle) "1" else "0", t.genres.joinToString("|") { it.replace("|", " ") },
+                t.countries.joinToString("|") { it.replace("|", " ") }, t.addedAtEpochSec.toString(),
             ).joinToString("\t") { it.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ') }
         }
 
-        fun decode(line: String): TitleSummary? {
+        fun decode(line: String): IndexedTitle? {
             val f = line.split('\t')
-            if (f.size < 10) return null
+            if (f.size < 13) return null
             val id = f[1].toLongOrNull() ?: return null
-            return TitleSummary(
+            val summary = TitleSummary(
                 id = id,
                 type = when (f[2]) { "m" -> TitleType.MOVIE; "s" -> TitleType.SERIES; else -> null },
                 title = f[3],
@@ -179,6 +280,12 @@ internal class LocalSearchIndex(
                 imdbRating = f[6].toFloatOrNull(),
                 hasDub = f[8] == "1",
                 hasSubtitle = f[9] == "1",
+            )
+            return IndexedTitle(
+                summary = summary,
+                genres = f[10].split('|').filter { it.isNotEmpty() },
+                countries = f[11].split('|').filter { it.isNotEmpty() },
+                addedAtEpochSec = f[12].toLongOrNull() ?: 0L,
             )
         }
     }

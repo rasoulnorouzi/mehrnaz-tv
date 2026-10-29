@@ -113,3 +113,48 @@ internal fun SearchIndexEntryDto.toSummary(images: ImageUrls = ImageUrls.Default
         hasSubtitle = hasSubtitle,
     )
 }
+
+/** Strings of a JSON array (genres, countries), trimmed; anything else -> empty. */
+internal fun kotlinx.serialization.json.JsonElement?.stringList(): List<String> =
+    (this as? kotlinx.serialization.json.JsonArray).orEmpty()
+        .mapNotNull { (it as? kotlinx.serialization.json.JsonPrimitive)?.takeIf { p -> p.isString }?.content?.trim() }
+        .filter { it.isNotEmpty() }
+
+/** The site's genre names, tidied: "انیمیشن2" is the same genre as "انیمیشن"; ZWNJ/space variants unified. */
+internal fun normalizeGenre(raw: String): String {
+    val g = raw.trim().trimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9').trim()
+    return when (g) {
+        "هیجان انگیز" -> "هیجان‌انگیز"
+        "علمی تخیلی" -> "علمی‌تخیلی"
+        "Short" -> "کوتاه"
+        "Film-Noir" -> "فیلم نوآر"
+        else -> g
+    }
+}
+
+private val POST_DATE = Regex("""(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?""")
+
+/** `"2026-10-23 18:35:54"` (site time, treated as UTC) -> epoch seconds; 0 when absent/invalid. */
+internal fun parsePostDate(raw: String): Long {
+    val m = POST_DATE.find(raw) ?: return 0L
+    val (y, mo, d, h, mi) = m.destructured
+    val sec = m.groupValues[6].toIntOrNull() ?: 0
+    if (y.toInt() < 1990) return 0L
+    return try {
+        java.time.LocalDateTime.of(y.toInt(), mo.toInt(), d.toInt(), h.toInt(), mi.toInt(), sec)
+            .toEpochSecond(java.time.ZoneOffset.UTC)
+    } catch (e: Exception) {
+        0L
+    }
+}
+
+/** Index entry -> [IndexedTitle] (summary + facets); null without an id. */
+internal fun SearchIndexEntryDto.toIndexed(images: ImageUrls = ImageUrls.Default): app.bolbol.tv.core.network.IndexedTitle? {
+    val summary = toSummary(images) ?: return null
+    return app.bolbol.tv.core.network.IndexedTitle(
+        summary = summary,
+        genres = genres.stringList().map(::normalizeGenre).filter { it.isNotEmpty() }.distinct(),
+        countries = countries.stringList(),
+        addedAtEpochSec = parsePostDate(postDate),
+    )
+}

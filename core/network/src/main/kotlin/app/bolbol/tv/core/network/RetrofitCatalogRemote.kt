@@ -21,6 +21,7 @@ import app.bolbol.tv.core.network.mapper.toDetails
 import app.bolbol.tv.core.network.mapper.toHomeSections
 import app.bolbol.tv.core.network.mapper.toPage
 import app.bolbol.tv.core.network.mapper.toSummary
+import app.bolbol.tv.core.network.mapper.toIndexed
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -99,7 +100,7 @@ internal class RetrofitCatalogRemote(
     }
 
     @OptIn(ExperimentalSerializationApi::class)
-    override suspend fun fetchSearchIndex(ifModifiedSince: String?, sink: (TitleSummary) -> Unit): SearchIndexFetch =
+    override suspend fun fetchSearchIndex(ifModifiedSince: String?, sink: (IndexedTitle) -> Unit): SearchIndexFetch =
         guarded {
             val response = service.searchIndex(ifModifiedSince)
             if (response.code() == 304) return@guarded SearchIndexFetch.NotModified
@@ -108,7 +109,7 @@ internal class RetrofitCatalogRemote(
             var count = 0
             body.use { b ->
                 json.decodeToSequence(b.byteStream(), SearchIndexEntryDto.serializer(), DecodeSequenceMode.ARRAY_WRAPPED)
-                    .forEach { dto -> dto.toSummary(images)?.let { sink(it); count++ } }
+                    .forEach { dto -> dto.toIndexed(images)?.let { sink(it); count++ } }
             }
             SearchIndexFetch.Updated(response.headers()["Last-Modified"], count)
         }

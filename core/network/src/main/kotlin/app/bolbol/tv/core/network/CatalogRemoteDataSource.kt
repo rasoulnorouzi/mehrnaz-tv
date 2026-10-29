@@ -35,9 +35,20 @@ interface CatalogRemoteDataSource {
      * already have; the answer is then [SearchIndexFetch.NotModified] and [sink] is not called. Blocking I/O: call it
      * off the main thread. Default: not supported (fakes).
      */
-    suspend fun fetchSearchIndex(ifModifiedSince: String?, sink: (TitleSummary) -> Unit): SearchIndexFetch =
+    suspend fun fetchSearchIndex(ifModifiedSince: String?, sink: (IndexedTitle) -> Unit): SearchIndexFetch =
         SearchIndexFetch.NotModified
 }
+
+/** One title of the site's index: the card data plus what the v1.6 filters need. */
+data class IndexedTitle(
+    val summary: TitleSummary,
+    /** Persian genre names, tidied (see docs/api.md "Search index"). */
+    val genres: List<String>,
+    /** Persian country names. */
+    val countries: List<String>,
+    /** When the site added it (epoch seconds), 0 when unknown. */
+    val addedAtEpochSec: Long,
+)
 
 /** Result of [CatalogRemoteDataSource.fetchSearchIndex]. */
 sealed interface SearchIndexFetch {

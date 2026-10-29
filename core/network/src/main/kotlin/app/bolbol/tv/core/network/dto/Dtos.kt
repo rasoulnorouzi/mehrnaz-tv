@@ -301,4 +301,11 @@ internal data class SearchIndexEntryDto(
     @Serializable(with = FlagSerializer::class) val hasDubbed: Boolean = false,
     @SerialName("has_subtitle")
     @Serializable(with = FlagSerializer::class) val hasSubtitle: Boolean = false,
+    /** Persian genre names; any non-array shape is ignored. */
+    val genres: JsonElement? = null,
+    /** Persian country names. */
+    val countries: JsonElement? = null,
+    /** When the site added the title, `"2026-10-23 18:35:54"`. */
+    @SerialName("post_date")
+    @Serializable(with = LenientStringSerializer::class) val postDate: String = "",
 )

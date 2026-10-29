@@ -48,7 +48,7 @@ class SearchIndexTest {
 
     private fun collect(since: String? = null): Pair<SearchIndexFetch, List<TitleSummary>> {
         val out = ArrayList<TitleSummary>()
-        val result = kotlinx.coroutines.runBlocking { remote.fetchSearchIndex(since) { out += it } }
+        val result = kotlinx.coroutines.runBlocking { remote.fetchSearchIndex(since) { out += it.summary } }
         return result to out
     }
 

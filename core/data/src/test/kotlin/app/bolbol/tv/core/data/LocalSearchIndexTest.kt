@@ -4,6 +4,7 @@ import app.bolbol.tv.core.model.Page
 import app.bolbol.tv.core.model.TitleSummary
 import app.bolbol.tv.core.model.TitleType
 import app.bolbol.tv.core.network.CatalogRemoteDataSource
+import app.bolbol.tv.core.network.IndexedTitle
 import app.bolbol.tv.core.network.SearchIndexFetch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -20,11 +21,11 @@ class LocalSearchIndexTest {
 
     @get:Rule val tmp = TemporaryFolder()
 
-    private class IndexRemote(var titles: List<TitleSummary>) : CatalogRemoteDataSource by FakeRemote() {
+    private class IndexRemote(var titles: List<IndexedTitle>) : CatalogRemoteDataSource by FakeRemote() {
         var lastModified = "Sat, 24 Oct 2026 03:19:51 GMT"
         var calls = 0
         var seenSince: String? = null
-        override suspend fun fetchSearchIndex(ifModifiedSince: String?, sink: (TitleSummary) -> Unit): SearchIndexFetch {
+        override suspend fun fetchSearchIndex(ifModifiedSince: String?, sink: (IndexedTitle) -> Unit): SearchIndexFetch {
             calls++
             seenSince = ifModifiedSince
             if (ifModifiedSince == lastModified) return SearchIndexFetch.NotModified
@@ -33,9 +34,16 @@ class LocalSearchIndexTest {
         }
     }
 
-    private fun t(id: Long, title: String, fa: String, year: Int?, type: TitleType = TitleType.SERIES) = TitleSummary(
-        id = id, type = type, title = title, faTitle = fa, posterUrl = "https://cdn/p$id.webp", backdropUrl = null,
-        year = year, imdbRating = 6.5f, hasDub = id % 2 == 0L, hasSubtitle = true,
+    private fun t(
+        id: Long, title: String, fa: String, year: Int?, type: TitleType = TitleType.SERIES,
+        genres: List<String> = listOf("درام"), countries: List<String> = listOf("آمریکا"), imdb: Float = 6.5f,
+        addedSec: Long = id, dub: Boolean = id % 2 == 0L,
+    ) = IndexedTitle(
+        TitleSummary(
+            id = id, type = type, title = title, faTitle = fa, posterUrl = "https://cdn/p$id.webp", backdropUrl = null,
+            year = year, imdbRating = imdb, hasDub = dub, hasSubtitle = true,
+        ),
+        genres, countries, addedSec,
     )
 
     private val catalog = listOf(
@@ -103,7 +111,7 @@ class LocalSearchIndexTest {
         assertFalse(idx.refreshIfStale(force = true))
         assertEquals(624084L, idx.search("carrie")!!.first().id)
         val broken = LocalSearchIndex(tmp.root, object : CatalogRemoteDataSource by FakeRemote() {
-            override suspend fun fetchSearchIndex(ifModifiedSince: String?, sink: (TitleSummary) -> Unit): SearchIndexFetch =
+            override suspend fun fetchSearchIndex(ifModifiedSince: String?, sink: (IndexedTitle) -> Unit): SearchIndexFetch =
                 throw java.io.IOException("offline")
         }, Dispatchers.Unconfined, clock = { now })
         assertFalse(broken.refreshIfStale(force = true))
@@ -131,8 +139,8 @@ class LocalSearchIndexTest {
     }
 
     @Test fun encodeDecodeRoundTripKeepsEveryField() {
-        val title = t(1, "Tab\tTitle", "فارسی", null, TitleType.MOVIE)
+        val title = t(1, "Tab\tTitle", "فارسی", null, TitleType.MOVIE, genres = listOf("اکشن", "درام"), countries = listOf("ایران"))
         val back = LocalSearchIndex.decode(LocalSearchIndex.encode(title))!!
-        assertEquals(title.copy(title = "Tab Title"), back)
+        assertEquals(title.copy(summary = title.summary.copy(title = "Tab Title")), back)
     }
 }
