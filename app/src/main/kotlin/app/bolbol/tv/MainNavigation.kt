@@ -1,5 +1,8 @@
 package app.bolbol.tv
 
+import app.bolbol.tv.feature.browse.toRouteString
+import app.bolbol.tv.feature.browse.catalogFilterFromRoute
+import app.bolbol.tv.core.model.TitleType
 import app.bolbol.tv.feature.downloads.DownloadsViewModel
 import app.bolbol.tv.feature.downloads.DownloadsScreen
 import app.bolbol.tv.feature.settings.SettingsSection
@@ -90,10 +93,14 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                         open(BrowseRoute(title, q.category.name, q.country, q.genre, q.imdbTop250))
                     },
                     onOpenDownloads = { open(DownloadsRoute) },
+                    onViewAllLocal = { filter, title ->
+                        val category = if (filter.type == TitleType.SERIES) Category.SERIES else Category.MOVIES
+                        open(BrowseRoute(title, category.name, type = filter.type?.name, filter = filter.toRouteString() ?: "s=NEWEST_ADDED"))
+                    },
                     onNavigate = { dest ->
                         when (dest) {
-                            HomeDestination.MOVIES -> open(BrowseRoute("فیلم‌ها", Category.MOVIES.name))
-                            HomeDestination.SERIES -> open(BrowseRoute("سریال‌ها", Category.SERIES.name))
+                            HomeDestination.MOVIES -> open(BrowseRoute("فیلم‌ها", Category.MOVIES.name, type = TitleType.MOVIE.name))
+                            HomeDestination.SERIES -> open(BrowseRoute("سریال‌ها", Category.SERIES.name, type = TitleType.SERIES.name))
                             HomeDestination.SEARCH -> open(SearchRoute)
                             HomeDestination.MY_LIST -> open(AccountRoute)
                             HomeDestination.PROFILE -> open(ProfileRoute)
@@ -123,7 +130,13 @@ fun MainNavigation(app: BolbolApp, pendingDeepLink: MutableStateFlow<WatchKey?>)
                     imdbTop250 = route.imdbTop250,
                 )
                 BrowseScreen(
-                    viewModel = viewModel(factory = BrowseViewModel.factory(query, route.title, data.catalog)),
+                    viewModel = viewModel(
+                        factory = BrowseViewModel.factory(
+                            query, route.title, data.catalog,
+                            type = route.type?.let { name -> TitleType.entries.firstOrNull { it.name == name } },
+                            initialFilter = catalogFilterFromRoute(route.filter),
+                        ),
+                    ),
                     onOpenTitle = { open(DetailsRoute(it.id)) },
                 )
             }

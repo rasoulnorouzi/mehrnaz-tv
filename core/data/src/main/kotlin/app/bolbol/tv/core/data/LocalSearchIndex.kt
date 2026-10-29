@@ -128,13 +128,16 @@ internal class LocalSearchIndex(
             .toList()
     }
 
-    /** Titles matching [filter] in its sort order, at most [limit]; null when there is no index yet. */
-    suspend fun browse(filter: CatalogFilter, limit: Int = MAX_BROWSE): List<TitleSummary>? = withContext(io) {
+    /** Result of [browse]: the first [items] (at most the limit) and how many titles match in all. */
+    data class BrowseResult(val items: List<TitleSummary>, val total: Int)
+
+    /** Titles matching [filter] in its sort order (at most [limit] kept) + the full count; null without an index. */
+    suspend fun browse(filter: CatalogFilter, limit: Int = MAX_BROWSE): BrowseResult? = withContext(io) {
         val now = clock() / 1000
         val matches = ArrayList<IndexedTitle>()
         val ok = scanEntries { if (filter.matches(it, now)) matches += it }
         if (!ok) return@withContext null
-        sortEntries(matches, filter.sort).take(limit).map { it.summary }
+        BrowseResult(sortEntries(matches, filter.sort).take(limit).map { it.summary }, matches.size)
     }
 
     /** Genre / country / decade choices for [type], most common first; null when there is no index yet. */

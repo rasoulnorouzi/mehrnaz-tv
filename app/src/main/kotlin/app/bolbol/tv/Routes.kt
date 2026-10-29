@@ -32,6 +32,10 @@ import kotlinx.serialization.Serializable
     val country: Int? = null,
     val genre: Int? = null,
     val imdbTop250: Boolean = false,
+    /** v1.6: [app.bolbol.tv.core.model.TitleType] name for the «فیلم» / «سریال» tabs (local filters); null = API page. */
+    val type: String? = null,
+    /** v1.6: a local filter (`CatalogFilter.toRouteString()`), e.g. a Home row's «مشاهده همه». */
+    val filter: String? = null,
 ) : NavKey
 
 @Serializable data class SettingsRoute(val section: String = "SUBTITLES") : NavKey

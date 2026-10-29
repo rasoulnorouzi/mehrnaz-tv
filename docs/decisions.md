@@ -145,3 +145,8 @@ scanned per query (no big in-memory structure on the 2 GB TV, no DB migration). 
   a 2 GB TV); searching only by Persian titles through the API (the user types Latin names).
 **2026-10-24 · Mirrors learn redirects.** A domain move announced by a redirect is adopted and saved automatically.
 - Revisit if: the site moves without redirects; then a mirror list published with the releases (`update.json`) is next.
+**2026-10-29 · Categories and Home recommendations are computed on the TV from the daily index** (v1.6). The API only
+knows one genre/country/top-250 filter at a time with per-kind ids; the index has genres, countries, dub flag, year, IMDb
+and date added for ~100 % of titles, so every combination works offline-fast and stays current by itself.
+- Rejected: more API rows (no combinations, ids differ per kind, needs research per new genre); a Room catalogue (migration
+  for data rebuilt daily). Browse keeps at most 2,400 results per filter (100 pages); the header shows the real count.

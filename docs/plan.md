@@ -172,6 +172,13 @@ copy when present (works with no internet; quality/dub switching hidden). Offlin
 | v1.4-8 | In-app update: `core:update` + Settings «به‌روزرسانی» (only there, user 2026-10-14: no Home banner) + `tools/release.sh` publishing to the public repo | DE | emulator: v1.4.0 → v1.4.1 test build updates in-app, data kept |
 | v1.4-9 | Wiring, full emulator QA (install over v1.2.0, download → offline → delete, update flow), release v1.4.0 | M + QA | report + screenshots; signed APK |
 
+## v1.6: real categories and recommendations (✅ built 2026-10-29, user: "the categorization is really poor")
+All from the TV's copy of the site's daily index (v1.5), so filters combine, answer instantly and include titles added today;
+no app update for new content. «فیلم‌ها» / «سریال‌ها»: ژانر · کشور · سال (دهه) · دوبله فارسی · مرتب‌سازی (تازه‌ترین / بهترین
+IMDb / جدیدترین سال), API page as fallback until the index exists. Home after «ادامه تماشا»: «چون «…» را دیدید / پیشنهاد برای
+شما» (shared genres + country + kind, IMDb ≥ 6.5, newer preferred, no cartoons unless watched), «تازه‌های این هفته»,
+«تازه‌های دوبله فارسی», «بهترین‌های <ژانر>» (rotates daily, IMDb ≥ 7.5, since 2000). Index file v2 adds genres, countries, date added.
+
 ## Out of scope (for now)
 Profiles, trailer autoplay, seek-preview thumbnails
 (the server provides no sprites; generating them on a 2 GB TV is too costly), Chromecast, Play Store.

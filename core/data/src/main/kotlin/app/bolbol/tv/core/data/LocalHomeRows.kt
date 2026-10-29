@@ -44,7 +44,8 @@ internal object LocalHomeRows {
         val ok = index.entries { e ->
             if (weekFilter.matches(e, nowSec)) week.offer(e)
             if (dubFilter.matches(e, nowSec)) dubbed.offer(e)
-            if (topFilter.matches(e, nowSec) && (e.summary.year ?: 0) >= TOP_MIN_YEAR) top.offer(e)
+            val animatedOk = topGenre in ANIMATED || e.genres.none { it in ANIMATED }
+            if (topFilter.matches(e, nowSec) && (e.summary.year ?: 0) >= TOP_MIN_YEAR && animatedOk) top.offer(e)
             if (e.summary.id in wanted) seeds[e.summary.id] = e
         }
         if (!ok) return emptyList()
@@ -69,9 +70,12 @@ internal object LocalHomeRows {
         val scored = TopN<Pair<Int, IndexedTitle>>(ROW_SIZE, compareBy<Pair<Int, IndexedTitle>> { it.first }
             .thenBy { it.second.summary.imdbRating ?: 0f }.thenBy { it.second.addedAtEpochSec })
         val seedGenres = seeds.map { it.genres.toSet() }
+        // Cartoons/anime only for someone who watched cartoons/anime (v1.6 QA: kids' shows for a horror drama).
+        val animatedOk = seeds.any { seed -> seed.genres.any { it in ANIMATED } }
         val ok = index.entries { e ->
             val s = e.summary
             if (s.id in exclude || (s.imdbRating ?: 0f) < MIN_RECOMMENDED_IMDB || e.genres.isEmpty()) return@entries
+            if (!animatedOk && e.genres.any { it in ANIMATED }) return@entries
             var score = 0
             seeds.forEachIndexed { i, seed ->
                 val shared = e.genres.count { it in seedGenres[i] }
@@ -80,6 +84,7 @@ internal object LocalHomeRows {
                 if (e.countries.any { it in seed.countries }) score += 1
                 if (s.type == seed.summary.type) score += 1
             }
+            if ((s.year ?: 0) >= RECENT_YEAR) score += 1 // prefer newer titles
             if (score >= MIN_SCORE) scored.offer(score to e)
         }
         if (!ok) return null
@@ -95,6 +100,8 @@ internal object LocalHomeRows {
     }
 
     private const val MAX_SEEDS = 5
+    private const val RECENT_YEAR = 2015
+    private val ANIMATED = setOf("انیمیشن", "انیمه")
     private const val MIN_SCORE = 4
 
     private val newest = compareBy<IndexedTitle> { it.addedAtEpochSec }.thenBy { it.summary.id }

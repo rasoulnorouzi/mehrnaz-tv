@@ -113,18 +113,19 @@ internal class CatalogRepositoryImpl(
     // v1.6 categories and Home rows, from the same on-device index ----------------------------------------------
 
     private val browseLock = Any()
-    private var browseCache: Triple<Long, CatalogFilter, List<TitleSummary>>? = null
+    private var browseCache: Triple<Long, CatalogFilter, LocalSearchIndex.BrowseResult>? = null
     private val facetsCache = HashMap<Pair<Long, TitleType>, CatalogFacets>()
 
     override suspend fun browse(filter: CatalogFilter, page: Int): Page<TitleSummary>? {
         val index = searchIndex ?: return null
         val version = index.version
         val cached = synchronized(browseLock) { browseCache?.takeIf { it.first == version && it.second == filter }?.third }
-        val all = cached ?: index.browse(filter)?.also { list ->
-            synchronized(browseLock) { browseCache = Triple(version, filter, list) }
+        val result = cached ?: index.browse(filter)?.also { r ->
+            synchronized(browseLock) { browseCache = Triple(version, filter, r) }
         } ?: return null
-        val totalPages = ((all.size + LOCAL_PAGE_SIZE - 1) / LOCAL_PAGE_SIZE).coerceAtLeast(1)
-        val items = all.drop((page - 1).coerceAtLeast(0) * LOCAL_PAGE_SIZE).take(LOCAL_PAGE_SIZE)
+        // totalPages reflects every match (the header's count); only the first MAX_BROWSE are kept for paging.
+        val totalPages = ((result.total + LOCAL_PAGE_SIZE - 1) / LOCAL_PAGE_SIZE).coerceAtLeast(1)
+        val items = result.items.drop((page - 1).coerceAtLeast(0) * LOCAL_PAGE_SIZE).take(LOCAL_PAGE_SIZE)
         return Page(items, page = page, totalPages = totalPages)
     }
 

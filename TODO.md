@@ -93,6 +93,12 @@ Last updated: 2026-10-25 (**v1.5.0 released**: search finds new titles by itself
 
 ## 📋 To do
 
+### v1.6: categories + recommendations (✅ built and emulator-tested 2026-10-29; release waiting for the user's OK)
+- [x] 2026-10-29 · Data (M): index v2 (genres, countries, date added), combinable filter + 3 sorts, facets, Home rows; tests
+- [x] 2026-10-29 · UI: filter bar + pickers on «فیلم‌ها»/«سریال‌ها» (UI agent), local Home rows (UI agent); wiring (M)
+- [x] 2026-10-29 · Emulator QA: Home rows (for-you tuned: no cartoons for a horror drama), dubbed + India = 1,272 films,
+  real counts (movies ~28k, series 10,440), pickers focus «همه» first. Shots: shots/2026-10-29/h*.png, f*.png (M)
+
 ### v1.5.1: choppy playback after standby / resume (✅ released 2026-10-29, user report)
 - [x] 2026-10-29 · Cause: resume paths reused the old item (`onStart` → `prepare()`) or started at the exact second (up to 10 s of
   hidden decoding on the MT9611); only a quality switch (keyframe start, fresh source) fixed it. Fix: resume + screen-visible-again
