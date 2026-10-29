@@ -93,7 +93,7 @@ Last updated: 2026-10-25 (**v1.5.0 released**: search finds new titles by itself
 
 ## 📋 To do
 
-### v1.6: categories + recommendations (✅ built and emulator-tested 2026-10-29; release waiting for the user's OK)
+### v1.6: categories + recommendations (✅ released 2026-10-29 as v1.6.0)
 - [x] 2026-10-29 · Data (M): index v2 (genres, countries, date added), combinable filter + 3 sorts, facets, Home rows; tests
 - [x] 2026-10-29 · UI: filter bar + pickers on «فیلم‌ها»/«سریال‌ها» (UI agent), local Home rows (UI agent); wiring (M)
 - [x] 2026-10-29 · Emulator QA: Home rows (for-you tuned: no cartoons for a horror drama), dubbed + India = 1,272 films,
