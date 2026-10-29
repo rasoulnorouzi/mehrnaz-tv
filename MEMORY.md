@@ -35,6 +35,7 @@ Newest entries go at the top of each section. Dates are absolute (YYYY-MM-DD).
 - 2026-10-11: Progress is stored **locally** (`mapi/v1` has no progress endpoint). Key = `postId:season:episode`. Optional website sync via tracker.php later (M3.8).
 
 ## Feedback log
+- 2026-10-29: (fa) After stopping, turning the TV off and coming back, the film plays choppy (bad frame rate) until a quality switch; no fix with one quality → v1.5.1 (keyframe resume + StutterGuard). Same day: categories still poor (wants dubbed filter, countries, etc.), better recommendations, and "always updated with the latest titles". Publishing needs the user's explicit OK per message.
 - 2026-10-24: (angry) New titles such as "Carrie 2026" were missing in search; "it should be fully automated, not coding and updating each
   time". Root cause was the API search, not stale lists. Lesson: verify "new content" paths against the live site, and prefer
   data the site already maintains (its daily index) over our own copies. Also: the user judges by this session's work only.

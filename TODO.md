@@ -93,6 +93,12 @@ Last updated: 2026-10-25 (**v1.5.0 released**: search finds new titles by itself
 
 ## 📋 To do
 
+### v1.5.1: choppy playback after standby / resume (✅ built 2026-10-29, user report; release waiting for the user's OK)
+- [x] 2026-10-29 · Cause: resume paths reused the old item (`onStart` → `prepare()`) or started at the exact second (up to 10 s of
+  hidden decoding on the MT9611); only a quality switch (keyframe start, fresh source) fixed it. Fix: resume + screen-visible-again
+  use the keyframe path; `StutterGuard` reloads in place when > 30 % frames drop (≤ 1/min, ≤ 3/stream). Emulator: HOME → back
+  resumes paused at 0:57 via "reload in place", plays on; no false trigger. 📺 needs confirmation on the real TV (M)
+
 ### v1.5: search finds new titles by itself (🔄 2026-10-24, user report: "Carrie 2026" missing)
 - [x] 2026-10-24 · Cause: API `post/search` misses new titles by Latin name (empty `normalized_title`); lists are fresh (M)
 - [x] 2026-10-24 · Fix: on-device copy of the site's daily `search-data.json` (4.2 MB gz, 304 when unchanged, every 12 h,
