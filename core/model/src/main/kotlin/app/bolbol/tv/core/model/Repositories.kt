@@ -30,6 +30,21 @@ interface CatalogRepository {
      * (title words / titles), best first. Must be cheap: local data or one cached request, never a crawl.
      */
     suspend fun suggestions(prefix: String, limit: Int = 8): List<String> = emptyList()
+
+    /**
+     * v1.6: one page of titles matching [filter], from the TV's copy of the site's daily index. Null when there is no
+     * index yet (the UI then falls back to [list]).
+     */
+    suspend fun browse(filter: CatalogFilter, page: Int): Page<TitleSummary>? = null
+
+    /** v1.6: genre / country / decade choices for [type], most common first; null without an index. */
+    suspend fun facets(type: TitleType): CatalogFacets? = null
+
+    /**
+     * v1.6: Home rows computed on the TV: «پیشنهاد برای شما» (like [watchedIds], newest watched first), «تازه‌های
+     * دوبله فارسی», «تازه‌های این هفته» and a top-rated genre that changes daily. Empty without an index.
+     */
+    suspend fun localHomeRows(watchedIds: List<Long>): List<LocalHomeRow> = emptyList()
 }
 
 /** Local watch progress and history (Room). The server keeps none. */
