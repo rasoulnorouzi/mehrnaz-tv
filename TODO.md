@@ -93,7 +93,7 @@ Last updated: 2026-10-25 (**v1.5.0 released**: search finds new titles by itself
 
 ## 📋 To do
 
-### v1.5.1: choppy playback after standby / resume (✅ built 2026-10-29, user report; release waiting for the user's OK)
+### v1.5.1: choppy playback after standby / resume (✅ released 2026-10-29, user report)
 - [x] 2026-10-29 · Cause: resume paths reused the old item (`onStart` → `prepare()`) or started at the exact second (up to 10 s of
   hidden decoding on the MT9611); only a quality switch (keyframe start, fresh source) fixed it. Fix: resume + screen-visible-again
   use the keyframe path; `StutterGuard` reloads in place when > 30 % frames drop (≤ 1/min, ≤ 3/stream). Emulator: HOME → back
